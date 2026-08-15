@@ -10,6 +10,8 @@ import Clients from "./pages/Clients";
 import ClientFile from "./pages/ClientFile";
 import Quotes from "./pages/Quotes";
 import Alerts from "./pages/Alerts";
+import Cards from "./pages/Cards";
+import Kanban from "./pages/admin/Kanban";
 import MetaTrader from "./pages/admin/MetaTrader";
 
 function Guard({ children, admin = false }: { children: React.ReactNode; admin?: boolean }) {
@@ -71,6 +73,22 @@ export default function App() {
             element={
               <Guard>
                 <Alerts />
+              </Guard>
+            }
+          />
+          <Route
+            path="/cards"
+            element={
+              <Guard>
+                <Cards />
+              </Guard>
+            }
+          />
+          <Route
+            path="/admin/kanban"
+            element={
+              <Guard admin>
+                <Kanban />
               </Guard>
             }
           />

@@ -435,6 +435,60 @@
 [data-theme="dark"] .alert-summary__text { color: var(--text-body); }
 .alert-summary__text code { font: 600 11.5px var(--font-mono); color: var(--text-1); }
 
+/* ---------- Tela 13 · Cards (lista por status) ---------- */
+.status-segment { height: 44px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; display: flex; padding: 4px; gap: 4px; }
+.status-segment__item { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 9px; color: var(--field-label); font: 500 12px/1 var(--font-sans); }
+[data-theme="dark"] .status-segment__item { color: var(--text-body); }
+.status-segment__item--active { background: var(--brand-800); color: var(--brand-50); font-weight: 600; }
+[data-theme="dark"] .status-segment__item--active { background: var(--action); color: var(--on-action); }
+.status-segment__count { font: 600 9.5px/1 var(--font-mono); color: var(--text-2); background: var(--chip-pill-bg); border-radius: 999px; padding: 2px 5px; }
+.status-segment__item--active .status-segment__count { color: inherit; background: rgba(232, 242, 236, 0.22); }
+
+.card-row { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 10px 10px 14px; box-shadow: var(--elev-1); display: flex; align-items: center; gap: 10px; touch-action: pan-y; }
+.card-row__title { display: block; font: 500 13.5px/1.35 var(--font-sans); color: var(--text-1); }
+.card-row__meta-row { display: flex; align-items: center; gap: 7px; margin-top: 6px; flex-wrap: wrap; }
+.card-row__late { font: 500 10px/1 var(--font-sans); color: var(--warning); background: var(--warning-tint); border-radius: 999px; padding: 3px 7px; }
+.card-row__meta { font: 400 11px/1.3 var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text-2); }
+.card-row__action { width: 44px; height: 44px; flex: none; border-radius: 10px; background: var(--brand-tint); color: var(--ghost-text); display: flex; align-items: center; justify-content: center; }
+[data-theme="dark"] .card-row__action { color: var(--brand-tint-text); }
+.card-row__action i { font-size: 18px; }
+
+.swipe-hint { display: flex; align-items: center; gap: 10px; background: var(--brand-tint); border: 1px solid var(--brand-100); border-radius: 12px; padding: 6px 6px 6px 14px; }
+[data-theme="dark"] .swipe-hint { border-color: var(--brand-tint); }
+.swipe-hint > i { font-size: 16px; color: var(--ghost-text); }
+[data-theme="dark"] .swipe-hint > i { color: var(--brand-tint-text); }
+.swipe-hint__text { flex: 1; font: 400 11.5px/1.5 var(--font-sans); color: var(--brand-800); }
+[data-theme="dark"] .swipe-hint__text { color: var(--brand-tint-text); }
+.swipe-hint__close { width: 38px; height: 38px; flex: none; display: flex; align-items: center; justify-content: center; border-radius: 9px; color: var(--ghost-text); }
+[data-theme="dark"] .swipe-hint__close { color: var(--brand-tint-text); }
+.swipe-hint__close i { font-size: 15px; }
+
+/* ---------- Tela 23 · Kanban geral (admin) ---------- */
+.kb-filter { display: flex; gap: 6px; align-items: center; }
+.kb-filter__label { font: 500 11.5px/1 var(--font-sans); color: var(--text-2); margin-right: 4px; }
+.kb-chip { height: 36px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); color: var(--field-label); font: 500 11.5px/1 var(--font-sans); }
+[data-theme="dark"] .kb-chip { color: var(--text-body); }
+.kb-chip--active { background: var(--brand-800); border: none; color: var(--brand-50); font-weight: 600; }
+[data-theme="dark"] .kb-chip--active { background: var(--action); color: var(--on-action); }
+.kb-chip__avatar { width: 18px; height: 18px; border-radius: 999px; background: var(--brand-tint); color: var(--ghost-text); display: flex; align-items: center; justify-content: center; font: 600 7.5px/1 var(--font-sans); }
+
+.kb-columns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; align-items: flex-start; }
+.kb-col { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; box-shadow: var(--elev-1); }
+.kb-col__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.kb-col__title { font: 600 13px/1 var(--font-sans); color: var(--text-1); }
+.kb-col__count { font: 500 10.5px/1 var(--font-mono); color: var(--text-2); background: var(--chip-pill-bg); border-radius: 999px; padding: 3px 7px; }
+.kb-col__stack { display: flex; flex-direction: column; gap: 8px; min-height: 40px; }
+.kb-card { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 11px 12px; cursor: grab; }
+[data-theme="dark"] .kb-card { background: var(--surface-2); }
+.kb-card--dragging { box-shadow: var(--elev-2); transform: rotate(-1.2deg); }
+[data-theme="dark"] .kb-card--dragging { background: var(--border); border-color: var(--border-strong); }
+.kb-card__title { display: block; font: 500 12.5px/1.35 var(--font-sans); color: var(--text-1); }
+.kb-card--done .kb-card__title { color: var(--text-2); text-decoration: line-through; }
+.kb-card__foot { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+.kb-card__meta { display: flex; align-items: center; gap: 6px; font: 400 10.5px/1 var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text-2); }
+.kb-drop { height: 56px; border: 1px dashed var(--dashed); border-radius: 10px; display: flex; align-items: center; justify-content: center; font: 400 11px/1 var(--font-sans); color: var(--text-2); }
+.kb-legend { font: 400 11px/1.5 var(--font-sans); color: var(--text-3); }
+
 /* ---------- Tela 18 · MetaTrader (admin) ---------- */
 .mt-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 16px; align-items: flex-start; }
 .mt-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--elev-1); padding: 20px; }
