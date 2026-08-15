@@ -1,0 +1,6 @@
+name = "elev-worker"
+main = "src/index.ts"
+compatibility_date = "2026-05-01"
+
+# Variáveis locais em worker/.dev.vars (gerado por scripts/gen-env.mjs, fora do git).
+# Em produção: wrangler secret put SUPABASE_URL / SERVICE_ROLE_KEY.

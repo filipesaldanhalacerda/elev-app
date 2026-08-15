@@ -1,0 +1,200 @@
+/**
+ * Tela 19 · Gestão de usuários — quadro "19 Usuarios claro codigo" (#4d).
+ * Gerar código invalida a senha atual na hora; modal exibido UMA única vez.
+ */
+import { useEffect, useMemo, useState } from "react";
+import { AdminShell } from "./AdminShell";
+import { workerFetch } from "../../lib/auth";
+import { StatusChip } from "../../components/feedback";
+import { Modal } from "../../components/feedback";
+import { Button } from "../../components/Button";
+import { displayAdvisorCode, formatDateAtTime } from "../../lib/format";
+
+interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  advisor_code: string | null;
+  role: "admin" | "advisor";
+  is_active: boolean;
+  pending_code_expires_at: string | null;
+}
+
+interface GeneratedCode {
+  user: AdminUser;
+  code: string;
+  expires_at: string;
+}
+
+export default function Users() {
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [search, setSearch] = useState("");
+  const [generated, setGenerated] = useState<GeneratedCode | null>(null);
+  const [deactivating, setDeactivating] = useState<AdminUser | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  async function load() {
+    const body = (await workerFetch("/api/admin/users")) as { users: AdminUser[] };
+    setUsers(body.users);
+  }
+  useEffect(() => {
+    void load();
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return users;
+    return users.filter((u) => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+  }, [users, search]);
+
+  async function generateCode(user: AdminUser) {
+    setBusy(user.id);
+    try {
+      const body = (await workerFetch(`/api/admin/users/${user.id}/code`, { method: "POST" })) as { code: string; expires_at: string };
+      setGenerated({ user, code: body.code, expires_at: body.expires_at });
+      setCopied(false);
+      await load();
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function setActive(user: AdminUser, active: boolean) {
+    setBusy(user.id);
+    try {
+      await workerFetch(`/api/admin/users/${user.id}`, { method: "PATCH", body: JSON.stringify({ is_active: active }) });
+      setDeactivating(null);
+      await load();
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  const statusChip = (u: AdminUser) => {
+    if (!u.is_active) return <StatusChip kind="neutral">Inativo</StatusChip>;
+    if (u.pending_code_expires_at) return <StatusChip kind="warning" dot={false}>Aguardando 1º acesso</StatusChip>;
+    return <StatusChip kind="success">Ativo</StatusChip>;
+  };
+
+  return (
+    <AdminShell
+      title="Usuários"
+      actions={
+        <>
+          <span className="admin-search">
+            <i className="ph ph-magnifying-glass" aria-hidden />
+            <input placeholder="Buscar por nome ou e-mail" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Buscar por nome ou e-mail" />
+          </span>
+          <Button size={36} icon="ph-plus">
+            Novo usuário
+          </Button>
+        </>
+      }
+    >
+      <div className="users-table">
+        <div className="users-table__head">
+          <span>Nome</span>
+          <span>E-mail</span>
+          <span>Código</span>
+          <span>Perfil</span>
+          <span>Status</span>
+          <span style={{ textAlign: "right" }}>Ações</span>
+        </div>
+        {filtered.map((u) => (
+          <div
+            key={u.id}
+            className={`users-table__row${!u.is_active ? " users-table__row--inactive" : ""}${u.is_active && u.pending_code_expires_at ? " users-table__row--pending" : ""}`}
+          >
+            <span className="users-table__name">{u.name}</span>
+            <span className="users-table__email">{u.email}</span>
+            <span className="users-table__code">{u.advisor_code ? displayAdvisorCode(u.advisor_code) : "—"}</span>
+            <span className="users-table__role">{u.role === "admin" ? "admin" : "assessor"}</span>
+            <span>{statusChip(u)}</span>
+            <span className="users-table__actions">
+              {u.is_active ? (
+                <>
+                  <button
+                    type="button"
+                    className={`row-btn${u.pending_code_expires_at ? " row-btn--brand" : ""}`}
+                    disabled={busy === u.id}
+                    onClick={() => generateCode(u)}
+                  >
+                    <i className="ph ph-key" aria-hidden />
+                    {u.pending_code_expires_at ? "Ver código ativo" : "Gerar código"}
+                  </button>
+                  <button type="button" className="row-btn row-btn--icon" aria-label={`Editar ${u.name}`}>
+                    <i className="ph ph-pencil-simple" aria-hidden />
+                  </button>
+                  <button type="button" className="row-btn row-btn--icon row-btn--danger" aria-label={`Desativar ${u.name}`} onClick={() => setDeactivating(u)}>
+                    <i className="ph ph-prohibit" aria-hidden />
+                  </button>
+                </>
+              ) : (
+                <button type="button" className="row-btn" disabled={busy === u.id} onClick={() => setActive(u, true)}>
+                  Reativar
+                </button>
+              )}
+            </span>
+          </div>
+        ))}
+      </div>
+      <p className="users-legend">
+        Gerar código invalida a senha atual do usuário na hora — a linha muda para “Aguardando 1º acesso”. Reset de senha e criação passam pelo
+        mesmo fluxo de código. Ícones por linha: lápis edita, proibido desativa.
+      </p>
+
+      {generated && (
+        <Modal
+          title="Código de acesso gerado"
+          id={`${generated.user.name} · ${generated.user.role === "admin" ? "admin" : "assessor"}${generated.user.advisor_code ? ` ${displayAdvisorCode(generated.user.advisor_code)}` : ""}`}
+          onClose={() => setGenerated(null)}
+          note={`expira ${formatDateAtTime(generated.expires_at)} · registrado na auditoria`}
+          actions={
+            <Button variant="secondary" onClick={() => setGenerated(null)}>
+              Concluir
+            </Button>
+          }
+        >
+          <div className="code-modal__box" style={{ margin: "0 0 0" }}>
+            <span className="code-modal__code">{generated.code}</span>
+            <Button
+              icon="ph-copy"
+              onClick={async () => {
+                await navigator.clipboard.writeText(generated.code);
+                setCopied(true);
+              }}
+            >
+              {copied ? "Copiado" : "Copiar"}
+            </Button>
+          </div>
+          <div className="code-modal__body" style={{ padding: "14px 0 0" }}>
+            Mostrado <strong>só esta vez</strong>. Envie por um canal seguro — a pessoa entra com o código e cria a própria senha. Vale 24 horas,
+            uma única vez, e a senha antiga já deixou de funcionar.
+          </div>
+        </Modal>
+      )}
+
+      {deactivating && (
+        <Modal
+          title={`Desativar ${deactivating.name}?`}
+          id={`${deactivating.role === "admin" ? "admin" : "assessor"}${deactivating.advisor_code ? ` · código ${displayAdvisorCode(deactivating.advisor_code)}` : ""}`}
+          onClose={() => setDeactivating(null)}
+          note="Reversível — dá para reativar depois."
+          actions={
+            <>
+              <Button variant="secondary" onClick={() => setDeactivating(null)}>
+                Cancelar
+              </Button>
+              <Button variant="destructive" icon="ph-prohibit" loading={busy === deactivating.id} onClick={() => setActive(deactivating, false)}>
+                Desativar
+              </Button>
+            </>
+          }
+        >
+          Ele perde o acesso na hora. O que estava no nome dele continua no sistema e precisa de novo responsável.
+        </Modal>
+      )}
+    </AdminShell>
+  );
+}

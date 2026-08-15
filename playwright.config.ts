@@ -43,10 +43,19 @@ export default defineConfig({
       workers: 1,
     },
   ],
-  webServer: {
-    command: "npm run dev",
-    url: "http://localhost:5173",
-    reuseExistingServer: true,
-    timeout: 60_000,
-  },
+  webServer: [
+    {
+      command: "npm run dev",
+      url: "http://localhost:5173",
+      reuseExistingServer: true,
+      timeout: 60_000,
+    },
+    {
+      command: "npx wrangler dev --config worker/wrangler.toml --port 8787",
+      url: "http://127.0.0.1:8787/health",
+      reuseExistingServer: true,
+      timeout: 90_000,
+      env: { WRANGLER_SEND_METRICS: "false" },
+    },
+  ],
 });

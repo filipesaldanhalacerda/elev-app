@@ -5,17 +5,23 @@ interface FieldShellProps {
   error?: string;
   disabled?: boolean;
   className?: string;
+  /** id do input associado ao rótulo */
+  htmlFor?: string;
   children: ReactNode;
 }
 
 /** Casca de campo (#2c): rótulo 12/500 acima, caixa 44px, linha de ajuda de erro. */
-export function FieldShell({ label, error, disabled, className, children }: FieldShellProps) {
+export function FieldShell({ label, error, disabled, className, htmlFor, children }: FieldShellProps) {
   const classes = ["field", error ? "field--error" : "", disabled ? "field--disabled" : "", className ?? ""]
     .filter(Boolean)
     .join(" ");
   return (
     <div className={classes}>
-      {label && <div className="field__label">{label}</div>}
+      {label && (
+        <label className="field__label" htmlFor={htmlFor} style={{ display: "block" }}>
+          {label}
+        </label>
+      )}
       {children}
       {error && (
         <div className="field__help">
@@ -37,11 +43,12 @@ interface TextFieldProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export function TextField({ label, error, mono, tabular, trailingIcon, className, disabled, ...rest }: TextFieldProps) {
+  const id = useId();
   const boxClasses = ["field__box", tabular ? "field__box--tabular" : ""].filter(Boolean).join(" ");
   return (
-    <FieldShell label={label} error={error} disabled={disabled} className={className}>
+    <FieldShell label={label} error={error} disabled={disabled} className={className} htmlFor={id}>
       <div className={boxClasses}>
-        <input className={`field__input${mono ? " field__input--mono" : ""}`} disabled={disabled} {...rest} />
+        <input id={id} className={`field__input${mono ? " field__input--mono" : ""}`} disabled={disabled} {...rest} />
         {trailingIcon && (
           <i
             className={`ph ${trailingIcon} ${trailingIcon === "ph-caret-down" ? "field__caret" : "field__trailing-icon"}`}
@@ -59,11 +66,12 @@ interface PasswordFieldProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export function PasswordField({ label, error, className, disabled, ...rest }: PasswordFieldProps) {
+  const id = useId();
   const [visible, setVisible] = useState(false);
   return (
-    <FieldShell label={label} error={error} disabled={disabled} className={`field--password${className ? ` ${className}` : ""}`}>
+    <FieldShell label={label} error={error} disabled={disabled} className={`field--password${className ? ` ${className}` : ""}`} htmlFor={id}>
       <div className="field__box">
-        <input className="field__input" type={visible ? "text" : "password"} disabled={disabled} {...rest} />
+        <input id={id} className="field__input" type={visible ? "text" : "password"} disabled={disabled} {...rest} />
         <button
           type="button"
           className="field__eye"
