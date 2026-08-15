@@ -6,8 +6,9 @@
 import { Hono } from "hono";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { fakeQuote, fakeSeries, fakeMtTest } from "./quotes";
+import { sendWebPush, type PushSubscriptionRecord, type PushEnv } from "./webpush";
 
-type Env = { SUPABASE_URL: string; SERVICE_ROLE_KEY: string; METAAPI_TOKEN?: string };
+type Env = { SUPABASE_URL: string; SERVICE_ROLE_KEY: string; METAAPI_TOKEN?: string } & PushEnv;
 type Ctx = { Bindings: Env; Variables: { svc: SupabaseClient; admin: { id: string; name: string } } };
 
 const app = new Hono<Ctx>();
@@ -480,8 +481,26 @@ app.post("/api/admin/imports/commit", async (c) => {
 // ---------- Rotina de alertas (E8): preço + automáticos ----------
 // Em produção roda como scheduled worker; em dev/testes é chamada via POST /api/cron/alerts.
 
-async function notifyUser(svc: SupabaseClient, userId: string, kind: string, title: string, body: string, ref: Record<string, unknown> = {}) {
+const PREF_BY_KIND: Record<string, string> = {
+  alerta_atingido: "alerta_preco",
+  lembrete_diario: "lembrete_diario",
+  card_delegado: "card_delegado",
+};
+
+/** Cria a notificação no sino e tenta o push (tela 25) respeitando as preferências da tela 16. */
+async function notifyUser(svc: SupabaseClient, userId: string, kind: string, title: string, body: string, ref: Record<string, unknown> = {}, env?: Env) {
   await svc.from("notifications").insert({ user_id: userId, kind, title, body, ref });
+  if (!env) return;
+  const prefKey = PREF_BY_KIND[kind];
+  if (prefKey) {
+    const { data: prof } = await svc.from("profiles").select("push_prefs").eq("id", userId).single();
+    if (prof && (prof.push_prefs as Record<string, boolean>)[prefKey] === false) return;
+  }
+  const { data: subs } = await svc.from("push_subscriptions").select("id, endpoint, keys").eq("user_id", userId);
+  for (const s of subs ?? []) {
+    const result = await sendWebPush(env, { endpoint: s.endpoint, keys: s.keys } as PushSubscriptionRecord, { title, body, kind, ref });
+    if (result === "gone") await svc.from("push_subscriptions").delete().eq("id", s.id);
+  }
 }
 
 async function advisorUsers(svc: SupabaseClient): Promise<Map<string, string>> {
@@ -515,7 +534,7 @@ app.post("/api/cron/alerts", async (c) => {
       : `${a.target_day_pct}% no dia`;
     await notifyUser(svc, a.owner, "alerta_atingido", `${a.ticker} atingiu ${alvo}`,
       `Alvo de ${a.direction} alcançado às ${new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }).format(now)}. O alerta foi para o histórico.`,
-      { ticker: a.ticker });
+      { ticker: a.ticker }, c.env);
     results.price++;
   }
 
@@ -545,7 +564,7 @@ app.post("/api/cron/alerts", async (c) => {
       detail: { ref: refKey, asset: p.asset, maturity: p.maturity_date, value: p.value },
     });
     await notifyUser(svc, owner, "alerta_atingido", `${p.asset} vence em breve`,
-      `Vencimento em ${p.maturity_date!.split("-").reverse().join("/")} — cliente ${p.account_code}.`, { account: p.account_code });
+      `Vencimento em ${p.maturity_date!.split("-").reverse().join("/")} — cliente ${p.account_code}.`, { account: p.account_code }, c.env);
     results.vencimento++;
   }
 
@@ -569,7 +588,7 @@ app.post("/api/cron/alerts", async (c) => {
     await notifyUser(svc, owner, "alerta_atingido",
       `${m.amount >= 0 ? "Aporte" : "Resgate"} relevante — cliente ${m.account_code}`,
       `${m.amount >= 0 ? "+" : "−"}R$ ${Math.abs(m.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })} em ${m.mov_date.split("-").reverse().join("/")}.`,
-      { account: m.account_code });
+      { account: m.account_code }, c.env);
     results.movimentacao++;
   }
 
@@ -590,11 +609,52 @@ app.post("/api/cron/alerts", async (c) => {
       detail: { ref: refKey, total: b.total, date: b.ref_date },
     });
     await notifyUser(svc, owner, "alerta_atingido", `Dinheiro parado — cliente ${b.account_code}`,
-      `R$ ${b.total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} em conta sem aplicação.`, { account: b.account_code });
+      `R$ ${b.total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} em conta sem aplicação.`, { account: b.account_code }, c.env);
     results.saldo++;
   }
 
   return c.json({ ok: true, results });
+});
+
+// ---------- Push (telas 25/16) ----------
+
+app.get("/api/push/key", (c) => c.json({ key: c.env.VAPID_PUBLIC_KEY ?? null }));
+
+app.post("/api/push/subscribe", async (c) => {
+  const auth = await requireUser(c);
+  if (!auth) return c.json({ error: "Não autenticado." }, 401);
+  const sub = await c.req.json<{ endpoint: string; keys: { p256dh: string; auth: string } }>();
+  if (!sub?.endpoint) return c.json({ error: "Assinatura inválida." }, 400);
+  const { error } = await auth.svc
+    .from("push_subscriptions")
+    .upsert({ user_id: auth.userId, endpoint: sub.endpoint, keys: sub.keys }, { onConflict: "endpoint" });
+  if (error) return c.json({ error: error.message }, 500);
+  return c.json({ ok: true });
+});
+
+// Lembrete diário 08:00 (tela 25 modelo 2): resumo dos cards do dia
+app.post("/api/cron/daily-reminder", async (c) => {
+  const svc = svcOf(c.env);
+  const { data: users } = await svc.from("profiles").select("id, push_prefs").eq("is_active", true);
+  let sent = 0;
+  for (const u of users ?? []) {
+    if ((u.push_prefs as Record<string, boolean>).lembrete_diario === false) continue;
+    const { data: cards } = await svc
+      .from("cards")
+      .select("title, due_at, status, daily_reminder")
+      .eq("assignee", u.id)
+      .neq("status", "concluido");
+    const withReminder = (cards ?? []).filter((k) => k.daily_reminder);
+    if (withReminder.length === 0) continue;
+    const overdue = withReminder.filter((k) => k.due_at && new Date(k.due_at).getTime() < Date.now());
+    const first = overdue[0] ?? withReminder[0];
+    const plural = withReminder.length > 1 ? "s" : "";
+    const title = `Seu dia: ${withReminder.length} card${plural} pendente${plural}${overdue.length > 0 ? `, ${overdue.length} atrasado${overdue.length > 1 ? "s" : ""}` : ""}`;
+    const body = overdue.length > 0 ? `${first.title} venceu.` : `Próximo: ${first.title}.`;
+    await notifyUser(svc, u.id, "lembrete_diario", title, body, {}, c.env);
+    sent++;
+  }
+  return c.json({ ok: true, sent });
 });
 
 export default app;

@@ -31,6 +31,7 @@ export default defineConfig({
         globPatterns: ["**/*.{js,css,html,woff2,png}"],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         navigateFallback: "/index.html",
+        importScripts: ["push-sw.js"], // handlers de push (tela 25)
       },
     }),
   ],

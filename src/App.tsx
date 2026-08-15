@@ -14,6 +14,8 @@ import Cards from "./pages/Cards";
 import Kanban from "./pages/admin/Kanban";
 import Rooms from "./pages/Rooms";
 import RoomsAdmin from "./pages/admin/RoomsAdmin";
+import Notifications from "./pages/Notifications";
+import Profile from "./pages/Profile";
 import MetaTrader from "./pages/admin/MetaTrader";
 
 function Guard({ children, admin = false }: { children: React.ReactNode; admin?: boolean }) {
@@ -107,6 +109,22 @@ export default function App() {
             element={
               <Guard admin>
                 <RoomsAdmin />
+              </Guard>
+            }
+          />
+          <Route
+            path="/notificacoes"
+            element={
+              <Guard>
+                <Notifications />
+              </Guard>
+            }
+          />
+          <Route
+            path="/perfil"
+            element={
+              <Guard>
+                <Profile />
               </Guard>
             }
           />
