@@ -19,7 +19,8 @@ test.beforeAll(async () => {
   await createUser(svc, { email: ADMIN.email, password: ADMIN.password, name: ADMIN.name, role: "admin" });
   rafaId = await createUser(svc, { email: RAFA.email, password: RAFA.password, name: RAFA.name, role: "advisor", advisor_code: RAFA.code });
   brunoId = await createUser(svc, { email: BRUNO.email, password: BRUNO.password, name: BRUNO.name, role: "advisor", advisor_code: BRUNO.code });
-  await svc.from("clients").insert({ account_code: ANA, advisor_code: RAFA.code, name: "Ana Bertoldi", status: "ATIVO" });
+  await svc.from("cards").delete().ilike("title", `%${RUN}%`);
+  await svc.from("clients").upsert({ account_code: ANA, advisor_code: RAFA.code, name: "Ana Bertoldi", status: "ATIVO" });
 });
 
 async function login(page: import("@playwright/test").Page, email: string, password: string) {
@@ -122,8 +123,10 @@ test.describe("tela 23 · kanban geral (admin)", () => {
     await expect(page.locator('[data-column="andamento"] .kb-card', { hasText: `Proposta ${RUN}` })).toBeVisible();
     await page.locator(".kb-chip", { hasText: "Todos" }).click();
 
-    // arrasto: pendente → concluído
-    await rebalancear.dragTo(page.locator('[data-column="concluido"]'));
+    // arrasto: pendente → concluído (dispatch manual: HTML5 DnD)
+    await rebalancear.dispatchEvent("dragstart");
+    await page.locator('[data-column="concluido"]').dispatchEvent("dragover");
+    await page.locator('[data-column="concluido"]').dispatchEvent("drop");
     await expect(page.locator('[data-column="concluido"] .kb-card', { hasText: `Rebalancear ${RUN}` })).toBeVisible();
     const { data } = await svc.from("cards").select("status").eq("title", `Rebalancear ${RUN}`).single();
     expect(data!.status).toBe("concluido");

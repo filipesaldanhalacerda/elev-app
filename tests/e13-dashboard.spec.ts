@@ -21,11 +21,13 @@ test.beforeAll(async () => {
 
   const today = new Date();
   const birth = `1968-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-  await svc.from("clients").insert([
+  await svc.from("cards").delete().ilike("title", `%${RUN}%`);
+  await svc.from("clients").upsert([
     { account_code: ANA, advisor_code: ADV.code, name: "Ana Bertoldi", status: "ATIVO" },
     { account_code: ANA.replace("7", "9"), advisor_code: ADV.code, name: "Helena Prado", status: "ATIVO", birth_date: birth },
   ]);
-  await svc.from("client_extras").insert({ account_code: ANA.replace("7", "9"), phone: "(11) 97744-2010" });
+  await svc.from("client_extras").upsert({ account_code: ANA.replace("7", "9"), phone: "(11) 97744-2010" });
+  await svc.from("alerts").delete().eq("owner", advId);
   await svc.from("alerts").insert({ owner: advId, ticker: "PETR4", direction: "alta", target_price: 41, created_price: 38.42 });
   await svc.from("cards").insert({ title: `Rebalancear carteira ${RUN}`, creator: advId, assignee: advId, account_code: ANA, priority: "alta", status: "pendente", due_at: new Date(Date.now() - 86400000).toISOString() });
   await svc.from("notifications").insert({ user_id: advId, kind: "alerta_atingido", title: "Alerta disparado — PETR4 atingiu R$ 41,00" });

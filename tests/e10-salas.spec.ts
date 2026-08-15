@@ -22,6 +22,7 @@ test.beforeAll(async () => {
   await createUser(svc, { email: ADMIN.email, password: ADMIN.password, name: ADMIN.name, role: "admin" });
   rafaId = await createUser(svc, { email: RAFA.email, password: RAFA.password, name: RAFA.name, role: "advisor", advisor_code: RAFA.code });
   brunoId = await createUser(svc, { email: BRUNO.email, password: BRUNO.password, name: BRUNO.name, role: "advisor", advisor_code: BRUNO.code });
+  await svc.from("rooms").delete().in("name", [IPE, JACA, `Aroeira ${RUN.slice(-4)}`]);
   const { data: ipe } = await svc.from("rooms").insert({ name: IPE, capacity: 6, resources: ["TV", "Videoconferência", "Quadro"] }).select("id").single();
   ipeId = ipe!.id;
   await svc.from("rooms").insert({ name: JACA, capacity: 4, resources: ["TV"] });

@@ -18,12 +18,14 @@ test.beforeAll(async () => {
   const svc = serviceClient();
   advisorId = await createUser(svc, { email: ADV.email, password: ADV.password, name: ADV.name, role: "advisor", advisor_code: ADV.code });
   await svc.from("mt_connection").update({ status: "ativa", last_quote_at: new Date().toISOString() }).eq("id", 1);
+  await svc.from("imports").delete().eq("file_hash", `e8-${RUN}`);
+  await svc.from("alerts").delete().eq("owner", advisorId);
   const { data: imp } = await svc
     .from("imports")
-    .insert({ kind: "diversificacao", file_name: "e8.xlsx", file_size: 1, file_hash: `e8-${RUN}`, ref_date: "2026-08-15", status: "concluida", created_by: advisorId })
+    .upsert({ kind: "diversificacao", file_name: "e8.xlsx", file_size: 1, file_hash: `e8-${RUN}`, ref_date: "2026-08-15", status: "concluida", created_by: advisorId }, { onConflict: "kind,file_hash" })
     .select("id")
     .single();
-  await svc.from("clients").insert({ account_code: ANA, advisor_code: ADV.code, name: "Ana Bertoldi", status: "ATIVO" });
+  await svc.from("clients").upsert({ account_code: ANA, advisor_code: ADV.code, name: "Ana Bertoldi", status: "ATIVO" });
   const soon = new Date(Date.now() + 10 * 86400000).toISOString().slice(0, 10);
   await svc.from("positions").insert({ import_id: imp!.id, account_code: ANA, advisor_code: ADV.code, ref_date: "2026-08-15", product: "Renda Fixa", sub_product: "CDB", asset: `CDB Vencendo ${RUN.slice(-4)}`, maturity_date: soon, value: 812400 });
   await svc.from("movements").insert({ import_id: imp!.id, account_code: ANA, advisor_code: ADV.code, mov_date: new Date().toISOString().slice(0, 10), kind: "TED", flow: "C", amount: 250000 });

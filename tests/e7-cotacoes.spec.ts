@@ -19,13 +19,14 @@ test.beforeAll(async () => {
   await createUser(svc, { email: ADMIN.email, password: ADMIN.password, name: ADMIN.name, role: "admin" });
   await createUser(svc, { email: ADV.email, password: ADV.password, name: ADV.name, role: "advisor", advisor_code: ADV.code });
   await createUser(svc, { email: ADV2.email, password: ADV2.password, name: ADV2.name, role: "advisor", advisor_code: ADV2.code });
+  await svc.from("imports").delete().eq("file_hash", `e7-${RUN}`);
   const { data: admin } = await svc.from("profiles").select("id").eq("email", ADMIN.email).single();
   const { data: imp } = await svc
     .from("imports")
-    .insert({ kind: "diversificacao", file_name: "e7.xlsx", file_size: 1, file_hash: `e7-${RUN}`, ref_date: "2026-08-15", status: "concluida", created_by: admin!.id })
+    .upsert({ kind: "diversificacao", file_name: "e7.xlsx", file_size: 1, file_hash: `e7-${RUN}`, ref_date: "2026-08-15", status: "concluida", created_by: admin!.id }, { onConflict: "kind,file_hash" })
     .select("id")
     .single();
-  await svc.from("clients").insert([
+  await svc.from("clients").upsert([
     { account_code: ANA, advisor_code: ADV.code, name: "Ana Bertoldi", status: "ATIVO" },
     { account_code: DO_B, advisor_code: ADV2.code, name: "Cliente Do B", status: "ATIVO" },
   ]);

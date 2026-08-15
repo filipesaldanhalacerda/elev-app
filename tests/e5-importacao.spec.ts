@@ -24,6 +24,14 @@ test.skip(({ isMobile }) => isMobile, "tela 21 é desktop");
 
 test.beforeAll(async () => {
   const svc = serviceClient();
+  // os arquivos reais podem já ter sido importados (demo/fluxo e16): limpa para medir do zero
+  await svc.from("imports").delete().in("file_name", [
+    "Positivador - 50191 - Ref.17.03.26.xlsx",
+    "Relatório Positivador - Semana 03 Março.xlsx",
+    "Diversificacao - 50191 - Ref.17.03.26.xlsx",
+    "Captacao - 50191 - Ref.17.03.26.xlsx",
+    "Codigo_CAIO.A73908_RelatorioSaldoConsolidado_202603.xlsx",
+  ]);
   await createUser(svc, { ...ADMIN, role: "admin" });
   // um assessor conhecido do arquivo real, para o aviso de desconhecidos não cobrir todos
   await createUser(svc, { email: `a31392.${RUN}@elev.test`, password: "Temp@2026!x", name: "Assessor 31392", role: "advisor", advisor_code: "31392" });

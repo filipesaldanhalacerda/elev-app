@@ -16,7 +16,7 @@ test.beforeAll(async () => {
   const svc = serviceClient();
   const id = await createUser(svc, { email: ADV.email, password: ADV.password, name: ADV.name, role: "advisor", advisor_code: ADV.code });
   void id;
-  await svc.from("clients").insert({ account_code: ANA, advisor_code: ADV.code, name: "Ana Bertoldi", status: "ATIVO" });
+  await svc.from("clients").upsert({ account_code: ANA, advisor_code: ADV.code, name: "Ana Bertoldi", status: "ATIVO" });
 });
 
 async function login(page: import("@playwright/test").Page) {

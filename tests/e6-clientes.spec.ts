@@ -16,12 +16,14 @@ test.skip(({ isMobile }) => !isMobile, "telas do assessor são mobile 390px");
 
 test.beforeAll(async () => {
   const svc = serviceClient();
+  // idempotente para retries: remove a importação da rodada (cascade limpa os fatos)
+  await svc.from("imports").delete().eq("file_hash", `e6-${RUN}`);
   await createUser(svc, { email: ADV_A.email, password: ADV_A.password, name: ADV_A.name, role: "advisor", advisor_code: ADV_A.code });
   await createUser(svc, { email: ADV_B.email, password: ADV_B.password, name: ADV_B.name, role: "advisor", advisor_code: ADV_B.code });
 
   const { data: imp } = await svc
     .from("imports")
-    .insert({ kind: "positivador", variant: "mensal", file_name: "e6.xlsx", file_size: 1, file_hash: `e6-${RUN}`, ref_date: "2026-08-15", status: "concluida", created_by: (await svc.from("profiles").select("id").eq("email", ADV_A.email).single()).data!.id })
+    .upsert({ kind: "positivador", variant: "mensal", file_name: "e6.xlsx", file_size: 1, file_hash: `e6-${RUN}`, ref_date: "2026-08-15", status: "concluida", created_by: (await svc.from("profiles").select("id").eq("email", ADV_A.email).single()).data!.id }, { onConflict: "kind,file_hash" })
     .select("id")
     .single();
   const importId = imp!.id;
@@ -31,7 +33,7 @@ test.beforeAll(async () => {
     suitability: "AGRESSIVO", segment: "Express", profession: "ADMINISTRADOR",
     birth_date: "1971-03-02", xp_registered_at: "2019-04-08",
   });
-  await svc.from("clients").insert([
+  await svc.from("clients").upsert([
     mkClient(ANA, ADV_A.code, "Ana Bertoldi"),
     mkClient(CARLOS, ADV_A.code, "Carlos Bertrand", "INATIVO"),
     mkClient(DO_B, ADV_B.code, "Cliente Secreto Do B"),

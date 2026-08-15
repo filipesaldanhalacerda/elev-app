@@ -15,6 +15,8 @@ test.describe.configure({ mode: "serial" });
 test.beforeAll(async () => {
   const svc = serviceClient();
   advId = await createUser(svc, { email: ADV.email, password: ADV.password, name: ADV.name, role: "advisor", advisor_code: ADV.code });
+  await svc.from("notifications").delete().eq("user_id", advId);
+  await svc.from("cards").delete().ilike("title", `%${RUN}%`);
   const now = Date.now();
   await svc.from("notifications").insert([
     { user_id: advId, kind: "alerta_atingido", title: "PETR4 atingiu R$ 41,00", body: "alerta de alta criado em 11/08", created_at: new Date(now).toISOString() },
