@@ -16,6 +16,7 @@ import Rooms from "./pages/Rooms";
 import RoomsAdmin from "./pages/admin/RoomsAdmin";
 import Notifications from "./pages/Notifications";
 import Profile from "./pages/Profile";
+import Dashboard from "./pages/Dashboard";
 import MetaTrader from "./pages/admin/MetaTrader";
 
 function Guard({ children, admin = false }: { children: React.ReactNode; admin?: boolean }) {
@@ -24,11 +25,6 @@ function Guard({ children, admin = false }: { children: React.ReactNode; admin?:
   if (!session) return <Navigate to="/login" replace />;
   if (admin && profile?.role !== "admin") return <Navigate to="/" replace />;
   return <>{children}</>;
-}
-
-/** Home do assessor (tela 04) entra na E13 — até lá, casca vazia autenticada. */
-function HomePlaceholder() {
-  return <div data-app-shell data-home style={{ minHeight: "100dvh", background: "var(--bg)" }} />;
 }
 
 export default function App() {
@@ -148,7 +144,7 @@ export default function App() {
             path="*"
             element={
               <Guard>
-                <HomePlaceholder />
+                <Dashboard />
               </Guard>
             }
           />

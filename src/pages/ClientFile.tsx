@@ -14,6 +14,7 @@ import {
   saveClientExtra, addTimelineNote, type Position,
 } from "../lib/clientData";
 import { useAuth } from "../lib/auth";
+import { recordClientVisit } from "./Dashboard";
 import { formatBRL, formatSignedBRL, formatPct, formatDate, formatInt, initials } from "../lib/format";
 
 const TABS = ["Visão geral", "Carteira", "Movimentações", "Cadastro", "Linha do tempo"] as const;
@@ -659,6 +660,9 @@ export default function ClientFile() {
   const { data: client } = useClient(account);
   const { profile } = useAuth();
   const advisorCode = client?.advisor_code ?? profile?.advisor_code ?? "";
+  useMemo(() => {
+    if (client?.name) recordClientVisit(account, client.name);
+  }, [client?.name, account]);
 
   return (
     <MobileShell active="clientes">
