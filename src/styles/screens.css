@@ -384,6 +384,57 @@
 .flash-up { animation: quote-flash-up var(--motion-flash) ease-out 1; }
 .flash-down { animation: quote-flash-down var(--motion-flash) ease-out 1; }
 
+/* ---------- Sheet mobile (#2h): sobe do rodapé, alça 44×4, raio 20 no topo ---------- */
+.sheet-scrim { position: fixed; inset: 0; background: var(--scrim); z-index: 90; }
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; max-width: 520px; margin: 0 auto; background: var(--surface); border-top: 1px solid var(--border-strong); border-radius: 20px 20px 0 0; padding: 8px 20px 24px; z-index: 100; max-height: 88dvh; overflow-y: auto; animation: sheet-in var(--motion-card); }
+@keyframes sheet-in { from { transform: translateY(24px); opacity: 0.6; } to { transform: none; opacity: 1; } }
+.sheet__handle { display: flex; justify-content: center; padding: 6px 0 14px; }
+.sheet__handle span { width: 44px; height: 4px; border-radius: 999px; background: var(--border-strong); }
+.sheet__title { font: 600 18px/1.25 var(--font-sans); letter-spacing: -0.01em; color: var(--text-1); }
+.sheet__fields { margin-top: 18px; display: flex; flex-direction: column; gap: 14px; }
+.sheet .field__box { height: 48px; }
+.sheet__footer { margin-top: 18px; display: flex; gap: 8px; }
+.sheet__footer .btn { height: 52px; border-radius: 12px; font-size: 14px; }
+.sheet__footer .btn--primary { flex: 1.4; font-size: 14.5px; }
+.sheet__footer .btn--secondary { flex: 1; }
+
+/* segmented 48px dentro de sheet (Direção, Prioridade) */
+.segmented { height: 48px; background: var(--surface); border: 1px solid var(--border-field); border-radius: 10px; display: flex; padding: 4px; gap: 4px; }
+[data-theme="dark"] .segmented { background: var(--surface-2); }
+.segmented__item { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 8px; color: var(--text-body); font: 500 12.5px/1 var(--font-sans); }
+.segmented__item { color: var(--field-label); }
+[data-theme="dark"] .segmented__item { color: var(--text-body); }
+.segmented__item i { font-size: 15px; }
+.segmented__item--active { background: var(--action); color: var(--on-action); font-weight: 600; }
+[data-theme="dark"] .segmented__item--active { background: var(--action); color: var(--on-action); }
+
+/* ---------- Tela 12 · Alertas ---------- */
+.tabs-42 { flex: none; display: flex; gap: 18px; padding: 0 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.tab-42 { height: 42px; display: flex; align-items: center; gap: 6px; font: 400 12.5px/1 var(--font-sans); color: var(--text-2); }
+.tab-42--active { font-weight: 600; color: var(--text-1); box-shadow: inset 0 -2px 0 var(--action); }
+.tab-42__count { font: 600 10px/1 var(--font-mono); color: var(--ghost-text); background: var(--brand-tint); border-radius: 999px; padding: 3px 6px; }
+[data-theme="dark"] .tab-42__count { color: var(--brand-tint-text); }
+
+.alert-foot { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--divider); display: flex; align-items: center; justify-content: space-between; }
+.alert-foot__meta { font: 400 11px/1.3 var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text-3); }
+.alert-foot__actions { display: flex; gap: 2px; }
+.alert-foot__btn { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 8px; color: var(--text-2); }
+.alert-foot__btn i { font-size: 16px; }
+.alert-foot__btn--danger { color: var(--danger-action-text); }
+
+.triggered-row { display: flex; align-items: center; gap: 12px; opacity: 0.75; }
+.triggered-row__icon { width: 32px; height: 32px; border-radius: 9px; background: var(--chip-pill-bg); color: var(--text-3); display: flex; align-items: center; justify-content: center; flex: none; }
+.triggered-row__icon i { font-size: 16px; }
+.triggered-row__title { display: block; font: 500 12.5px/1.3 var(--font-sans); color: var(--field-label); }
+[data-theme="dark"] .triggered-row__title { color: var(--text-body); }
+.triggered-row__meta { display: block; margin-top: 3px; font: 400 10.5px/1.3 var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text-3); }
+
+.alert-summary { margin-top: 16px; background: var(--success-tint); border: 1px solid var(--success-border); border-radius: 12px; padding: 12px 14px; display: flex; align-items: flex-start; gap: 10px; }
+.alert-summary i { font-size: 17px; color: var(--success); flex: none; }
+.alert-summary__text { flex: 1; font: 400 12px/1.5 var(--font-sans); color: var(--field-label); }
+[data-theme="dark"] .alert-summary__text { color: var(--text-body); }
+.alert-summary__text code { font: 600 11.5px var(--font-mono); color: var(--text-1); }
+
 /* ---------- Tela 18 · MetaTrader (admin) ---------- */
 .mt-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 16px; align-items: flex-start; }
 .mt-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--elev-1); padding: 20px; }

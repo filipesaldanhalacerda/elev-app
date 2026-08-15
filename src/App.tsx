@@ -9,6 +9,7 @@ import Imports from "./pages/admin/Imports";
 import Clients from "./pages/Clients";
 import ClientFile from "./pages/ClientFile";
 import Quotes from "./pages/Quotes";
+import Alerts from "./pages/Alerts";
 import MetaTrader from "./pages/admin/MetaTrader";
 
 function Guard({ children, admin = false }: { children: React.ReactNode; admin?: boolean }) {
@@ -62,6 +63,14 @@ export default function App() {
             element={
               <Guard>
                 <Quotes />
+              </Guard>
+            }
+          />
+          <Route
+            path="/alertas"
+            element={
+              <Guard>
+                <Alerts />
               </Guard>
             }
           />

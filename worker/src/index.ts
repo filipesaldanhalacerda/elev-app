@@ -477,4 +477,124 @@ app.post("/api/admin/imports/commit", async (c) => {
   }
 });
 
+// ---------- Rotina de alertas (E8): preço + automáticos ----------
+// Em produção roda como scheduled worker; em dev/testes é chamada via POST /api/cron/alerts.
+
+async function notifyUser(svc: SupabaseClient, userId: string, kind: string, title: string, body: string, ref: Record<string, unknown> = {}) {
+  await svc.from("notifications").insert({ user_id: userId, kind, title, body, ref });
+}
+
+async function advisorUsers(svc: SupabaseClient): Promise<Map<string, string>> {
+  const { data } = await svc.from("profiles").select("id, advisor_code").not("advisor_code", "is", null).eq("is_active", true);
+  return new Map((data ?? []).map((p) => [String(p.advisor_code), p.id]));
+}
+
+app.post("/api/cron/alerts", async (c) => {
+  const svc = svcOf(c.env);
+  const now = new Date();
+  const results = { price: 0, vencimento: 0, movimentacao: 0, saldo: 0 };
+
+  // 1) alertas de preço ativos
+  const { data: alerts } = await svc.from("alerts").select("*").eq("status", "ativo");
+  for (const a of alerts ?? []) {
+    const q = fakeQuote(a.ticker, now);
+    let hit = false;
+    if (a.target_price !== null) {
+      hit = a.direction === "alta" ? q.price >= a.target_price : q.price <= a.target_price;
+    } else if (a.target_day_pct !== null) {
+      hit = a.direction === "alta" ? q.changePct >= a.target_day_pct : q.changePct <= -Math.abs(a.target_day_pct);
+    }
+    if (!hit) continue;
+    await svc.from("alerts").update({ status: "disparado", triggered_at: now.toISOString(), triggered_price: q.price }).eq("id", a.id);
+    await svc.from("alert_events").insert({
+      alert_id: a.id, owner: a.owner, kind: "preco", account_code: a.account_code,
+      detail: { ticker: a.ticker, target: a.target_price, price: q.price, direction: a.direction },
+    });
+    const alvo = a.target_price !== null
+      ? `R$ ${a.target_price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+      : `${a.target_day_pct}% no dia`;
+    await notifyUser(svc, a.owner, "alerta_atingido", `${a.ticker} atingiu ${alvo}`,
+      `Alvo de ${a.direction} alcançado às ${new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }).format(now)}. O alerta foi para o histórico.`,
+      { ticker: a.ticker });
+    results.price++;
+  }
+
+  const advisors = await advisorUsers(svc);
+  const { data: settings } = await svc.from("auto_alert_settings").select("*").eq("id", 1).single();
+  const dedupe = async (kind: string, account: string, refKey: string) => {
+    const { data } = await svc.from("alert_events").select("id").eq("kind", kind).eq("account_code", account).eq("detail->>ref", refKey).limit(1);
+    return (data ?? []).length > 0;
+  };
+
+  // 2) vencimento de renda fixa nos próximos N dias
+  const horizon = new Date(now.getTime() + (settings?.maturity_window_days ?? 30) * 86400000).toISOString().slice(0, 10);
+  const today = now.toISOString().slice(0, 10);
+  const { data: maturing } = await svc
+    .from("positions")
+    .select("account_code, advisor_code, asset, maturity_date, value")
+    .gte("maturity_date", today)
+    .lte("maturity_date", horizon)
+    .limit(200);
+  for (const p of maturing ?? []) {
+    const owner = advisors.get(String(p.advisor_code));
+    if (!owner) continue;
+    const refKey = `${p.asset}:${p.maturity_date}`;
+    if (await dedupe("vencimento", p.account_code, refKey)) continue;
+    await svc.from("alert_events").insert({
+      owner, kind: "vencimento", account_code: p.account_code,
+      detail: { ref: refKey, asset: p.asset, maturity: p.maturity_date, value: p.value },
+    });
+    await notifyUser(svc, owner, "alerta_atingido", `${p.asset} vence em breve`,
+      `Vencimento em ${p.maturity_date!.split("-").reverse().join("/")} — cliente ${p.account_code}.`, { account: p.account_code });
+    results.vencimento++;
+  }
+
+  // 3) movimentação relevante (valor configurável)
+  const since = new Date(now.getTime() - 7 * 86400000).toISOString().slice(0, 10);
+  const { data: bigMoves } = await svc
+    .from("movements")
+    .select("id, account_code, advisor_code, amount, mov_date, kind")
+    .gte("mov_date", since)
+    .limit(500);
+  for (const m of bigMoves ?? []) {
+    if (Math.abs(m.amount) < (settings?.relevant_movement_threshold ?? 50000)) continue;
+    const owner = advisors.get(String(m.advisor_code));
+    if (!owner) continue;
+    const refKey = `mov:${m.id}`;
+    if (await dedupe("movimentacao", m.account_code, refKey)) continue;
+    await svc.from("alert_events").insert({
+      owner, kind: "movimentacao", account_code: m.account_code,
+      detail: { ref: refKey, amount: m.amount, date: m.mov_date, tipo: m.kind },
+    });
+    await notifyUser(svc, owner, "alerta_atingido",
+      `${m.amount >= 0 ? "Aporte" : "Resgate"} relevante — cliente ${m.account_code}`,
+      `${m.amount >= 0 ? "+" : "−"}R$ ${Math.abs(m.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })} em ${m.mov_date.split("-").reverse().join("/")}.`,
+      { account: m.account_code });
+    results.movimentacao++;
+  }
+
+  // 4) saldo parado em conta
+  const { data: latestBal } = await svc
+    .from("balances")
+    .select("account_code, advisor_code, total, ref_date")
+    .gte("total", settings?.idle_cash_threshold ?? 10000)
+    .order("ref_date", { ascending: false })
+    .limit(200);
+  for (const b of latestBal ?? []) {
+    const owner = advisors.get(String(b.advisor_code));
+    if (!owner) continue;
+    const refKey = `saldo:${b.ref_date}`;
+    if (await dedupe("saldo_parado", b.account_code, refKey)) continue;
+    await svc.from("alert_events").insert({
+      owner, kind: "saldo_parado", account_code: b.account_code,
+      detail: { ref: refKey, total: b.total, date: b.ref_date },
+    });
+    await notifyUser(svc, owner, "alerta_atingido", `Dinheiro parado — cliente ${b.account_code}`,
+      `R$ ${b.total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} em conta sem aplicação.`, { account: b.account_code });
+    results.saldo++;
+  }
+
+  return c.json({ ok: true, results });
+});
+
 export default app;

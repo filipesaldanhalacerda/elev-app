@@ -4,6 +4,7 @@
  * "quem tem este ativo" restrito à carteira (RLS).
  */
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
 import { Card } from "../components/cards";
 import { LineChart, Sparkline } from "../components/charts";
@@ -99,6 +100,7 @@ function Holders({ ticker }: { ticker: string }) {
 const PERIODS = ["1D", "5D", "1M", "6M", "12M"] as const;
 
 export default function Quotes() {
+  const navigate = useNavigate();
   const { profile } = useAuth();
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
@@ -242,7 +244,7 @@ export default function Quotes() {
               </div>
 
               <div className="quote-actions">
-                <Button icon="ph-target">Criar alerta</Button>
+                <Button icon="ph-target" onClick={() => navigate(`/alertas?novo&ativo=${detail.quote!.symbol}`)}>Criar alerta</Button>
                 <Button variant="secondary" icon="ph-push-pin" onClick={() => toggle(detail.quote!.symbol)}>
                   {isPinned(detail.quote.symbol) ? "Desafixar" : "Fixar"}
                 </Button>
