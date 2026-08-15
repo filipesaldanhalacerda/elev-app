@@ -5,6 +5,7 @@ import Login from "./pages/auth/Login";
 import FirstAccess from "./pages/auth/FirstAccess";
 import LostPassword from "./pages/auth/LostPassword";
 import Users from "./pages/admin/Users";
+import Imports from "./pages/admin/Imports";
 
 function Guard({ children, admin = false }: { children: React.ReactNode; admin?: boolean }) {
   const { loading, session, profile } = useAuth();
@@ -33,6 +34,14 @@ export default function App() {
             element={
               <Guard admin>
                 <Users />
+              </Guard>
+            }
+          />
+          <Route
+            path="/admin/importacoes"
+            element={
+              <Guard admin>
+                <Imports />
               </Guard>
             }
           />

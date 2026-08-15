@@ -190,4 +190,170 @@ app.patch("/api/admin/users/:id", async (c) => {
   return c.json({ ok: true });
 });
 
+// ---------- Importação (tela 21): nada é gravado antes desta chamada ----------
+
+interface CommitPayload {
+  kind: "positivador" | "diversificacao" | "captacao" | "saldo_consolidado";
+  variant: "mensal" | "semanal" | null;
+  file_name: string;
+  file_size: number;
+  file_hash: string;
+  ref_date: string;
+  counts: Record<string, number>;
+  warnings: unknown[];
+  rows: Record<string, unknown>[];
+}
+
+const chunk = <T,>(arr: T[], size: number): T[][] => {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+};
+
+app.post("/api/admin/imports/commit", async (c) => {
+  const svc = c.get("svc");
+  const admin = c.get("admin");
+  const p = await c.req.json<CommitPayload>();
+
+  // reimportar o MESMO arquivo não duplica: hash único por tipo
+  const { data: existing } = await svc.from("imports").select("id, status").eq("kind", p.kind).eq("file_hash", p.file_hash).maybeSingle();
+  if (existing?.status === "concluida") {
+    return c.json({ error: "Este arquivo já foi importado — reimportar não duplica dados." }, 409);
+  }
+
+  const { data: imp, error: impErr } = await svc
+    .from("imports")
+    .upsert(
+      {
+        kind: p.kind, variant: p.variant, file_name: p.file_name, file_size: p.file_size,
+        file_hash: p.file_hash, ref_date: p.ref_date, status: "processando",
+        counts: p.counts, warnings: p.warnings, created_by: admin.id,
+      },
+      { onConflict: "kind,file_hash" }
+    )
+    .select("id")
+    .single();
+  if (impErr || !imp) return c.json({ error: impErr?.message ?? "Falha ao registrar a importação." }, 500);
+  const importId = imp.id;
+
+  const fail = async (msg: string) => {
+    await svc.from("imports").update({ status: "falhou", error: msg, finished_at: new Date().toISOString() }).eq("id", importId);
+    return c.json({ error: msg }, 500);
+  };
+
+  try {
+    // garante que todo account_code exista em clients (cliente novo é criado e vinculado)
+    const accounts = new Map<string, string | null>();
+    for (const r of p.rows) accounts.set(String(r.account_code), (r.advisor_code as string | null) ?? null);
+    const accountList = [...accounts.keys()];
+    const known = new Set<string>();
+    for (const part of chunk(accountList, 200)) {
+      const { data: existingClients, error } = await svc.from("clients").select("account_code").in("account_code", part);
+      if (error) throw new Error(`clientes: ${error.message}`);
+      for (const r of existingClients ?? []) known.add(r.account_code);
+    }
+    const newClients = [...accounts.entries()]
+      .filter(([acc]) => !known.has(acc))
+      .map(([account_code, advisor_code]) => ({ account_code, advisor_code: advisor_code ?? "0", first_seen_import: importId, last_seen_import: importId }));
+    for (const part of chunk(newClients, 500)) {
+      const { error } = await svc.from("clients").insert(part);
+      if (error) throw new Error(`clientes: ${error.message}`);
+    }
+
+    if (p.kind === "positivador") {
+      // atualiza cadastro do cliente (sem tocar no nome — só o Saldo tem nome)
+      for (const part of chunk(p.rows, 300)) {
+        const updates = part.map((r) => ({
+          account_code: String(r.account_code),
+          advisor_code: (r.advisor_code as string) ?? "0",
+          profession: r.profession, sex: r.sex, segment: r.segment, segmentation: r.segmentation,
+          suitability: r.suitability, status: r.status, person_type: r.person_type,
+          birth_date: r.birth_date, xp_registered_at: r.xp_registered_at,
+          last_seen_import: importId, missing_since: null,
+        }));
+        const { error } = await svc.from("clients").upsert(updates, { onConflict: "account_code" });
+        if (error) throw new Error(`cadastro: ${error.message}`);
+      }
+      // fotografia datada (upsert por conta × data × variante — período não duplica)
+      for (const part of chunk(p.rows, 300)) {
+        const snaps = part.map((r) => ({
+          import_id: importId, account_code: String(r.account_code), advisor_code: (r.advisor_code as string) ?? "0",
+          ref_date: p.ref_date, variant: p.variant,
+          aplicacao_financeira: r.aplicacao_financeira, receita_mes: r.receita_mes,
+          captacao_bruta_m: r.captacao_bruta_m, resgates_m: r.resgates_m, captacao_liquida_m: r.captacao_liquida_m,
+          net_em_m1: r.net_em_m1, net_em_m: r.net_em_m, net_renda_fixa: r.net_renda_fixa,
+          net_fundos_imobiliarios: r.net_fundos_imobiliarios, net_renda_variavel: r.net_renda_variavel,
+          net_fundos: r.net_fundos, net_financeiro: r.net_financeiro, net_previdencia: r.net_previdencia,
+          net_outros: r.net_outros,
+        }));
+        const { error } = await svc.from("positivador_snapshots").upsert(snaps, { onConflict: "account_code,ref_date,variant" });
+        if (error) throw new Error(`fotografia: ${error.message}`);
+      }
+      // quem sumiu do Positivador é sinalizado, nunca apagado
+      // (quem está no arquivo acabou de receber last_seen_import = importId)
+      const { error: missErr } = await svc
+        .from("clients")
+        .update({ missing_since: p.ref_date })
+        .is("missing_since", null)
+        .or(`last_seen_import.is.null,last_seen_import.neq.${importId}`);
+      if (missErr) throw new Error(`sinalização: ${missErr.message}`);
+    } else if (p.kind === "diversificacao") {
+      // fotografia por data: substitui as posições da MESMA data (período não duplica)
+      const { error: delErr } = await svc.from("positions").delete().eq("ref_date", p.ref_date);
+      if (delErr) throw new Error(`posições: ${delErr.message}`);
+      for (const part of chunk(p.rows, 500)) {
+        const { error } = await svc.from("positions").insert(
+          part.map((r) => ({
+            import_id: importId, account_code: String(r.account_code), advisor_code: (r.advisor_code as string) ?? "0",
+            ref_date: p.ref_date, product: r.product, sub_product: r.sub_product, fund_cnpj: r.fund_cnpj,
+            asset: r.asset, issuer: r.issuer, maturity_date: r.maturity_date, quantity: r.quantity, value: r.value,
+          }))
+        );
+        if (error) throw new Error(`posições: ${error.message}`);
+      }
+    } else if (p.kind === "captacao") {
+      // substitui movimentações das datas presentes no arquivo (período não duplica)
+      const dates = [...new Set(p.rows.map((r) => String(r.mov_date)))];
+      const { error: delErr } = await svc.from("movements").delete().in("mov_date", dates);
+      if (delErr) throw new Error(`movimentações: ${delErr.message}`);
+      for (const part of chunk(p.rows, 500)) {
+        const { error } = await svc.from("movements").insert(
+          part.map((r) => ({
+            import_id: importId, account_code: String(r.account_code), advisor_code: (r.advisor_code as string) ?? "0",
+            mov_date: r.mov_date, kind: r.kind, flow: r.flow, amount: r.amount, segment: r.segment,
+          }))
+        );
+        if (error) throw new Error(`movimentações: ${error.message}`);
+      }
+    } else {
+      // saldo consolidado: preenche os NOMES de toda a base + saldos por data
+      for (const part of chunk(p.rows, 300)) {
+        const { error } = await svc.from("balances").upsert(
+          part.map((r) => ({
+            import_id: importId, account_code: String(r.account_code), advisor_code: (r.advisor_code as string) ?? "0",
+            ref_date: p.ref_date, d0: r.d0, d1: r.d1, d2: r.d2, d3: r.d3, total: r.total,
+          })),
+          { onConflict: "account_code,ref_date" }
+        );
+        if (error) throw new Error(`saldos: ${error.message}`);
+      }
+      for (const r of p.rows) {
+        if (r.name) {
+          await svc.from("clients").update({ name: r.name }).eq("account_code", String(r.account_code));
+        }
+      }
+    }
+
+    const { error: doneErr } = await svc
+      .from("imports")
+      .update({ status: "concluida", finished_at: new Date().toISOString() })
+      .eq("id", importId);
+    if (doneErr) throw new Error(doneErr.message);
+    await audit(svc, "importacao", `Importação de ${p.kind} concluída`, `${p.file_name} — ${p.rows.length} registros`, admin);
+    return c.json({ ok: true, id: importId, records: p.rows.length });
+  } catch (e) {
+    return fail((e as Error).message);
+  }
+});
+
 export default app;
