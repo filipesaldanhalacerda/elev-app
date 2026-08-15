@@ -21,7 +21,7 @@ export default defineConfig({
   projects: [
     {
       name: "assessor",
-      testIgnore: /e3-rls/,
+      testIgnore: [/e3-rls/, /e7-cotacoes/],
       use: {
         ...devices["iPhone 12"],
         viewport: { width: 390, height: 844 },
@@ -30,7 +30,7 @@ export default defineConfig({
     },
     {
       name: "admin",
-      testIgnore: /e3-rls/,
+      testIgnore: [/e3-rls/, /e7-cotacoes/],
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width: 1440, height: 900 },
@@ -41,6 +41,13 @@ export default defineConfig({
       name: "rls",
       testMatch: /e3-rls/,
       workers: 1,
+    },
+    {
+      // E7 usa o singleton mt_connection: roda serial, viewport ajustado por bloco
+      name: "mt",
+      testMatch: /e7-cotacoes/,
+      workers: 1,
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
     },
   ],
   webServer: [

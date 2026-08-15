@@ -334,6 +334,86 @@
 [data-theme="dark"] .tl-composer__send { color: var(--brand-tint-text); }
 .tl-composer__send i { font-size: 17px; }
 
+/* ---------- Tela 11 · Cotações ---------- */
+.quotes-live { display: flex; align-items: center; gap: 5px; margin-top: 3px; font: 400 10.5px/1 var(--font-mono); color: var(--text-3); }
+.quotes-live__dot { width: 6px; height: 6px; border-radius: 999px; background: var(--market-up); }
+.quotes-search .csearch__input { font: 400 14.5px/1 var(--font-mono); text-transform: uppercase; }
+.quotes-search .csearch__input::placeholder { text-transform: none; }
+
+.quote-hero { padding: 2px 2px 0; }
+.quote-hero__label { display: block; font: 500 10.5px/1 var(--font-mono); letter-spacing: 0.05em; color: var(--text-3); }
+.quote-hero__value { display: block; margin-top: 8px; font: 600 28px/1 var(--font-sans); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; color: var(--text-1); }
+.quote-hero__axis { display: flex; justify-content: space-between; margin-top: 7px; font: 400 10px/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--text-3); }
+
+.quote-detail__ticker { display: block; font: 600 20px/1 var(--font-mono); color: var(--text-1); }
+.quote-detail__name { display: block; margin-top: 7px; font: 400 11.5px/1.3 var(--font-sans); color: var(--text-2); }
+.quote-detail__price-row { margin-top: 16px; display: flex; align-items: baseline; gap: 10px; }
+.quote-detail__price { font: 600 34px/1 var(--font-sans); font-variant-numeric: tabular-nums; letter-spacing: -0.025em; color: var(--text-1); }
+.quote-detail__at { font: 400 10.5px/1 var(--font-mono); color: var(--text-3); }
+.quote-periods { margin-top: 14px; display: flex; gap: 5px; }
+.quote-period { height: 30px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: 8px; background: var(--chip-pill-bg); color: var(--text-body); font: 500 11px/1 var(--font-mono); }
+.quote-period { color: var(--field-label); }
+[data-theme="dark"] .quote-period { color: var(--text-body); }
+.quote-period--active { background: var(--brand-800); color: var(--brand-50); font-weight: 600; }
+[data-theme="dark"] .quote-period--active { background: var(--action); color: var(--on-action); }
+.quote-facts { margin-top: 16px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; }
+.quote-facts__cell { padding: 12px 0; }
+.quote-facts__label { display: block; font: 400 10px/1 var(--font-sans); color: var(--text-3); }
+.quote-facts__value { display: block; margin-top: 6px; font: 600 13px/1 var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text-1); }
+.quote-actions { display: flex; gap: 8px; }
+.quote-actions .btn { flex: 1; height: 48px; border-radius: 11px; font-size: 13px; gap: 7px; }
+.quote-actions .btn--primary { flex: 1; }
+
+.fav-section { padding: 9px 14px 7px; background: var(--surface-2); border-bottom: 1px solid var(--border); font: 600 10px/1 var(--font-mono); letter-spacing: 0.06em; color: var(--text-3); text-transform: uppercase; }
+.fav-row { width: 100%; text-align: left; min-height: 62px; display: flex; align-items: center; gap: 14px; padding: 11px 14px; }
+.fav-row + .fav-row { border-top: 1px solid var(--divider); }
+.fav-row__ticker { display: block; font: 600 13.5px/1 var(--font-mono); color: var(--text-1); }
+.fav-row__name { display: block; margin-top: 5px; font: 400 10.5px/1.3 var(--font-sans); color: var(--text-3); }
+.fav-row__right { width: 88px; flex: none; text-align: right; }
+.fav-row__price { display: block; font: 600 14.5px/1 var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text-1); }
+.fav-row__pct { display: block; margin-top: 6px; font: 500 11.5px/1 var(--font-sans); font-variant-numeric: tabular-nums; }
+.recent-row { width: 100%; text-align: left; min-height: 56px; display: flex; align-items: center; gap: 12px; padding: 11px 14px; }
+.recent-row + .recent-row { border-top: 1px solid var(--divider); }
+.recent-row__ticker { flex: 1; font: 600 13px/1 var(--font-mono); color: var(--text-1); }
+.recent-row__price { font: 600 13.5px/1 var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text-1); }
+.recent-row__pct { width: 62px; text-align: right; font: 500 11.5px/1 var(--font-sans); font-variant-numeric: tabular-nums; }
+
+/* flash ÚNICO de 400ms a 20% na cor de mercado — nunca repetido */
+@keyframes quote-flash-up { 0% { background: color-mix(in srgb, var(--market-up) 20%, transparent); } 100% { background: transparent; } }
+@keyframes quote-flash-down { 0% { background: color-mix(in srgb, var(--market-down) 20%, transparent); } 100% { background: transparent; } }
+.flash-up { animation: quote-flash-up var(--motion-flash) ease-out 1; }
+.flash-down { animation: quote-flash-down var(--motion-flash) ease-out 1; }
+
+/* ---------- Tela 18 · MetaTrader (admin) ---------- */
+.mt-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 16px; align-items: flex-start; }
+.mt-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--elev-1); padding: 20px; }
+.mt-card__title { font: 600 14px/1.3 var(--font-sans); color: var(--text-1); }
+.mt-card__intro { margin-top: 6px; font: 400 12.5px/1.55 var(--font-sans); color: var(--text-2); text-wrap: pretty; }
+.mt-help { margin-top: 6px; font: 400 11px/1.5 var(--font-sans); color: var(--text-3); }
+.mt-field-ok { display: flex; align-items: center; gap: 6px; margin-top: 6px; font: 400 11.5px/1.4 var(--font-sans); color: var(--success); }
+.mt-field-ok i { font-size: 14px; }
+.mt-code { font: 500 10.5px/1 var(--font-mono); color: var(--text-3); }
+.mt-health__grid { margin-top: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.mt-health__cell-label { display: block; font: 400 10.5px/1 var(--font-sans); color: var(--text-3); }
+.mt-health__cell-value { display: block; margin-top: 6px; font: 600 14px/1.2 var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text-1); }
+.mt-events { margin-top: 16px; }
+.mt-events__title { font: 600 12px/1 var(--font-sans); color: var(--text-1); margin-bottom: 10px; }
+.mt-event { display: flex; align-items: flex-start; gap: 9px; padding: 6px 0; }
+.mt-event__dot { width: 7px; height: 7px; border-radius: 999px; flex: none; margin-top: 5px; }
+.mt-event__dot--success { background: var(--success); }
+.mt-event__dot--warning { background: var(--warning); }
+.mt-event__dot--danger { background: var(--danger); }
+.mt-event__text { flex: 1; font: 400 12px/1.4 var(--font-sans); color: var(--field-label); }
+[data-theme="dark"] .mt-event__text { color: var(--text-body); }
+.mt-event__at { font: 400 10.5px/1.4 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--text-3); }
+.mt-actions { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.mt-actions__buttons { display: flex; gap: 8px; }
+.mt-actions__legend { margin-top: 10px; font: 400 11px/1.5 var(--font-sans); color: var(--text-3); }
+.mt-viewing { margin-top: 14px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+[data-theme="dark"] .mt-viewing { background: var(--surface); }
+.mt-viewing__label { display: block; font: 400 10.5px/1 var(--font-sans); color: var(--text-3); }
+.mt-viewing__text { display: block; margin-top: 6px; font: 500 12.5px/1.45 var(--font-sans); color: var(--text-1); }
+
 /* ---------- Tela 21 · Importação ---------- */
 .stepper { display: flex; align-items: center; gap: 14px; font: 500 11.5px/1 var(--font-sans); }
 .stepper__step { display: flex; align-items: center; gap: 7px; color: var(--text-3); }

@@ -5,8 +5,9 @@
  */
 import { Hono } from "hono";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { fakeQuote, fakeSeries, fakeMtTest } from "./quotes";
 
-type Env = { SUPABASE_URL: string; SERVICE_ROLE_KEY: string };
+type Env = { SUPABASE_URL: string; SERVICE_ROLE_KEY: string; METAAPI_TOKEN?: string };
 type Ctx = { Bindings: Env; Variables: { svc: SupabaseClient; admin: { id: string; name: string } } };
 
 const app = new Hono<Ctx>();
@@ -83,6 +84,47 @@ app.post("/api/auth/code/set-password", async (c) => {
   await svc.from("access_codes").update({ used_at: new Date().toISOString() }).eq("id", found.id);
   await audit(svc, "codigo", "Código de acesso utilizado", `${profile.name} definiu a própria senha`, { id: profile.id, name: profile.name });
   return c.json({ ok: true, email: profile.email });
+});
+
+// ---------- Cotações (tela 11) — qualquer usuário autenticado ----------
+
+async function requireUser(c: { req: { header: (h: string) => string | undefined }; env: Env }) {
+  const token = c.req.header("Authorization")?.replace(/^Bearer /, "");
+  if (!token) return null;
+  const svc = svcOf(c.env);
+  const { data, error } = await svc.auth.getUser(token);
+  if (error || !data.user) return null;
+  return { svc, userId: data.user.id };
+}
+
+async function mtStatus(svc: SupabaseClient) {
+  const { data } = await svc.from("mt_connection").select("status, last_quote_at, connected_at, health_events, login, server").eq("id", 1).single();
+  return data;
+}
+
+app.get("/api/quotes", async (c) => {
+  const auth = await requireUser(c);
+  if (!auth) return c.json({ error: "Não autenticado." }, 401);
+  const mt = await mtStatus(auth.svc);
+  const symbols = (c.req.query("symbols") ?? "").split(",").map((s) => s.trim().toUpperCase()).filter(Boolean).slice(0, 30);
+  if (!mt || mt.status === "desconectada" || mt.status === "caida") {
+    return c.json({ paused: true, last_quote_at: mt?.last_quote_at ?? null, quotes: [] }, 200);
+  }
+  const now = new Date();
+  await auth.svc.from("mt_connection").update({ last_quote_at: now.toISOString() }).eq("id", 1);
+  return c.json({ paused: false, quotes: symbols.map((s) => fakeQuote(s, now)) });
+});
+
+app.get("/api/quotes/detail", async (c) => {
+  const auth = await requireUser(c);
+  if (!auth) return c.json({ error: "Não autenticado." }, 401);
+  const symbol = (c.req.query("symbol") ?? "").toUpperCase();
+  if (!symbol) return c.json({ error: "Informe o símbolo." }, 400);
+  const mt = await mtStatus(auth.svc);
+  if (!mt || mt.status === "desconectada" || mt.status === "caida") {
+    return c.json({ paused: true, last_quote_at: mt?.last_quote_at ?? null }, 200);
+  }
+  return c.json({ paused: false, quote: fakeQuote(symbol), series: fakeSeries(symbol) });
 });
 
 // ---------- Rotas administrativas (JWT de admin obrigatório) ----------
@@ -187,6 +229,85 @@ app.patch("/api/admin/users/:id", async (c) => {
   } else {
     await audit(svc, "usuario", "Usuário editado", target.name, admin);
   }
+  return c.json({ ok: true });
+});
+
+// ---------- MetaTrader (tela 18) — admin ----------
+
+async function cipherKey(env: Env): Promise<CryptoKey> {
+  const material = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(env.SERVICE_ROLE_KEY));
+  return crypto.subtle.importKey("raw", material, "AES-GCM", false, ["encrypt", "decrypt"]);
+}
+
+async function encryptSecret(env: Env, plain: string): Promise<string> {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await cipherKey(env);
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(plain)));
+  const buf = new Uint8Array(iv.length + ct.length);
+  buf.set(iv);
+  buf.set(ct, iv.length);
+  return btoa(String.fromCharCode(...buf));
+}
+
+app.get("/api/admin/mt", async (c) => {
+  const svc = c.get("svc");
+  const { data } = await svc
+    .from("mt_connection")
+    .select("status, login, server, last_quote_at, connected_at, health_events, updated_at")
+    .eq("id", 1)
+    .single();
+  return c.json({ connection: data }); // a senha (cifrada) NUNCA sai daqui
+});
+
+app.post("/api/admin/mt/test", async (c) => {
+  const svc = c.get("svc");
+  const admin = c.get("admin");
+  const { login, password, server } = await c.req.json<{ login: string; password: string; server: string }>();
+  // modo dev: simulador determinístico; com METAAPI_TOKEN o adaptador real assume
+  const result = fakeMtTest(login ?? "", password ?? "", server ?? "");
+  const now = new Date().toISOString();
+  const { data: current } = await svc.from("mt_connection").select("health_events, connected_at").eq("id", 1).single();
+  const events = ((current?.health_events as { at: string; level: string; text: string }[]) ?? []).slice(-19);
+
+  if (!result.ok) {
+    const motivo = result.code === "AUTH_FAILED" ? "o servidor recusou a senha" : "não encontramos esse servidor";
+    events.push({ at: now, level: "danger", text: `Teste falhou — ${motivo}` });
+    await svc.from("mt_connection").update({ status: "caida", health_events: events, updated_by: admin.id, updated_at: now }).eq("id", 1);
+    await audit(svc, "metatrader", "Teste de conexão falhou", motivo, admin);
+    return c.json({ ok: false, code: result.code, motivo }, 200);
+  }
+
+  events.push({ at: now, level: "success", text: "Teste de conexão bem-sucedido" });
+  await svc
+    .from("mt_connection")
+    .update({
+      status: "ativa",
+      login,
+      server,
+      password_ciphertext: await encryptSecret(c.env, password),
+      last_quote_at: now,
+      connected_at: current?.connected_at ?? now,
+      health_events: events,
+      updated_by: admin.id,
+      updated_at: now,
+    })
+    .eq("id", 1);
+  await audit(svc, "metatrader", "Credenciais testadas e salvas", `login ${login} · servidor ${server}`, admin);
+  return c.json({ ok: true, tested_at: now, response_seconds: result.responseSeconds });
+});
+
+app.post("/api/admin/mt/disconnect", async (c) => {
+  const svc = c.get("svc");
+  const admin = c.get("admin");
+  const now = new Date().toISOString();
+  const { data: current } = await svc.from("mt_connection").select("health_events").eq("id", 1).single();
+  const events = ((current?.health_events as { at: string; level: string; text: string }[]) ?? []).slice(-19);
+  events.push({ at: now, level: "warning", text: "Conexão desfeita pelo administrador" });
+  await svc
+    .from("mt_connection")
+    .update({ status: "desconectada", login: null, server: null, password_ciphertext: null, connected_at: null, health_events: events, updated_by: admin.id, updated_at: now })
+    .eq("id", 1);
+  await audit(svc, "metatrader", "Conexão desfeita", null, admin);
   return c.json({ ok: true });
 });
 

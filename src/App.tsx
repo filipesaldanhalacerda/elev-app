@@ -8,6 +8,8 @@ import Users from "./pages/admin/Users";
 import Imports from "./pages/admin/Imports";
 import Clients from "./pages/Clients";
 import ClientFile from "./pages/ClientFile";
+import Quotes from "./pages/Quotes";
+import MetaTrader from "./pages/admin/MetaTrader";
 
 function Guard({ children, admin = false }: { children: React.ReactNode; admin?: boolean }) {
   const { loading, session, profile } = useAuth();
@@ -52,6 +54,22 @@ export default function App() {
             element={
               <Guard>
                 <ClientFile />
+              </Guard>
+            }
+          />
+          <Route
+            path="/cotacoes"
+            element={
+              <Guard>
+                <Quotes />
+              </Guard>
+            }
+          />
+          <Route
+            path="/admin/metatrader"
+            element={
+              <Guard admin>
+                <MetaTrader />
               </Guard>
             }
           />
