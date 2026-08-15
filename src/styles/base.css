@@ -1,0 +1,98 @@
+/*
+ * Base Elev — reset mínimo + escala tipográfica de handoff/01-fundacoes.md.
+ * Nada aqui inventa aparência: só aplica tokens e a escala documentada.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-body);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 22px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+#root {
+  min-height: 100dvh;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+a {
+  color: var(--action);
+  text-decoration: none;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Escala tipográfica (01-fundacoes.md) */
+.type-display { font-size: 28px; line-height: 32px; font-weight: 600; letter-spacing: -0.02em; color: var(--text-1); }
+.type-title   { font-size: 20px; line-height: 26px; font-weight: 600; letter-spacing: -0.01em; color: var(--text-1); }
+.type-section { font-size: 15px; line-height: 18px; font-weight: 600; letter-spacing: -0.01em; color: var(--text-1); }
+.type-body    { font-size: 15px; line-height: 22px; font-weight: 400; }
+.type-label   { font-size: 13px; line-height: 18px; font-weight: 500; }
+.type-caption { font-size: 11px; line-height: 16px; font-weight: 400; }
+.type-value-lg { font-size: 26px; line-height: 28px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; color: var(--text-1); }
+.type-value-md { font-size: 16px; line-height: 20px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-1); }
+.type-ticker  { font-family: var(--font-mono); font-size: 14px; font-weight: 600; text-transform: uppercase; }
+
+/* Números sempre tabulares */
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* Gutter responsivo: 16 mobile / 24 desktop */
+@media (min-width: 1024px) {
+  :root { --gutter: 24px; }
+}
+
+/* Skeleton shimmer — gradiente e timing exatos dos quadros #2i (zshim) */
+@keyframes elev-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+.skeleton {
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--skeleton-from) 25%, var(--skeleton-to) 37%, var(--skeleton-from) 63%);
+  background-size: 400% 100%;
+  animation: elev-shimmer var(--motion-shimmer) ease-in-out infinite;
+  color: transparent;
+  user-select: none;
+}
+
+/* Spinner de botão/busca (0,7s linear, 15px) */
+@keyframes elev-spin {
+  to { transform: rotate(360deg); }
+}

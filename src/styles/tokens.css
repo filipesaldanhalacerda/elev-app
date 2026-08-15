@@ -1,0 +1,233 @@
+/*
+ * Tokens Elev — transcrição de handoff/01-fundacoes.md (fonte visual: Tokens e Componentes #2a).
+ * NENHUM valor visual fora deste arquivo. Tema trocado por data-theme no <html>.
+ * Valores marcados [inventário] foram confirmados no levantamento de hexes dos .dc.html
+ * (não constam da tabela do md, mas são usados nos quadros).
+ */
+
+:root {
+  /* superfícies e bordas — tema claro */
+  --bg: #F1F5F3;
+  --surface: #FFFFFF;
+  --surface-2: #F8FAF9;
+  --border: #E6ECE9;
+  --divider: #F1F5F3;
+  --border-strong: #D5DEDA;
+  --border-field: #C7D2CD;
+  --border-hover: #A9B8B2;
+
+  /* texto */
+  --text-1: #14201C;
+  --text-body: #3F4B46; /* [inventário] corpo 15/22 no claro */
+  --text-2: #55635D;
+  --text-3: #5F6E68;
+  --text-disabled: #7C8A85;
+  --icon-decor: #93A29C;
+
+  /* ação e marca */
+  --action: #1F7355;
+  --on-action: #FFFFFF;
+  --action-hover: #175C44;
+  --action-pressed: #0E3729;
+  --brand-50: #E8F2EC;
+  --brand-100: #CBE3D6;
+  --brand-200: #9FCBB5;
+  --brand-300: #6DAF91;
+  --brand-400: #40906F;
+  --brand-600: #175C44;
+  --brand-800: #0E3729;
+  --brand-tint: var(--brand-50);
+  --brand-tint-text: var(--brand-600);
+  --search-highlight: var(--brand-100); /* trecho buscado destacado */
+
+  /* mercado — SÓ alta/queda de preço */
+  --market-up: #0B7C55;
+  --market-down: #C4342A;
+
+  /* semânticas */
+  --success: #0F766E;
+  --success-tint: #E9F3F2;
+  --success-border: #CFE5E3;
+  --danger: #9B1C3B;
+  --danger-tint: #FAEBF0;
+  --danger-border: #F2D3DD;
+  --danger-action-text: #8A2B33;
+  --danger-action-border: #D9C3C6;
+  --danger-action-hover-bg: #FBF1F2;
+  --danger-action-hover-border: #C9A3A8;
+  --danger-action-hover-text: #74222A;
+  --warning: #A15C00;
+  --warning-tint: #FBF3E6;
+  --warning-border: #F0E2C6;
+  --info: #1B4E9B;
+  --info-tint: #EAF0FA;
+  --info-border: #D3E0F2;
+
+  /* componentes específicos */
+  --search-border-rest: #B9C5C0; /* busca de cliente em repouso (02 #2d) */
+  --skeleton-from: #E6ECE9;
+  --skeleton-to: #F4F7F6;
+  --toast-surface: #14201C; /* toast = superfície invertida */
+  --toast-text: #E9EFEC;
+  --scrim: rgba(15, 22, 20, 0.42);
+
+  /* gráficos — donut 4 passos (claro) */
+  --chart-1: #0E3729;
+  --chart-2: #1F7355;
+  --chart-3: #40906F;
+  --chart-4: #5F6E68;
+
+  /* elevação (claro) */
+  --elev-1: 0 1px 2px rgba(15, 22, 20, 0.04);
+  --elev-2: 0 6px 20px rgba(15, 22, 20, 0.10);
+  --elev-modal: 0 18px 44px rgba(15, 22, 20, 0.22);
+  --focus-ring: 0 0 0 3px rgba(31, 115, 85, 0.28);
+  --button-inset: inset 0 -1px 0 rgba(6, 32, 22, 0.30);
+
+  /* tipografia */
+  --font-sans: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  /* espaço, raio, alturas */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-7: 32px; --space-8: 48px;
+  --gutter: 16px; /* 24px no desktop via media query em base.css */
+  --sidebar-admin: 212px;
+  --radius-chip: 6px;
+  --radius-field: 10px;
+  --radius-search: 12px;
+  --radius-card: 14px;
+  --radius-pill: 999px;
+  --h-field: 44px;
+  --h-search: 52px;
+  --h-btn-dense: 36px;
+  --h-btn: 44px;
+  --h-btn-primary-action: 52px;
+  --h-bottom-nav: 86px;
+  --h-header-mobile: 56px;
+  --h-header-admin: 64px;
+
+  /* motion */
+  --motion-tap: 120ms ease-out;
+  --motion-card: 180ms cubic-bezier(0.2, 0, 0.2, 1);
+  --motion-screen: 240ms cubic-bezier(0.32, 0.72, 0, 1);
+  --motion-flash: 400ms; /* cotação: flash ÚNICO, nunca repetido */
+  --motion-shimmer: 1.5s;
+
+  /* [inventário] valores de componente lidos dos quadros #2b–#2i (tema claro) */
+  --ghost-text: #175C44;
+  --ghost-hover-bg: #E8F2EC;
+  --ghost-hover-text: #175C44;
+  --secondary-shadow: 0 1px 1px rgba(15, 22, 20, 0.03);
+  --field-border: #D5DEDA;        /* campo de formulário (botão secundário usa border-field) */
+  --field-label: #3F4B46;
+  --toggle-knob: #FFFFFF;
+  --toggle-knob-off: #FFFFFF;
+  --checkbox-border: #B9C5C0;
+  --danger-title: #7E1530;        /* título de banner de erro */
+  --neutral-dot: #93A29C;         /* ponto do chip Inativo / notificação lida */
+  --read-dot: #D5DEDA;
+  --target-mark: #3F4B46;         /* marca de alvo na barra do alerta */
+  --chip-pill-bg: #F1F5F3;        /* pílula neutra (alvo de alta, contador segmented) */
+  --nav-indicator: #B9C5C0;       /* indicador de home no bottom-nav */
+  --dashed: #B9C5C0;              /* tracejado de vazio/kanban */
+  --toast-action: #9FCBB5;
+  --toast-icon: #6DAF91;
+  --search-icon: #3F4B46;
+  --kanban-drag-bg: #F8FAF9;
+  --kanban-drag-border: #E6ECE9;
+  --agenda-title: #0E3729;        /* texto do bloco de reserva */
+  --agenda-meta: #175C44;
+}
+
+[data-theme="dark"] {
+  --bg: #0F1614;
+  --surface: #16201D;
+  --surface-2: #1D2925;
+  --border: #26332F;
+  --divider: #1D2925; /* [inventário] divisor interno no escuro */
+  --border-strong: #3A4A45;
+  --border-field: #3A4A45;
+  --border-hover: #4C5D57;
+
+  --text-1: #E9EFEC;
+  --text-body: #C6D3CE;
+  --text-2: #9DAEA8;
+  --text-3: #8A9C96;
+  --text-disabled: #7F918B;
+  --icon-decor: #5C6D67; /* [inventário] */
+
+  --action: #6DAF91;
+  --on-action: #0A1F18;
+  --action-hover: #9FCBB5;
+  --action-pressed: #40906F;
+  --brand-tint: #1D3A30;
+  --brand-tint-text: #9FCBB5;
+  --search-highlight: #1F5B45;
+
+  --market-up: #46CE97;
+  --market-down: #F0705E;
+
+  --success: #4FD1C5;
+  --success-tint: #13241F;
+  --success-border: #1F3A34;
+  --danger: #F2789C;
+  --danger-tint: #2A1520;
+  --danger-border: #3D1F2C;
+  --danger-action-text: #E7A9A6;
+  --danger-action-bg: #221518;
+  --danger-action-border: #5E3A3E;
+  --danger-action-hover-bg: #2E1C1F;
+  --danger-action-hover-border: #74484C;
+  --danger-action-hover-text: #F1BDB9;
+  --warning: #F5B23B;
+  --warning-tint: #2A2417;
+  --warning-border: #3D3520;
+  --info: #79ADF5;
+  --info-tint: #141F2E;
+  --info-border: #1F2E42;
+
+  --search-border-rest: #3A4A45;
+  --skeleton-from: #1D2925;
+  --skeleton-to: #26332F;
+  --toast-surface: #E9EFEC;
+  --toast-text: #14201C;
+  --scrim: rgba(0, 0, 0, 0.55);
+
+  --chart-1: #E8F2EC;
+  --chart-2: #9FCBB5;
+  --chart-3: #6DAF91;
+  --chart-4: #40906F;
+
+  /* escuro: sem sombra — elevação é borda mais clara */
+  --elev-1: none;
+  --elev-2: none;
+  --elev-modal: none;
+  --focus-ring: 0 0 0 3px rgba(109, 175, 145, 0.34);
+  --button-inset: inset 0 -1px 0 rgba(6, 32, 22, 0.22);
+
+  /* [inventário] componente — tema escuro */
+  --ghost-text: #6DAF91;
+  --ghost-hover-bg: #1D3A30;
+  --ghost-hover-text: #9FCBB5;
+  --secondary-shadow: none;
+  --field-border: #3A4A45;
+  --field-label: #9DAEA8;
+  --toggle-knob: #0F1614;
+  --toggle-knob-off: #9DAEA8;
+  --checkbox-border: #4C5D57;
+  --danger-title: #F79CB8;
+  --neutral-dot: #6E817B;
+  --read-dot: #3A4A45;
+  --target-mark: #C6D3CE;
+  --chip-pill-bg: #1D2925;
+  --nav-indicator: #3A4A45;
+  --dashed: #4C5D57;
+  --toast-action: #175C44;
+  --toast-icon: #0F766E;
+  --search-icon: #E9EFEC;
+  --kanban-drag-bg: #26332F;
+  --kanban-drag-border: #3A4A45;
+  --agenda-title: #E9EFEC;
+  --agenda-meta: #9FCBB5;
+}

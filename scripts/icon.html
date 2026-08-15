@@ -1,0 +1,35 @@
+<!doctype html>
+<!-- Ícone do app (tela 26): letra "e" em IBM Plex Mono 600 sobre brand-800 #0E3729,
+     letra em brand-50 #E8F2EC. Quadrado full-bleed: os cantos são do sistema. -->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face {
+    font-family: "IBM Plex Mono";
+    font-weight: 600;
+    src: url("../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-600-normal.woff2") format("woff2");
+  }
+  html, body { margin: 0; }
+  #icon {
+    width: 512px;
+    height: 512px;
+    background: #0E3729;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #icon span {
+    font-family: "IBM Plex Mono";
+    font-weight: 600;
+    font-size: 300px;
+    color: #E8F2EC;
+    /* compensação óptica: o "e" minúsculo do Plex Mono senta abaixo do centro geométrico */
+    transform: translateY(-14px);
+  }
+</style>
+</head>
+<body>
+<div id="icon"><span>e</span></div>
+</body>
+</html>

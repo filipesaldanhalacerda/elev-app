@@ -1,0 +1,28 @@
+# dependências e build
+node_modules/
+dist/
+dev-dist/
+
+# ambiente e segredos
+.env
+.env.local
+*.local
+
+# testes
+playwright-report/
+test-results/
+
+# supabase local
+supabase/.temp/
+supabase/.branches/
+
+# ---- NUNCA SUBIR: documentação interna e dados sensíveis (decisão do PO, 15/08/2026) ----
+CLAUDE.md
+PLANO-DE-CONSTRUCAO.md
+handoff/
+Relatorios Zerva/
+
+# sistema
+.DS_Store
+Thumbs.db
+*.tsbuildinfo
