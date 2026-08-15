@@ -11,6 +11,7 @@ import { Button } from "../components/Button";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 import { useQuotes, formatQuotePrice, formatQuoteChange, type Quote } from "../lib/quotes";
+import { useOnline, lastDataAt } from "../lib/offline";
 import { initials, formatInt, formatTime, formatDate } from "../lib/format";
 
 const RECENT_CLIENTS_KEY = "elev.clientes.visitados";
@@ -151,7 +152,8 @@ export default function Dashboard() {
   const [results, setResults] = useState<ClientSearchResult[] | null>(null);
   const [searching, setSearching] = useState(false);
 
-  const loading = data === null;
+  const online = useOnline();
+  const loading = data === null && online;
   const empty = data !== null && data.clientCount === 0;
 
   const recents: { account: string; name: string }[] = useMemo(() => {
@@ -291,6 +293,22 @@ export default function Dashboard() {
               </div>
             )}
           </div>
+
+          {/* offline: estado central da tela 24 */}
+          {!online && (
+            <div className="empty-state" style={{ borderRadius: 14, padding: "26px 20px" }} data-offline-central>
+              <span className="empty-state__icon" style={{ width: 46, height: 46, borderRadius: 12 }}>
+                <i className="ph ph-cloud-slash" style={{ fontSize: 22 }} aria-hidden />
+              </span>
+              <span className="empty-state__title" style={{ fontSize: 15 }}>Sem conexão agora</span>
+              <span className="empty-state__desc" style={{ maxWidth: 280 }}>
+                Clientes, carteiras e tarefas seguem disponíveis como estavam às {lastDataAt() ? formatTime(lastDataAt()!) : "—"}. Criar e editar ficam guardados no aparelho e sincronizam quando a rede voltar.
+              </span>
+              <span className="empty-state__action">
+                <Button variant="secondary" icon="ph-arrow-clockwise" onClick={() => window.location.reload()}>Tentar reconectar</Button>
+              </span>
+            </div>
+          )}
 
           {/* vazio: assessor novo */}
           {empty && (

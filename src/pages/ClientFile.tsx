@@ -15,6 +15,7 @@ import {
 } from "../lib/clientData";
 import { useAuth } from "../lib/auth";
 import { recordClientVisit } from "./Dashboard";
+import { enqueueNote } from "../lib/offline";
 import { formatBRL, formatSignedBRL, formatPct, formatDate, formatInt, initials } from "../lib/format";
 
 const TABS = ["Visão geral", "Carteira", "Movimentações", "Cadastro", "Linha do tempo"] as const;
@@ -535,10 +536,16 @@ function TimelineTab({ account, advisorCode }: { account: string; advisorCode: s
   async function send() {
     if (!draft.trim()) return;
     setSending(true);
-    await addTimelineNote(account, advisorCode, draft.trim());
+    try {
+      if (!navigator.onLine) throw new Error("offline");
+      await addTimelineNote(account, advisorCode, draft.trim());
+      reload();
+    } catch {
+      // sem rede: guarda no aparelho e sincroniza quando a rede voltar (tela 24)
+      enqueueNote({ account, advisorCode, body: draft.trim(), at: Date.now() });
+    }
     setDraft("");
     setSending(false);
-    reload();
   }
 
   return (
