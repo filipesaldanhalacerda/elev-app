@@ -27,3 +27,4 @@ Relatorios Zerva/
 Thumbs.db
 *.tsbuildinfo
 .dev.vars
+.wrangler/
