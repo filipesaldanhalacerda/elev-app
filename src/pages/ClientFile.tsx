@@ -114,7 +114,7 @@ function OverviewTab({ account }: { account: string }) {
           <i className="ph ph-whatsapp-logo" aria-hidden />
           <span>WhatsApp</span>
         </a>
-        <button type="button" className="quick-action">
+        <button type="button" className="quick-action" onClick={() => (window.location.href = "/cards")}>
           <i className="ph ph-kanban" aria-hidden />
           <span>Novo card</span>
         </button>
@@ -122,7 +122,7 @@ function OverviewTab({ account }: { account: string }) {
           <i className="ph ph-target" aria-hidden />
           <span>Alerta</span>
         </button>
-        <button type="button" className="quick-action">
+        <button type="button" className="quick-action" onClick={() => (window.location.href = "/salas")}>
           <i className="ph ph-door-open" aria-hidden />
           <span>Sala</span>
         </button>

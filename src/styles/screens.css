@@ -463,6 +463,58 @@
 [data-theme="dark"] .swipe-hint__close { color: var(--brand-tint-text); }
 .swipe-hint__close i { font-size: 15px; }
 
+/* ---------- Tela 14 · Sala de reunião ---------- */
+.room-toolbar { flex: none; padding: 12px 16px 0; background: var(--surface); border-bottom: 1px solid var(--border); }
+.room-toolbar__row { display: flex; gap: 6px; align-items: center; padding-bottom: 12px; overflow-x: auto; scrollbar-width: none; }
+.room-toolbar__row::-webkit-scrollbar { display: none; }
+.date-chip { height: 36px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border-field); color: var(--text-1); font: 600 12px/1 var(--font-sans); font-variant-numeric: tabular-nums; flex: none; }
+[data-theme="dark"] .date-chip { background: var(--surface-2); }
+.date-chip i { font-size: 15px; color: var(--text-2); }
+.date-chip i:last-child { font-size: 12px; }
+.room-chip { height: 36px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); color: var(--field-label); font: 500 11.5px/1 var(--font-sans); flex: none; }
+[data-theme="dark"] .room-chip { color: var(--text-body); }
+.room-chip--active { background: var(--brand-800); border: none; color: var(--brand-50); font-weight: 600; }
+[data-theme="dark"] .room-chip--active { background: var(--action); color: var(--on-action); }
+.room-chip:first-of-type { margin-left: auto; }
+
+/* bloco de outra pessoa: neutro com barra lateral neutra */
+.agenda__block--other { background: var(--chip-pill-bg); border-left-color: var(--neutral-dot); }
+.agenda__block--other .agenda__block-title { color: var(--field-label); }
+[data-theme="dark"] .agenda__block--other .agenda__block-title { color: var(--text-body); }
+.agenda__block--other .agenda__block-meta { color: var(--text-2); }
+
+.reservation-row { min-height: 64px; display: flex; align-items: center; gap: 12px; padding: 11px 10px 11px 14px; }
+.reservation-row + .reservation-row { border-top: 1px solid var(--divider); }
+.reservation-row__title { display: block; font: 500 13px/1.3 var(--font-sans); color: var(--text-1); }
+.reservation-row__meta { display: block; margin-top: 3px; font: 400 11px/1.3 var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text-2); }
+.reservation-row .btn { height: 44px; font-size: 12px; }
+
+.alt-chip { height: 40px; display: inline-flex; align-items: center; gap: 6px; padding: 0 13px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border-field); color: var(--text-body); font: 600 12px/1 var(--font-sans); font-variant-numeric: tabular-nums; }
+.alt-chip { color: var(--field-label); }
+[data-theme="dark"] .alt-chip { background: var(--surface-2); color: var(--text-body); }
+.alt-chip i { font-size: 14px; }
+.alt-chip--active { background: var(--brand-tint); border: none; color: var(--brand-tint-text); }
+[data-theme="dark"] .alt-chip--active { color: var(--brand-tint-text); }
+
+/* ---------- Tela 20 · Gestão de salas (admin) ---------- */
+.rooms-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.room-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; box-shadow: var(--elev-1); }
+.room-card__head { display: flex; align-items: center; justify-content: space-between; }
+.room-card__name-wrap { display: flex; align-items: center; gap: 10px; }
+.room-card__name { font: 600 14px/1.2 var(--font-sans); color: var(--text-1); }
+.room-card__actions { display: flex; gap: 6px; }
+.room-card__facts { margin-top: 12px; display: flex; align-items: center; gap: 14px; font: 400 12px/1.4 var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text-body); }
+.room-card__facts { color: var(--field-label); }
+[data-theme="dark"] .room-card__facts { color: var(--text-body); }
+.room-card__facts i { font-size: 15px; color: var(--text-3); }
+.room-card__fact { display: flex; align-items: center; gap: 6px; }
+.room-card__resources { margin-top: 12px; display: flex; gap: 6px; flex-wrap: wrap; }
+.resource-chip { height: 26px; display: inline-flex; align-items: center; padding: 0 9px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-body); font: 500 11px/1 var(--font-sans); }
+.resource-chip { color: var(--field-label); }
+[data-theme="dark"] .resource-chip { color: var(--text-body); }
+.rooms-page .chip { height: 24px; padding: 0 8px; font-size: 10.5px; }
+.rooms-page .chip__dot { width: 5px; height: 5px; }
+
 /* ---------- Tela 23 · Kanban geral (admin) ---------- */
 .kb-filter { display: flex; gap: 6px; align-items: center; }
 .kb-filter__label { font: 500 11.5px/1 var(--font-sans); color: var(--text-2); margin-right: 4px; }
