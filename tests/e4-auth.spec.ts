@@ -68,6 +68,7 @@ emAmbosTemas("tela 03 · Perdi minha senha", () => {
 });
 
 test.describe("fluxo (a) · admin cria código → primeiro acesso → home", () => {
+  test.describe.configure({ mode: "serial" });
   test.skip(({ isMobile }) => isMobile, "tela 19 é desktop (1440px)");
 
   test("de ponta a ponta, com auditoria", async ({ page }) => {
@@ -139,6 +140,45 @@ test.describe("fluxo (a) · admin cria código → primeiro acesso → home", ()
     const events = (audit ?? []).map((a) => a.event);
     expect(events).toContain("Código de acesso gerado");
     expect(events).toContain("Código de acesso utilizado");
+  });
+
+  test("novo usuário pela UI: form composto → código exibido uma vez", async ({ page }) => {
+    await page.goto("/login");
+    await page.getByLabel("E-mail").fill(ADMIN.email);
+    await page.locator('input[type="password"]').fill(ADMIN.password);
+    await page.getByRole("button", { name: "Entrar", exact: true }).click();
+    await page.waitForSelector("[data-home]");
+    await page.goto("/admin/usuarios");
+
+    await page.getByRole("button", { name: "Novo usuário" }).click();
+    const form = page.getByRole("dialog");
+    await expect(form.locator(".modal__title")).toHaveText("Novo usuário");
+    const criar = form.getByRole("button", { name: "Criar e gerar código" });
+    await expect(criar).toBeDisabled();
+    await form.getByLabel("Nome completo").fill("Helena Prado");
+    await form.getByLabel("E-mail").fill(`helena.${RUN}@elev.test`);
+    await form.getByLabel("Código de assessor").fill("A-2088");
+    await expect(criar).toBeEnabled();
+    await criar.click();
+
+    // emenda no fluxo do código: modal exibido uma vez, com o código normalizado
+    const codeModal = page.getByRole("dialog");
+    await expect(codeModal.locator(".modal__title")).toHaveText("Código de acesso gerado");
+    await expect(codeModal.locator(".modal__id")).toContainText("Helena Prado · assessor A-2088");
+    expect((await codeModal.locator(".code-modal__code").innerText()).trim()).toHaveLength(6);
+    await codeModal.getByRole("button", { name: "Concluir" }).click();
+
+    const row = page.locator(".users-table__row", { hasText: `helena.${RUN}@elev.test` });
+    await expect(row.locator(".chip--warning")).toHaveText("Aguardando 1º acesso");
+
+    // editar pelo lápis
+    await row.getByRole("button", { name: "Editar Helena Prado" }).click();
+    const edit = page.getByRole("dialog");
+    await expect(edit.locator(".modal__title")).toHaveText("Editar Helena Prado");
+    await expect(edit.getByLabel("E-mail")).toBeDisabled();
+    await edit.getByLabel("Nome completo").fill("Helena Prado Souza");
+    await edit.getByRole("button", { name: "Salvar" }).click();
+    await expect(page.locator(".users-table__row", { hasText: `helena.${RUN}@elev.test` }).locator(".users-table__name")).toHaveText("Helena Prado Souza");
   });
 
   test("desativar usuário: modal destrutivo + Reativar + auditoria", async ({ page }) => {

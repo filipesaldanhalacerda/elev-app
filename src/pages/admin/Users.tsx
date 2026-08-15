@@ -5,9 +5,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { AdminShell } from "./AdminShell";
 import { workerFetch } from "../../lib/auth";
-import { StatusChip } from "../../components/feedback";
-import { Modal } from "../../components/feedback";
+import { StatusChip, Banner, Modal } from "../../components/feedback";
 import { Button } from "../../components/Button";
+import { TextField } from "../../components/Field";
 import { displayAdvisorCode, formatDateAtTime } from "../../lib/format";
 
 interface AdminUser {
@@ -26,6 +26,93 @@ interface GeneratedCode {
   expires_at: string;
 }
 
+/** Form de usuário — composto SÓ de componentes desenhados (modal #2h + campos #2c). Decisão do PO em 15/08/2026. */
+function UserFormModal({
+  user,
+  onClose,
+  onSaved,
+}: {
+  user: AdminUser | null; // null = novo
+  onClose: () => void;
+  onSaved: (createdId?: string) => Promise<void>;
+}) {
+  const [name, setName] = useState(user?.name ?? "");
+  const [email, setEmail] = useState(user?.email ?? "");
+  const [advisorCode, setAdvisorCode] = useState(user?.advisor_code ? displayAdvisorCode(user.advisor_code) : "");
+  const [role, setRole] = useState<"admin" | "advisor">(user?.role ?? "advisor");
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    setSaving(true);
+    setError(null);
+    try {
+      if (user) {
+        await workerFetch(`/api/admin/users/${user.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ name, advisor_code: advisorCode || null, role }),
+        });
+        await onSaved();
+      } else {
+        const body = (await workerFetch("/api/admin/users", {
+          method: "POST",
+          body: JSON.stringify({ name, email, advisor_code: advisorCode || null, role }),
+        })) as { id: string };
+        await onSaved(body.id);
+      }
+    } catch (e) {
+      setError((e as Error).message);
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal
+      title={user ? `Editar ${user.name}` : "Novo usuário"}
+      id={user ? `${user.role === "admin" ? "admin" : "assessor"}${user.advisor_code ? ` · código ${displayAdvisorCode(user.advisor_code)}` : ""}` : "pré-cadastro · o acesso nasce com o código"}
+      onClose={onClose}
+      note={user ? "Alterações registradas na auditoria." : "Ao criar, o código de uso único é gerado e exibido uma vez."}
+      actions={
+        <>
+          <Button variant="secondary" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button loading={saving} disabled={!name || (!user && !email) || (role === "advisor" && !advisorCode)} onClick={save}>
+            {user ? "Salvar" : "Criar e gerar código"}
+          </Button>
+        </>
+      }
+    >
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        {error && <Banner kind="danger">{error}</Banner>}
+        <TextField label="Nome completo" value={name} onChange={(e) => setName(e.target.value)} />
+        <TextField label="E-mail" type="email" value={email} disabled={!!user} onChange={(e) => setEmail(e.target.value)} />
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <TextField label="Código de assessor" mono placeholder="A-31342" value={advisorCode} onChange={(e) => setAdvisorCode(e.target.value)} />
+          <div className="field">
+            <label className="field__label" htmlFor="perfil-select" style={{ display: "block" }}>
+              Perfil
+            </label>
+            <div className="field__box">
+              <select
+                id="perfil-select"
+                className="field__input"
+                value={role}
+                onChange={(e) => setRole(e.target.value as "admin" | "advisor")}
+                style={{ appearance: "none", width: "100%" }}
+              >
+                <option value="advisor">Assessor</option>
+                <option value="admin">Administrador</option>
+              </select>
+              <i className="ph ph-caret-down field__caret" aria-hidden />
+            </div>
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 export default function Users() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [search, setSearch] = useState("");
@@ -33,6 +120,7 @@ export default function Users() {
   const [deactivating, setDeactivating] = useState<AdminUser | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [form, setForm] = useState<{ open: boolean; user: AdminUser | null }>({ open: false, user: null });
 
   async function load() {
     const body = (await workerFetch("/api/admin/users")) as { users: AdminUser[] };
@@ -86,7 +174,7 @@ export default function Users() {
             <i className="ph ph-magnifying-glass" aria-hidden />
             <input placeholder="Buscar por nome ou e-mail" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Buscar por nome ou e-mail" />
           </span>
-          <Button size={36} icon="ph-plus">
+          <Button size={36} icon="ph-plus" onClick={() => setForm({ open: true, user: null })}>
             Novo usuário
           </Button>
         </>
@@ -123,7 +211,7 @@ export default function Users() {
                     <i className="ph ph-key" aria-hidden />
                     {u.pending_code_expires_at ? "Ver código ativo" : "Gerar código"}
                   </button>
-                  <button type="button" className="row-btn row-btn--icon" aria-label={`Editar ${u.name}`}>
+                  <button type="button" className="row-btn row-btn--icon" aria-label={`Editar ${u.name}`} onClick={() => setForm({ open: true, user: u })}>
                     <i className="ph ph-pencil-simple" aria-hidden />
                   </button>
                   <button type="button" className="row-btn row-btn--icon row-btn--danger" aria-label={`Desativar ${u.name}`} onClick={() => setDeactivating(u)}>
@@ -143,6 +231,26 @@ export default function Users() {
         Gerar código invalida a senha atual do usuário na hora — a linha muda para “Aguardando 1º acesso”. Reset de senha e criação passam pelo
         mesmo fluxo de código. Ícones por linha: lápis edita, proibido desativa.
       </p>
+
+      {form.open && (
+        <UserFormModal
+          user={form.user}
+          onClose={() => setForm({ open: false, user: null })}
+          onSaved={async (createdId) => {
+            setForm({ open: false, user: null });
+            await load();
+            if (createdId) {
+              // criação emenda no fluxo do código (fluxo a): gera e exibe uma vez
+              const body = (await workerFetch(`/api/admin/users/${createdId}/code`, { method: "POST" })) as { code: string; expires_at: string };
+              const fresh = (await workerFetch("/api/admin/users")) as { users: AdminUser[] };
+              setUsers(fresh.users);
+              const user = fresh.users.find((u) => u.id === createdId)!;
+              setGenerated({ user, code: body.code, expires_at: body.expires_at });
+              setCopied(false);
+            }
+          }}
+        />
+      )}
 
       {generated && (
         <Modal
