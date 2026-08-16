@@ -84,9 +84,8 @@ test.describe("tela 14 · fluxo (f)", () => {
     await page.goto("/salas");
     await expect(page.locator(".page-header__title")).toHaveText("Sala de reunião");
     await page.locator(".room-chip", { hasText: IPE }).click();
-    await expect(page.locator(".date-chip")).toContainText("hoje,");
-    await expect(page.locator(".agenda__block--other .agenda__block-title")).toContainText(`Onboarding — Bruno${RUN.slice(-3)}`);
-    await expect(page.locator(".agenda__free--action").first()).toHaveText("livre");
+    await expect(page.locator(".cal-event--other", { hasText: `Onboarding — Bruno${RUN.slice(-3)}` })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Reservar às 08:00" })).toBeVisible();
   });
 
   test("conflito → alternativas em um toque → confirmada em Minhas reservas + notificação", async ({ page }) => {
@@ -94,7 +93,7 @@ test.describe("tela 14 · fluxo (f)", () => {
     await login(page, RAFA.email, RAFA.password);
     await page.goto("/salas");
     await page.locator(".room-chip", { hasText: IPE }).click();
-    await page.getByRole("button", { name: "Reservar" }).click();
+    await page.getByRole("button", { name: "Reservar", exact: true }).click();
 
     // formulário 10:00–11:00 na Ipê (colide com o Onboarding do Bruno)
     await expect(page.getByText("Nova reserva")).toBeVisible();

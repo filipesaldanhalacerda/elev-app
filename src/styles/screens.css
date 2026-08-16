@@ -498,6 +498,9 @@
 .cal-event__title { font: 600 12px/1.25 var(--font-sans); color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cal-event__meta { font: 400 10.5px/1.2 var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cal-event--compact { flex-direction: row; align-items: center; gap: 7px; padding: 0 10px; }
+/* Reserva de colega: neutra, sem o verde de "minha" */
+.cal-event--other { background: var(--chip-pill-bg); border-left-color: var(--icon-decor); }
+.cal-event--other .cal-event__title { color: var(--text-body); }
 
 /* Agenda (F2-03) · faixa de dias no padrão dos calendários de mercado */
 .cal-strip { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px; margin: -2px; }

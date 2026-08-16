@@ -147,7 +147,7 @@ const MOBILE_ROUTES: { path: string; label: string; ready: string }[] = [
   { path: "/cotacoes", label: "11-cotacoes", ready: ".fav-row" },
   { path: "/alertas", label: "12-alertas", ready: ".alert-card__track" },
   { path: "/cards", label: "13-cards", ready: ".status-segment" },
-  { path: "/salas", label: "14-salas", ready: ".agenda__row" },
+  { path: "/salas", label: "14-salas", ready: ".cal-grid" },
   { path: "/notificacoes", label: "15-notificacoes", ready: ".notif" },
   { path: "/perfil", label: "16-perfil", ready: '[data-avatar]' },
   { path: "/agenda", label: "27-agenda", ready: ".empty-state, .reservation-row" },
@@ -215,7 +215,7 @@ for (const theme of ["claro", "escuro"] as const) {
     await page.getByRole("tab", { name: "Concluído" }).click();
 
     await page.goto("http://localhost:5173/salas");
-    await page.getByRole("button", { name: "Reservar" }).click();
+    await page.getByRole("button", { name: "Reservar", exact: true }).click();
     await page.waitForSelector("#res-titulo");
     await page.screenshot({ path: `${SHOTS}/14-nova-reserva-${theme}.png` });
     await page.locator(".sheet").getByRole("button", { name: "Cancelar", exact: true }).click();

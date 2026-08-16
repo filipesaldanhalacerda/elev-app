@@ -141,27 +141,24 @@ test.describe("fase 2 · mobile", () => {
     await login(page);
     await page.goto("/salas");
     await page.locator(".room-chip", { hasText: `A0 Quebrada ${RUN.slice(-4)}` }).click();
-    await page.waitForSelector(".agenda__row");
-    // o cartão da reserva aparece UMA única vez…
-    await expect(page.locator(".agenda__block", { hasText: "10:00–11:12" })).toHaveCount(1);
-    // …a hora seguinte mostra a continuação discreta E a reserva que começa no meio dela
-    await expect(page.getByText("ocupada até 11:12")).toBeVisible();
-    await expect(page.locator(".agenda__block", { hasText: "Emenda" })).toBeVisible();
-    await expect(page.locator(".agenda__block", { hasText: "11:12–12:00" })).toHaveCount(1);
-    // agenda completa: 08:00–17:00
-    await expect(page.locator(".agenda__row")).toHaveCount(10);
+    await page.waitForSelector(".cal-grid");
+    // grade proporcional: cada reserva é UM bloco com a altura da duração
+    await expect(page.locator(".cal-event", { hasText: "10:00–11:12" })).toHaveCount(1);
+    await expect(page.locator(".cal-event", { hasText: "Emenda" })).toBeVisible();
+    await expect(page.locator(".cal-event", { hasText: "11:12–12:00" })).toHaveCount(1);
+    // o bloco de 1h12 é mais alto que 1 linha (48px por hora)
+    const h = await page.locator(".cal-event", { hasText: "Quebrada" }).boundingBox();
+    expect(h!.height).toBeGreaterThan(48);
 
-    // o chip de data muda o dia da agenda
-    await expect(page.locator(".agenda__block", { hasText: "De amanhã" })).toHaveCount(0);
-    await page.evaluate((d) => {
-      const input = document.querySelector('input[aria-label="Escolher data da agenda"]') as HTMLInputElement;
-      const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
-      set.call(input, d);
-      input.dispatchEvent(new Event("input", { bubbles: true }));
-    }, amanha);
-    await expect(page.locator(".date-chip")).toContainText("amanhã");
-    await expect(page.locator(".agenda__block", { hasText: "De amanhã" })).toBeVisible();
-    await expect(page.locator(".agenda__block", { hasText: "Quebrada" })).toHaveCount(0);
+    // a faixa de dias muda o dia e o marcador aponta quem tem reserva
+    await expect(page.locator(`[data-salas-day="${amanha}"]`)).toHaveClass(/cal-day--has/);
+    await page.locator(`[data-salas-day="${amanha}"]`).click();
+    await expect(page.locator(".cal-event", { hasText: "De amanhã" })).toBeVisible();
+    await expect(page.locator(".cal-event", { hasText: "Quebrada" })).toHaveCount(0);
+    // detalhes por toque: dono vê o botão de cancelar
+    await page.getByRole("button", { name: "Reserva De amanhã" }).click();
+    await expect(page.getByText("Sua reserva", { exact: true })).toBeVisible();
+    await page.locator(".sheet").getByRole("button", { name: "Fechar" }).click();
   });
 
   test("F2-10: reserva não aceita passado nem fim antes do início", async ({ page }) => {

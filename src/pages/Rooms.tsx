@@ -11,7 +11,7 @@ import { Banner } from "../components/feedback";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabase";
 import {
-  useRooms, useDayReservations, useMyReservations, createReservation, findAlternatives, cancelReservation,
+  useRooms, useRoomReservations, useMyReservations, createReservation, findAlternatives, cancelReservation,
   parsePeriod, type ConflictInfo, type Alternative, type Room, type Reservation,
 } from "../lib/rooms";
 import { formatDate, addMinutes, durationLabel, nextSlotSP } from "../lib/format";
@@ -213,14 +213,18 @@ function NewReservation({ rooms, defaults, onClose, onCreated }: {
   );
 }
 
+const spDayOf = (d: Date) => d.toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+
 export default function Rooms() {
   const { profile } = useAuth();
   const { rooms } = useRooms();
   const [params] = useSearchParams();
   const [day, setDay] = useState(todayISO());
+  const [stripStart, setStripStart] = useState(todayISO());
   const [roomId, setRoomId] = useState<string | null>(null);
   const activeRoom = roomId ?? rooms?.find((r) => r.is_active)?.id ?? null;
-  const { rows: reservations, reload: reloadDay } = useDayReservations(activeRoom, day);
+  const activeRoomName = rooms?.find((r) => r.id === activeRoom)?.name ?? "";
+  const { rows: allReservations, reload: reloadDay } = useRoomReservations(activeRoom);
   const { rows: mine, reload: reloadMine } = useMyReservations(profile?.id);
   const [creating, setCreating] = useState<{ start: string; account?: string } | null>(
     params.get("novo") !== null ? { start: suggestedStart(todayISO()), account: params.get("cliente") ?? undefined } : null
@@ -228,48 +232,80 @@ export default function Rooms() {
   // cancelar exige confirmação — e só as PRÓPRIAS reservas aparecem aqui (RLS impede as dos colegas)
   const [cancelling, setCancelling] = useState<Reservation | null>(null);
   const [cancelBusy, setCancelBusy] = useState(false);
+  const [details, setDetails] = useState<Reservation | null>(null);
 
-  // F2-07: cada reserva aparece UMA vez, na hora em que começa; horas que ela ainda
-  // atravessa viram continuação discreta. A mesma hora pode ter continuação E uma
-  // reserva nova começando no meio dela (10:00–11:15 e 11:15–12:00) — as duas aparecem.
-  const slots = useMemo(() => {
-    const list = reservations ?? [];
-    // janela padrão 08–17, mas estica para mostrar reservas fora dela
-    let first = 8;
-    let last = 18;
-    const zero = new Date(`${day}T00:00:00-03:00`).getTime();
-    for (const r of list) {
+  function jumpTo(iso: string) {
+    setDay(iso);
+    setStripStart(iso);
+  }
+
+  // mesmo padrão da Agenda: faixa de 14 dias com marcador nos dias que têm reserva na sala ativa
+  const daysWithReservation = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of allReservations ?? []) set.add(spDayOf(parsePeriod(r.period).start));
+    return set;
+  }, [allReservations]);
+  const stripZero = new Date(`${stripStart}T12:00:00-03:00`).getTime();
+  const strip = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(stripZero + i * 86400000);
+    const iso = spDayOf(d);
+    return {
+      iso,
+      dow: d.toLocaleDateString("pt-BR", { weekday: "short", timeZone: "America/Sao_Paulo" }).replace(".", ""),
+      num: Number(iso.slice(8)),
+      has: daysWithReservation.has(iso),
+    };
+  });
+  const monthRaw = new Date(`${day}T12:00:00-03:00`).toLocaleDateString("pt-BR", { month: "long", year: "numeric", timeZone: "America/Sao_Paulo" });
+  const monthLabel = monthRaw.charAt(0).toUpperCase() + monthRaw.slice(1);
+
+  // grade PROPORCIONAL (padrão da Agenda): bloco com a altura da duração; janela 08–18 elástica
+  const HOUR_H = 48;
+  const dayZero = new Date(`${day}T00:00:00-03:00`).getTime();
+  const dayReservations = useMemo(
+    () => (allReservations ?? []).filter((r) => spDayOf(parsePeriod(r.period).start) === day),
+    [allReservations, day]
+  );
+  const [DAY_START, DAY_END] = (() => {
+    let s = 8;
+    let e = 18;
+    for (const r of dayReservations) {
       const p = parsePeriod(r.period);
-      first = Math.min(first, Math.floor((p.start.getTime() - zero) / 3600000));
-      last = Math.max(last, Math.ceil((p.end.getTime() - zero) / 3600000));
+      s = Math.min(s, Math.floor((p.start.getTime() - dayZero) / 3600000));
+      e = Math.max(e, Math.ceil((p.end.getTime() - dayZero) / 3600000));
     }
-    first = Math.max(0, first);
-    last = Math.min(24, last);
-    const hoursList = Array.from({ length: last - first }, (_, i) => `${String(first + i).padStart(2, "0")}:00`);
-    return hoursList.map((hour) => {
-      const hourStart = new Date(`${day}T${hour}:00-03:00`).getTime();
-      const hourEnd = hourStart + 3600000;
-      const overlapping = list
-        .map((r) => ({ r, p: parsePeriod(r.period) }))
-        .filter(({ p }) => p.start.getTime() < hourEnd && p.end.getTime() > hourStart);
-      const startsHere = overlapping.filter(({ p }) => p.start.getTime() >= hourStart || hour === hoursList[0]);
-      const continuing = overlapping.filter((x) => !startsHere.includes(x));
-      const contUntil = continuing.length > 0 ? fmtHM(new Date(Math.max(...continuing.map(({ p }) => p.end.getTime())))) : null;
-      return {
-        hour,
-        contUntil,
-        blocks: startsHere.map(({ r, p }) => {
-          const mineFlag = r.owner === profile?.id;
-          return {
-            id: r.id,
-            mine: mineFlag,
-            title: `${r.title}${r.owner_name && !mineFlag ? ` — ${r.owner_name}` : ""}`,
-            meta: `${fmtHM(p.start)}–${fmtHM(p.end)}${mineFlag ? " · sua reserva" : ""}`,
-          };
-        }),
-      };
+    return [Math.max(0, s), Math.min(24, e)];
+  })();
+  const gridHours = Array.from({ length: DAY_END - DAY_START }, (_, i) => DAY_START + i);
+  const positioned = (() => {
+    const items = dayReservations
+      .map((r) => {
+        const p = parsePeriod(r.period);
+        const s = Math.max((p.start.getTime() - dayZero) / 60000, DAY_START * 60);
+        const f = Math.min((p.end.getTime() - dayZero) / 60000, DAY_END * 60);
+        return { r, p, s, f };
+      })
+      .filter(({ s, f }) => f > s)
+      .sort((a, b) => a.s - b.s);
+    const laneEnds: number[] = [];
+    const withLane = items.map((it) => {
+      let lane = laneEnds.findIndex((end) => end <= it.s);
+      if (lane === -1) {
+        lane = laneEnds.length;
+        laneEnds.push(it.f);
+      } else {
+        laneEnds[lane] = it.f;
+      }
+      return { ...it, lane };
     });
-  }, [reservations, day, profile?.id]);
+    const lanes = Math.max(1, laneEnds.length);
+    return withLane.map((it) => ({
+      ...it,
+      lanes,
+      top: ((it.s - DAY_START * 60) / 60) * HOUR_H + 1,
+      height: Math.max(22, ((it.f - it.s) / 60) * HOUR_H - 3),
+    }));
+  })();
 
   const reloadAll = () => {
     void reloadDay();
@@ -285,34 +321,64 @@ export default function Rooms() {
         </Button>
       </header>
 
-      <div className="room-toolbar">
-        <div className="room-toolbar__row">
-          {/* iOS/Android: input de data invisível por cima do chip — abre o seletor nativo */}
-          <span className="date-chip" style={{ position: "relative" }}>
-            <i className="ph ph-calendar-blank" aria-hidden />
-            {day === todayISO()
-              ? `hoje, ${formatDate(day).slice(0, 5)}`
-              : day === new Date(Date.now() + 86400000).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" })
-                ? `amanhã, ${formatDate(day).slice(0, 5)}`
-                : formatDate(day)}
-            <i className="ph ph-caret-down" aria-hidden />
-            <input
-              type="date"
-              aria-label="Escolher data da agenda"
-              value={day}
-              onChange={(e) => e.target.value && setDay(e.target.value)}
-              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer" }}
-            />
-          </span>
-          {(rooms ?? []).map((r) => (
-            <button key={r.id} type="button" className={`room-chip${activeRoom === r.id ? " room-chip--active" : ""}`} onClick={() => setRoomId(r.id)}>
-              {r.name} · {r.capacity} lug.
-            </button>
-          ))}
+      <div style={{ flex: 1, padding: "14px 16px 0", display: "flex", flexDirection: "column", gap: 14 }}>
+        {/* mês + hoje + contagem (padrão da Agenda) */}
+        <div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "0 2px 10px" }}>
+            {/* iOS/Android: input de data invisível por cima — abre o seletor nativo do aparelho */}
+            <span
+              data-salas-month
+              style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 5, font: "600 15px/1.2 var(--font-sans)", letterSpacing: "-0.01em", color: "var(--text-1)" }}
+            >
+              {monthLabel}
+              <i className="ph ph-caret-down" style={{ fontSize: 13, color: "var(--text-2)" }} aria-hidden />
+              <input
+                type="date"
+                aria-label="Escolher data da agenda"
+                value={day}
+                onChange={(e) => e.target.value && jumpTo(e.target.value)}
+                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer" }}
+              />
+            </span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+              {day !== todayISO() && (
+                <button type="button" className="filter-chip" style={{ height: 26, fontSize: 11 }} onClick={() => jumpTo(todayISO())}>
+                  hoje
+                </button>
+              )}
+              <span style={{ font: "400 11px/1 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-2)" }}>
+                {dayReservations.length === 0 ? "sala livre" : `${dayReservations.length} reserva${dayReservations.length > 1 ? "s" : ""}`}
+              </span>
+            </span>
+          </div>
+          <div className="cal-strip">
+            {strip.map((d) => (
+              <button
+                key={d.iso}
+                type="button"
+                data-salas-day={d.iso}
+                className={`cal-day${d.iso === day ? " cal-day--active" : ""}${d.iso === todayISO() ? " cal-day--today" : ""}${d.has ? " cal-day--has" : ""}`}
+                aria-label={`Dia ${formatDate(d.iso)}`}
+                onClick={() => setDay(d.iso)}
+              >
+                <span className="cal-day__dow">{d.dow}</span>
+                <span className="cal-day__num">{d.num}</span>
+                <span className="cal-day__dot" style={{ opacity: d.has ? 1 : 0 }} aria-hidden />
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
 
-      <div style={{ flex: 1, padding: "14px 16px 0", display: "flex", flexDirection: "column", gap: 16 }}>
+        <div className="room-toolbar" style={{ padding: 0 }}>
+          <div className="room-toolbar__row">
+            {(rooms ?? []).map((r) => (
+              <button key={r.id} type="button" className={`room-chip${activeRoom === r.id ? " room-chip--active" : ""}`} onClick={() => setRoomId(r.id)}>
+                {r.name} · {r.capacity} lug.
+              </button>
+            ))}
+          </div>
+        </div>
+
         {rooms !== null && rooms.length === 0 && (
           <div className="empty-state" style={{ borderRadius: 14 }}>
             <span className="empty-state__icon"><i className="ph ph-door-open" aria-hidden /></span>
@@ -321,29 +387,53 @@ export default function Rooms() {
           </div>
         )}
 
+        {/* grade proporcional da sala — toque no vazio reserva naquela hora */}
         {activeRoom && (
-          <div className="card" style={{ padding: 14 }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-              {slots.map((slot) => (
-                <div key={slot.hour} className="agenda__row">
-                  <span className="agenda__hour">{slot.hour}</span>
-                  {slot.contUntil === null && slot.blocks.length === 0 ? (
-                    <button type="button" className="agenda__free agenda__free--action" onClick={() => setCreating({ start: day === todayISO() && slot.hour < suggestedStart(day) ? suggestedStart(day) : slot.hour })}>
-                      livre
-                    </button>
-                  ) : (
-                    <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>
-                      {slot.contUntil && <span className="agenda__cont">ocupada até {slot.contUntil}</span>}
-                      {slot.blocks.map((b) => (
-                        <span key={b.id} className={`agenda__block${b.mine ? "" : " agenda__block--other"}`} style={{ minHeight: 44 }}>
-                          <span className="agenda__block-title">{b.title}</span>
-                          <span className="agenda__block-meta">{b.meta}</span>
-                        </span>
-                      ))}
-                    </span>
-                  )}
+          <div className="card" style={{ padding: "16px 14px" }}>
+            <div className="cal-grid" style={{ height: (DAY_END - DAY_START) * HOUR_H + 1 }}>
+              {gridHours.map((h) => (
+                <div key={h} className="cal-grid__row" style={{ top: (h - DAY_START) * HOUR_H, height: HOUR_H }}>
+                  <span className="cal-grid__hour">{String(h).padStart(2, "0")}:00</span>
+                  <button
+                    type="button"
+                    className="cal-grid__cell"
+                    aria-label={`Reservar às ${String(h).padStart(2, "0")}:00`}
+                    onClick={() => {
+                      const wanted = `${String(h).padStart(2, "0")}:00`;
+                      const ahead = suggestedStart(day);
+                      setCreating({ start: day === todayISO() && wanted < ahead ? ahead : wanted });
+                    }}
+                  />
                 </div>
               ))}
+              <div className="cal-grid__row" style={{ top: (DAY_END - DAY_START) * HOUR_H, height: 0 }}>
+                <span className="cal-grid__hour">{DAY_END === 24 ? "00:00" : `${String(DAY_END).padStart(2, "0")}:00`}</span>
+                <span className="cal-grid__cell" style={{ borderTopStyle: "solid" }} />
+              </div>
+              {positioned.map(({ r, p, lane, lanes, top, height }) => {
+                const mineFlag = r.owner === profile?.id;
+                const compact = height < 40;
+                return (
+                  <button
+                    key={r.id}
+                    type="button"
+                    className={`cal-event${mineFlag ? "" : " cal-event--other"}${compact ? " cal-event--compact" : ""}`}
+                    style={{
+                      top,
+                      height,
+                      ...(lanes > 1 ? { left: `calc(58px + (100% - 62px) / ${lanes} * ${lane})`, width: `calc((100% - 62px) / ${lanes})`, right: "auto" } : {}),
+                    }}
+                    aria-label={`Reserva ${r.title}`}
+                    onClick={() => setDetails(r)}
+                  >
+                    <span className="cal-event__title">{r.title}{r.owner_name && !mineFlag ? ` — ${r.owner_name}` : ""}</span>
+                    <span className="cal-event__meta">
+                      {fmtHM(p.start)}–{fmtHM(p.end)}
+                      {!compact && mineFlag ? " · sua reserva" : ""}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
@@ -386,6 +476,38 @@ export default function Rooms() {
           onCreated={reloadAll}
         />
       )}
+
+      {details && (() => {
+        const p = parsePeriod(details.period);
+        const mineFlag = details.owner === profile?.id;
+        return (
+          <Sheet label="Detalhes da reserva" onClose={() => setDetails(null)}>
+            <div className="sheet__title">{details.title}</div>
+            <div style={{ marginTop: 6, font: "400 12px/1.5 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-2)" }}>
+              {formatDate(p.start)} · {activeRoomName} · {fmtHM(p.start)}–{fmtHM(p.end)}
+            </div>
+            <div className="card" style={{ marginTop: 14, padding: 14, display: "flex", alignItems: "center", gap: 10 }}>
+              <i className="ph ph-user" style={{ fontSize: 16, color: "var(--field-label)" }} aria-hidden />
+              <span style={{ font: "400 12.5px/1.4 var(--font-sans)", color: "var(--text-1)" }}>
+                {mineFlag ? "Sua reserva" : `Reservada por ${details.owner_name ?? "colega"}`}
+              </span>
+            </div>
+            {!mineFlag && (
+              <div style={{ marginTop: 12, font: "400 11.5px/1.5 var(--font-sans)", color: "var(--text-2)" }}>
+                Só quem criou a reserva pode cancelá-la.
+              </div>
+            )}
+            <div className="sheet__footer" style={{ marginTop: 16 }}>
+              <Button variant="secondary" block={!mineFlag} onClick={() => setDetails(null)}>Fechar</Button>
+              {mineFlag && (
+                <Button variant="destructive" icon="ph-prohibit" onClick={() => { setCancelling(details); setDetails(null); }}>
+                  Cancelar reserva
+                </Button>
+              )}
+            </div>
+          </Sheet>
+        );
+      })()}
 
       {cancelling && (
         <Sheet label="Cancelar reserva" onClose={() => setCancelling(null)}>

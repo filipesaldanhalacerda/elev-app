@@ -44,6 +44,26 @@ export function useRooms() {
   return { rooms, reload: load };
 }
 
+/** TODAS as reservas ativas da sala (com dono) — o dia é filtrado na tela; alimenta também os pontos da faixa de dias. */
+export function useRoomReservations(roomId: string | null) {
+  const [rows, setRows] = useState<Reservation[] | null>(null);
+  const load = async () => {
+    if (!roomId) return;
+    const { data } = await supabase
+      .from("reservations")
+      .select("*, profiles!reservations_owner_fkey(name)")
+      .eq("room_id", roomId)
+      .is("cancelled_at", null)
+      .order("period");
+    setRows((data ?? []).map((r) => ({ ...(r as Reservation), owner_name: ((r as { profiles?: { name?: string } }).profiles)?.name ?? null })));
+  };
+  useEffect(() => {
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomId]);
+  return { rows, reload: load };
+}
+
 export function useDayReservations(roomId: string | null, day: string) {
   const [rows, setRows] = useState<Reservation[] | null>(null);
   const load = async () => {
