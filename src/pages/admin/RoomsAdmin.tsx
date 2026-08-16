@@ -88,7 +88,7 @@ export default function RoomsAdmin() {
     <AdminShell
       title="Salas"
       actions={
-        <Button size={36} icon="ph-plus" onClick={() => setForm({ open: true, room: null })}>
+        <Button size={36} icon="icon-plus" onClick={() => setForm({ open: true, room: null })}>
           Nova sala
         </Button>
       }
@@ -104,11 +104,11 @@ export default function RoomsAdmin() {
                 </span>
                 <span className="room-card__actions">
                   <button type="button" className="row-btn row-btn--icon" aria-label={`Editar ${room.name}`} onClick={() => setForm({ open: true, room })}>
-                    <i className="ph ph-pencil-simple" aria-hidden />
+                    <i className="icon-pencil" aria-hidden />
                   </button>
                   {room.is_active ? (
                     <button type="button" className="row-btn row-btn--icon row-btn--danger" aria-label={`Desativar ${room.name}`} onClick={() => setActive(room, false)}>
-                      <i className="ph ph-prohibit" aria-hidden />
+                      <i className="icon-ban" aria-hidden />
                     </button>
                   ) : (
                     <button type="button" className="row-btn" onClick={() => setActive(room, true)}>
@@ -119,17 +119,17 @@ export default function RoomsAdmin() {
               </div>
               <div className="room-card__facts">
                 <span className="room-card__fact">
-                  <i className="ph ph-users" aria-hidden />
+                  <i className="icon-users" aria-hidden />
                   {formatInt(room.capacity)} lugares
                 </span>
                 {room.is_active ? (
                   <span className="room-card__fact">
-                    <i className="ph ph-calendar-blank" aria-hidden />
+                    <i className="icon-calendar" aria-hidden />
                     {formatInt(todayCount.get(room.id) ?? 0)} reserva{(todayCount.get(room.id) ?? 0) !== 1 ? "s" : ""} hoje
                   </span>
                 ) : (
                   <span className="room-card__fact">
-                    <i className="ph ph-wrench" aria-hidden />
+                    <i className="icon-wrench" aria-hidden />
                     {room.inactive_reason ?? "inativa"}
                   </span>
                 )}
@@ -145,11 +145,11 @@ export default function RoomsAdmin() {
           ))}
           {rooms !== null && rooms.length === 0 && (
             <div className="empty-state" style={{ borderRadius: 14, gridColumn: "1 / -1" }}>
-              <span className="empty-state__icon"><i className="ph ph-door-open" aria-hidden /></span>
+              <span className="empty-state__icon"><i className="icon-door-open" aria-hidden /></span>
               <span className="empty-state__title">Nenhuma sala ainda</span>
               <span className="empty-state__desc">Cadastre a primeira sala para liberar as reservas aos assessores.</span>
               <span className="empty-state__action">
-                <Button icon="ph-plus" onClick={() => setForm({ open: true, room: null })}>Nova sala</Button>
+                <Button icon="icon-plus" onClick={() => setForm({ open: true, room: null })}>Nova sala</Button>
               </span>
             </div>
           )}

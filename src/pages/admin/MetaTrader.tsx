@@ -106,7 +106,7 @@ export default function MetaTrader() {
               <div>
                 <TextField label="Login" mono placeholder="número da conta" value={login} onChange={(e) => setLogin(e.target.value)} />
                 {authFailed && login && (
-                  <span className="mt-field-ok"><i className="ph ph-check-circle" aria-hidden />Login confirmado</span>
+                  <span className="mt-field-ok"><i className="icon-circle-check" aria-hidden />Login confirmado</span>
                 )}
               </div>
               <PasswordField label="Senha" error={authFailed ? "O servidor recusou esta senha." : undefined} value={password} onChange={(e) => setPassword(e.target.value)} />
@@ -114,7 +114,7 @@ export default function MetaTrader() {
                 <TextField label="Servidor" mono placeholder="XPMT5-Real02" value={server} onChange={(e) => setServer(e.target.value)} />
                 <p className="mt-help">Aparece como “Server” no e-mail. Ex.: XPMT5-Real02.</p>
                 {authFailed && server && (
-                  <span className="mt-field-ok"><i className="ph ph-check-circle" aria-hidden />Servidor confirmado</span>
+                  <span className="mt-field-ok"><i className="icon-circle-check" aria-hidden />Servidor confirmado</span>
                 )}
               </div>
             </div>
@@ -130,7 +130,7 @@ export default function MetaTrader() {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <span className="mt-card__title">Saúde da conexão</span>
               {conn && (
-                <StatusChip kind={STATUS_CHIP[conn.status].kind} icon={conn.status === "ativa" ? "ph-plugs-connected" : conn.status === "desconectada" ? "ph-plugs" : undefined}>
+                <StatusChip kind={STATUS_CHIP[conn.status].kind} icon={conn.status === "ativa" ? "icon-plug-zap" : conn.status === "desconectada" ? "icon-unplug" : undefined}>
                   {STATUS_CHIP[conn.status].label}
                 </StatusChip>
               )}
@@ -183,7 +183,7 @@ export default function MetaTrader() {
               <div className="mt-card__title" style={{ fontSize: 12.5, marginBottom: 10 }}>Ações</div>
               <div className="mt-actions__buttons">
                 <Button variant="secondary" onClick={() => setPassword("")}>Trocar credenciais</Button>
-                <Button variant="destructive" icon="ph-prohibit" onClick={() => setDisconnecting(true)} disabled={conn?.status === "desconectada"}>
+                <Button variant="destructive" icon="icon-ban" onClick={() => setDisconnecting(true)} disabled={conn?.status === "desconectada"}>
                   Desconectar
                 </Button>
               </div>
@@ -206,7 +206,7 @@ export default function MetaTrader() {
               <Button variant="secondary" onClick={() => setDisconnecting(false)}>Cancelar</Button>
               <Button
                 variant="destructive"
-                icon="ph-prohibit"
+                icon="icon-ban"
                 onClick={async () => {
                   await workerFetch("/api/admin/mt/disconnect", { method: "POST" });
                   setDisconnecting(false);

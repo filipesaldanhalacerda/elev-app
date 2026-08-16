@@ -10,7 +10,7 @@ import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/500.css";
 import "@fontsource/ibm-plex-mono/600.css";
 // Ícones Phosphor regular (única biblioteca permitida)
-import "@phosphor-icons/web/regular/style.css";
+import "lucide-static/font/lucide.css";
 
 import "./styles/tokens.css";
 import "./styles/base.css";

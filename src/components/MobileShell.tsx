@@ -11,11 +11,11 @@ import { useAuth } from "../lib/auth";
 import { formatTime } from "../lib/format";
 
 const ITEMS = [
-  { key: "inicio", label: "Início", icon: "ph-house", path: "/" },
-  { key: "clientes", label: "Clientes", icon: "ph-users-three", path: "/clientes" },
-  { key: "cotacoes", label: "Cotações", icon: "ph-chart-line", path: "/cotacoes" },
-  { key: "tarefas", label: "Tarefas", icon: "ph-check-square", path: "/cards" },
-  { key: "agenda", label: "Agenda", icon: "ph-calendar-blank", path: "/agenda" },
+  { key: "inicio", label: "Início", icon: "icon-house", path: "/" },
+  { key: "clientes", label: "Clientes", icon: "icon-users-round", path: "/clientes" },
+  { key: "cotacoes", label: "Cotações", icon: "icon-chart-line", path: "/cotacoes" },
+  { key: "tarefas", label: "Tarefas", icon: "icon-square-check", path: "/cards" },
+  { key: "agenda", label: "Agenda", icon: "icon-calendar", path: "/agenda" },
 ] as const;
 
 export type MobileNavKey = (typeof ITEMS)[number]["key"];
@@ -59,7 +59,7 @@ function InstallPrompt() {
           Agora não
         </Button>
         <Button
-          icon="ph-plus"
+          icon="icon-plus"
           style={{ fontSize: 13 }}
           onClick={async () => {
             await event.prompt();
@@ -100,7 +100,7 @@ export function MobileShell({ active, children }: { active?: MobileNavKey; child
         <div style={{ flex: "none", margin: "0 16px 8px" }} data-sync-queue>
           <div className="card" style={{ borderRadius: 14, padding: "12px 14px", display: "flex", alignItems: "center", gap: 11 }}>
             <span style={{ width: 28, height: 28, borderRadius: 8, background: "var(--chip-pill-bg)", color: "var(--text-body)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
-              <i className="ph ph-cloud-arrow-up" style={{ fontSize: 15 }} aria-hidden />
+              <i className="icon-cloud-upload" style={{ fontSize: 15 }} aria-hidden />
             </span>
             <span style={{ flex: 1, font: "400 12px/1.45 var(--font-sans)", color: "var(--text-body)" }}>
               {queueCount} anotaç{queueCount > 1 ? "ões aguardando" : "ão aguardando"} sincronizar
@@ -119,7 +119,7 @@ export function MobileShell({ active, children }: { active?: MobileNavKey; child
             aria-current={item.key === active ? "page" : undefined}
             onClick={() => navigate(item.path)}
           >
-            <i className={`ph ${item.icon}`} aria-hidden />
+            <i className={`${item.icon}`} aria-hidden />
             <span className="mnav__label">{item.label}</span>
           </button>
         ))}

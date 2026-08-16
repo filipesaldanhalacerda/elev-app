@@ -14,7 +14,7 @@ export default function LostPassword() {
     <div className="auth-screen" data-screen="03">
       <header className="auth-header">
         <button type="button" className="auth-header__back" aria-label="Voltar" onClick={() => navigate("/login")}>
-          <i className="ph ph-arrow-left" aria-hidden />
+          <i className="icon-arrow-left" aria-hidden />
         </button>
         <span className="auth-header__title">Perdi minha senha</span>
       </header>
@@ -47,7 +47,7 @@ export default function LostPassword() {
             <span className="contact-card__sub">administrador da sua assessoria</span>
           </span>
           <a className="contact-card__wa" href="https://wa.me/" target="_blank" rel="noreferrer" aria-label="WhatsApp do administrador">
-            <i className="ph ph-whatsapp-logo" aria-hidden />
+            <i className="icon-message-circle" aria-hidden />
           </a>
         </div>
 

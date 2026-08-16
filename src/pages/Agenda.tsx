@@ -162,13 +162,13 @@ function EventSheet({ editing, initialDay, initialStart, onClose, onSaved }: { e
                   <option key={c.account_code} value={c.account_code}>{c.name ?? `Conta ${c.account_code}`}</option>
                 ))}
               </select>
-              <i className="ph ph-caret-down field__caret" aria-hidden />
+              <i className="icon-chevron-down field__caret" aria-hidden />
             </div>
           </div>
           {(past || error) && (
             <div className="field--error">
               <div className="field__help">
-                <i className="ph ph-warning-circle" aria-hidden />
+                <i className="icon-circle-alert" aria-hidden />
                 {error ?? "Não é possível agendar no passado."}
               </div>
             </div>
@@ -285,7 +285,7 @@ export default function Agenda() {
     <MobileShell active="agenda">
       <header className="page-header" style={{ background: "var(--surface)" }}>
         <span className="page-header__title">Agenda</span>
-        <Button icon="ph-plus" style={{ height: 40, fontSize: 12.5 }} onClick={() => { setEditing(undefined); setSheet(true); }}>
+        <Button icon="icon-plus" style={{ height: 40, fontSize: 12.5 }} onClick={() => { setEditing(undefined); setSheet(true); }}>
           Novo
         </Button>
       </header>
@@ -305,7 +305,7 @@ export default function Agenda() {
                   style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 5, font: "600 15px/1.2 var(--font-sans)", letterSpacing: "-0.01em", color: "var(--text-1)" }}
                 >
                   {monthLabel}
-                  <i className="ph ph-caret-down" style={{ fontSize: 13, color: "var(--text-2)" }} aria-hidden />
+                  <i className="icon-chevron-down" style={{ fontSize: 13, color: "var(--text-2)" }} aria-hidden />
                   <input
                     type="date"
                     aria-label="Data da agenda"
@@ -455,10 +455,10 @@ export default function Agenda() {
               onClick={() => { setEditing(actions); setActions(null); setSheet(true); }}
             >
               <span style={{ width: 30, height: 30, borderRadius: 9, background: "var(--chip-pill-bg)", color: "var(--field-label)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
-                <i className="ph ph-pencil-simple" style={{ fontSize: 15 }} aria-hidden />
+                <i className="icon-pencil" style={{ fontSize: 15 }} aria-hidden />
               </span>
               <span style={{ flex: 1, font: "400 13px/1.35 var(--font-sans)", color: "var(--text-1)" }}>Editar agendamento</span>
-              <i className="ph ph-caret-right" style={{ fontSize: 16, color: "var(--icon-decor)" }} aria-hidden />
+              <i className="icon-chevron-right" style={{ fontSize: 16, color: "var(--icon-decor)" }} aria-hidden />
             </button>
             <button
               type="button"
@@ -466,7 +466,7 @@ export default function Agenda() {
               onClick={() => { setCancelling(actions); setActions(null); }}
             >
               <span style={{ width: 30, height: 30, borderRadius: 9, background: "var(--danger-action-hover-bg)", color: "var(--danger-action-text)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
-                <i className="ph ph-prohibit" style={{ fontSize: 15 }} aria-hidden />
+                <i className="icon-ban" style={{ fontSize: 15 }} aria-hidden />
               </span>
               <span style={{ flex: 1, font: "600 13px/1.35 var(--font-sans)", color: "var(--danger-action-text)" }}>Cancelar agendamento</span>
             </button>
@@ -494,7 +494,7 @@ export default function Agenda() {
             <Button variant="secondary" onClick={() => setCancelling(null)}>Voltar</Button>
             <Button
               variant="destructive"
-              icon="ph-prohibit"
+              icon="icon-ban"
               loading={cancelBusy}
               onClick={async () => {
                 setCancelBusy(true);

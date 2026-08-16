@@ -5,13 +5,13 @@ import { useAuth } from "../../lib/auth";
 import { initials } from "../../lib/format";
 
 const ITEMS = [
-  { path: "/admin", label: "Visão geral", icon: "ph-squares-four" },
-  { path: "/admin/metatrader", label: "MetaTrader", icon: "ph-plugs-connected" },
-  { path: "/admin/usuarios", label: "Usuários", icon: "ph-users-three" },
-  { path: "/admin/salas", label: "Salas", icon: "ph-door-open" },
-  { path: "/admin/importacoes", label: "Importações", icon: "ph-upload-simple" },
-  { path: "/admin/auditoria", label: "Auditoria", icon: "ph-list-magnifying-glass" },
-  { path: "/admin/kanban", label: "Kanban geral", icon: "ph-kanban" },
+  { path: "/admin", label: "Visão geral", icon: "icon-layout-grid" },
+  { path: "/admin/metatrader", label: "MetaTrader", icon: "icon-plug-zap" },
+  { path: "/admin/usuarios", label: "Usuários", icon: "icon-users-round" },
+  { path: "/admin/salas", label: "Salas", icon: "icon-door-open" },
+  { path: "/admin/importacoes", label: "Importações", icon: "icon-upload" },
+  { path: "/admin/auditoria", label: "Auditoria", icon: "icon-text-search" },
+  { path: "/admin/kanban", label: "Kanban geral", icon: "icon-kanban" },
 ];
 
 export function AdminShell({ title, actions, children }: { title: string; actions?: ReactNode; children: ReactNode }) {
@@ -35,7 +35,7 @@ export function AdminShell({ title, actions, children }: { title: string; action
               aria-current={location.pathname === item.path ? "page" : undefined}
               onClick={() => navigate(item.path)}
             >
-              <i className={`ph ${item.icon}`} aria-hidden />
+              <i className={`${item.icon}`} aria-hidden />
               {item.label}
             </button>
           ))}
@@ -55,7 +55,7 @@ export function AdminShell({ title, actions, children }: { title: string; action
               navigate("/login");
             }}
           >
-            <i className="ph ph-sign-out" aria-hidden />
+            <i className="icon-log-out" aria-hidden />
           </button>
         </div>
       </aside>

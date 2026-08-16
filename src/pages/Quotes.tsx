@@ -147,14 +147,14 @@ export default function Quotes() {
           )}
         </span>
         <button type="button" className="page-header__action" aria-label="Atualizar" onClick={() => window.location.reload()}>
-          <i className="ph ph-arrow-clockwise" aria-hidden />
+          <i className="icon-rotate-cw" aria-hidden />
         </button>
       </header>
 
       <div style={{ padding: "6px 16px 12px" }}>
         <div className="csearch quotes-search">
           <div className="csearch__box">
-            <i className="ph ph-magnifying-glass csearch__icon" aria-hidden />
+            <i className="icon-search csearch__icon" aria-hidden />
             <input
               className="csearch__input"
               type="search"
@@ -174,7 +174,7 @@ export default function Quotes() {
                   setSelected(null);
                 }}
               >
-                <i className="ph ph-x" aria-hidden />
+                <i className="icon-x" aria-hidden />
               </button>
             )}
           </div>
@@ -244,8 +244,8 @@ export default function Quotes() {
               </div>
 
               <div className="quote-actions">
-                <Button icon="ph-target" onClick={() => navigate(`/alertas?novo&ativo=${detail.quote!.symbol}`)}>Criar alerta</Button>
-                <Button variant="secondary" icon="ph-push-pin" onClick={() => toggle(detail.quote!.symbol)}>
+                <Button icon="icon-target" onClick={() => navigate(`/alertas?novo&ativo=${detail.quote!.symbol}`)}>Criar alerta</Button>
+                <Button variant="secondary" icon="icon-pin" onClick={() => toggle(detail.quote!.symbol)}>
                   {isPinned(detail.quote.symbol) ? "Desafixar" : "Fixar"}
                 </Button>
               </div>
@@ -287,7 +287,7 @@ export default function Quotes() {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                 <span style={{ font: "600 15px/1.2 var(--font-sans)", letterSpacing: "-0.01em", color: "var(--text-1)" }}>Favoritos</span>
                 <span style={{ display: "flex", alignItems: "center", gap: 5, font: "500 12px/1 var(--font-sans)", color: "var(--ghost-text)" }}>
-                  <i className="ph ph-sliders-horizontal" style={{ fontSize: 14 }} aria-hidden />
+                  <i className="icon-sliders-horizontal" style={{ fontSize: 14 }} aria-hidden />
                   Editar
                 </span>
               </div>

@@ -203,7 +203,10 @@ app.post("/api/admin/users", async (c) => {
     return c.json({ error: pErr.message }, 400);
   }
   await audit(svc, "usuario", "Usuário criado", `${name} (${role}${normalized ? ` A-${normalized}` : ""})`, admin);
-  return c.json({ id: created.user.id });
+  return c.json({
+    id: created.user.id,
+    user: { id: created.user.id, name, email, advisor_code: normalized, role, is_active: true, pending_code_expires_at: null },
+  });
 });
 
 app.post("/api/admin/users/:id/code", async (c) => {

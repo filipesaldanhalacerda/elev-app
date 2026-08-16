@@ -107,7 +107,7 @@ export default function Clients() {
         <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {data && <span className="page-header__count">{formatInt(data.total)}</span>}
           <button type="button" className="page-header__action" aria-label="Filtrar" onClick={() => setFilterSheet(true)}>
-            <i className="ph ph-funnel" aria-hidden />
+            <i className="icon-funnel" aria-hidden />
           </button>
         </span>
       </header>
@@ -130,7 +130,7 @@ export default function Clients() {
               </button>
             ))}
             <button type="button" className="filter-sort" onClick={() => setFilterSheet(true)}>
-              <i className={`ph ${sort.asc ? "ph-arrow-up" : "ph-arrow-down"}`} aria-hidden />
+              <i className={`${sort.asc ? "icon-arrow-up" : "icon-arrow-down"}`} aria-hidden />
               {sort.by === "patrimony" ? "Patrimônio" : sort.by === "name" ? "Nome" : "Variação"}
             </button>
           </div>
@@ -145,14 +145,14 @@ export default function Clients() {
             </Banner>
             <div className="empty-state empty-state--error" style={{ borderRadius: 14, padding: "24px 20px" }}>
               <span className="empty-state__icon">
-                <i className="ph ph-cloud-warning" aria-hidden />
+                <i className="icon-cloud-alert" aria-hidden />
               </span>
               <span className="empty-state__title" style={{ fontSize: 15 }}>Lista desatualizada</span>
               <span className="empty-state__desc" style={{ maxWidth: 280 }}>
                 Valores de patrimônio podem ter mudado. Tente de novo em alguns segundos ou siga com os dados salvos.
               </span>
               <span style={{ marginTop: 16, display: "flex", gap: 8 }}>
-                <Button icon="ph-arrow-clockwise" onClick={reload}>Tentar de novo</Button>
+                <Button icon="icon-rotate-cw" onClick={reload}>Tentar de novo</Button>
                 <Button variant="secondary" onClick={() => setShowSaved(true)}>Ver salvos</Button>
               </span>
             </div>
@@ -190,7 +190,7 @@ export default function Clients() {
         {!error && data && data.rows.length === 0 && (
           <div className="empty-state" style={{ borderRadius: 14 }}>
             <span className="empty-state__icon">
-              <i className="ph ph-users-three" aria-hidden />
+              <i className="icon-users-round" aria-hidden />
             </span>
             <span className="empty-state__title">Nenhum cliente {filter !== "todos" ? "neste filtro" : "na sua carteira ainda"}</span>
             <span className="empty-state__desc">
@@ -263,10 +263,10 @@ export default function Clients() {
                 <span className="field__label" style={{ display: "block" }}>Direção</span>
                 <div className="segmented" style={{ height: 44 }}>
                   <button type="button" className={`segmented__item${!sort.asc ? " segmented__item--active" : ""}`} onClick={() => setSort((s) => ({ ...s, asc: false }))}>
-                    <i className="ph ph-arrow-down" aria-hidden />Maior primeiro
+                    <i className="icon-arrow-down" aria-hidden />Maior primeiro
                   </button>
                   <button type="button" className={`segmented__item${sort.asc ? " segmented__item--active" : ""}`} onClick={() => setSort((s) => ({ ...s, asc: true }))}>
-                    <i className="ph ph-arrow-up" aria-hidden />Menor primeiro
+                    <i className="icon-arrow-up" aria-hidden />Menor primeiro
                   </button>
                 </div>
               </div>

@@ -25,7 +25,7 @@ export function FieldShell({ label, error, disabled, className, htmlFor, childre
       {children}
       {error && (
         <div className="field__help">
-          <i className="ph ph-warning-circle" aria-hidden />
+          <i className="icon-circle-alert" aria-hidden />
           {error}
         </div>
       )}
@@ -51,7 +51,7 @@ export function TextField({ label, error, mono, tabular, trailingIcon, className
         <input id={id} className={`field__input${mono ? " field__input--mono" : ""}`} disabled={disabled} {...rest} />
         {trailingIcon && (
           <i
-            className={`ph ${trailingIcon} ${trailingIcon === "ph-caret-down" ? "field__caret" : "field__trailing-icon"}`}
+            className={`${trailingIcon} ${trailingIcon === "icon-chevron-down" ? "field__caret" : "field__trailing-icon"}`}
             aria-hidden
           />
         )}
@@ -78,7 +78,7 @@ export function PasswordField({ label, error, className, disabled, ...rest }: Pa
           aria-label={visible ? "Ocultar senha" : "Mostrar senha"}
           onClick={() => setVisible((v) => !v)}
         >
-          <i className={`ph ${visible ? "ph-eye-slash" : "ph-eye"}`} aria-hidden />
+          <i className={`${visible ? "icon-eye-off" : "icon-eye"}`} aria-hidden />
         </button>
       </div>
     </FieldShell>
@@ -156,7 +156,7 @@ export function Checkbox({ checked, onChange, label }: CheckboxProps) {
       className="checkbox"
       onClick={() => onChange?.(!checked)}
     >
-      {checked && <i className="ph ph-check" aria-hidden />}
+      {checked && <i className="icon-check" aria-hidden />}
     </button>
   );
 }

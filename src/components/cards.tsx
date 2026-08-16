@@ -97,7 +97,7 @@ export function AlertCard({ ticker, direction, currentPrice, dayChangePct, targe
         <span className="alert-card__id">
           <span className="alert-card__ticker">{ticker}</span>
           <span className="alert-card__dir">
-            <i className={`ph ${up ? "ph-arrow-up-right" : "ph-arrow-down-right"}`} aria-hidden />
+            <i className={`${up ? "icon-arrow-up-right" : "icon-arrow-down-right"}`} aria-hidden />
             alvo de {direction}
           </span>
         </span>

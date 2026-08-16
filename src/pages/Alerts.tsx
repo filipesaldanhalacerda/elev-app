@@ -131,10 +131,10 @@ function AlertSheet({ initialTicker, initialClient = "", editing, onClose, onSav
             <span className="field__label" style={{ display: "block" }}>Direção</span>
             <div className="segmented">
               <button type="button" className={`segmented__item${direction === "alta" ? " segmented__item--active" : ""}`} onClick={() => setDirection("alta")}>
-                <i className="ph ph-arrow-up-right" aria-hidden />Acima de
+                <i className="icon-arrow-up-right" aria-hidden />Acima de
               </button>
               <button type="button" className={`segmented__item${direction === "baixa" ? " segmented__item--active" : ""}`} onClick={() => setDirection("baixa")}>
-                <i className="ph ph-arrow-down-right" aria-hidden />Abaixo de
+                <i className="icon-arrow-down-right" aria-hidden />Abaixo de
               </button>
             </div>
           </div>
@@ -163,14 +163,14 @@ function AlertSheet({ initialTicker, initialClient = "", editing, onClose, onSav
                   <option key={c.account_code} value={c.account_code}>{c.name ?? `Conta ${c.account_code}`}</option>
                 ))}
               </select>
-              <i className="ph ph-caret-down field__caret" aria-hidden />
+              <i className="icon-chevron-down field__caret" aria-hidden />
             </div>
           </div>
         </div>
 
         {valid && (
           <div className="alert-summary">
-            <i className="ph ph-bell-ringing" aria-hidden />
+            <i className="icon-bell-ring" aria-hidden />
             <span className="alert-summary__text">
               Você recebe push quando <code>{ticker.toUpperCase()}</code> {direction === "alta" ? "passar de" : "cair abaixo de"}{" "}
               <strong style={{ fontVariantNumeric: "tabular-nums", fontWeight: 500 }}>
@@ -231,7 +231,7 @@ export default function Alerts() {
     <MobileShell active="inicio">
       <header className="page-header" style={{ background: "var(--surface)" }}>
         <span className="page-header__title">Alertas</span>
-        <Button icon="ph-plus" style={{ height: 40, fontSize: 12.5 }} onClick={() => { setEditing(undefined); setSheet(true); }}>
+        <Button icon="icon-plus" style={{ height: 40, fontSize: 12.5 }} onClick={() => { setEditing(undefined); setSheet(true); }}>
           Novo
         </Button>
       </header>
@@ -246,7 +246,7 @@ export default function Alerts() {
 
       <div style={{ flex: 1, padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 10 }}>
         <div className="csearch__box" style={{ height: 48 }}>
-          <i className="ph ph-magnifying-glass csearch__icon" aria-hidden style={{ fontSize: 18 }} />
+          <i className="icon-search csearch__icon" aria-hidden style={{ fontSize: 18 }} />
           <input
             className="csearch__input"
             style={{ fontSize: 14 }}
@@ -257,7 +257,7 @@ export default function Alerts() {
           />
           {searchInput && (
             <button type="button" className="csearch__clear" aria-label="Limpar busca" onClick={() => setSearchInput("")}>
-              <i className="ph ph-x" aria-hidden />
+              <i className="icon-x" aria-hidden />
             </button>
           )}
         </div>
@@ -285,10 +285,10 @@ export default function Alerts() {
                       </span>
                       <span className="alert-foot__actions">
                         <button type="button" className="alert-foot__btn" aria-label={`Editar alerta de ${a.ticker}`} onClick={() => { setEditing(a); setSheet(true); }}>
-                          <i className="ph ph-pencil-simple" aria-hidden />
+                          <i className="icon-pencil" aria-hidden />
                         </button>
                         <button type="button" className="alert-foot__btn alert-foot__btn--danger" aria-label={`Cancelar alerta de ${a.ticker}`} onClick={() => cancel(a.id)}>
-                          <i className="ph ph-prohibit" aria-hidden />
+                          <i className="icon-ban" aria-hidden />
                         </button>
                       </span>
                     </div>
@@ -299,14 +299,14 @@ export default function Alerts() {
             <InfiniteSentinel hasMore={activeList.hasMore} loading={activeList.loadingMore} onMore={activeList.loadMore} />
             {active !== null && active.length === 0 && (
               <div className="empty-state" style={{ borderRadius: 14 }}>
-                <span className="empty-state__icon"><i className="ph ph-target" aria-hidden /></span>
+                <span className="empty-state__icon"><i className="icon-target" aria-hidden /></span>
                 <span className="empty-state__title">{search ? "Nenhum alerta encontrado" : "Nenhum alerta ativo"}</span>
                 <span className="empty-state__desc">
                   {search ? `Nenhum alerta ativo corresponde a "${search.trim().toUpperCase()}".` : "Crie um alerta de preço e receba push quando o alvo for atingido."}
                 </span>
                 {!search && (
                   <span className="empty-state__action">
-                    <Button icon="ph-plus" onClick={() => { setEditing(undefined); setSheet(true); }}>Criar alerta</Button>
+                    <Button icon="icon-plus" onClick={() => { setEditing(undefined); setSheet(true); }}>Criar alerta</Button>
                   </span>
                 )}
               </div>
@@ -324,7 +324,7 @@ export default function Alerts() {
             {triggered === null && <div className="skeleton" style={{ height: 140, borderRadius: 14 }} />}
             {triggered !== null && triggered.length === 0 && (
               <div className="empty-state" style={{ borderRadius: 14 }}>
-                <span className="empty-state__icon"><i className="ph ph-clock-counter-clockwise" aria-hidden /></span>
+                <span className="empty-state__icon"><i className="icon-history" aria-hidden /></span>
                 <span className="empty-state__title">{search ? "Nenhum alerta encontrado" : "Histórico vazio"}</span>
                 <span className="empty-state__desc">
                   {search ? `Nenhum disparo corresponde a "${search.trim().toUpperCase()}".` : "Alertas disparados aparecem aqui com o horário exato do disparo."}
@@ -333,7 +333,7 @@ export default function Alerts() {
             )}
             {(triggered ?? []).map((t) => (
               <div key={t.id} className="card triggered-row" style={{ opacity: 1 }}>
-                <span className="triggered-row__icon"><i className="ph ph-check" aria-hidden /></span>
+                <span className="triggered-row__icon"><i className="icon-check" aria-hidden /></span>
                 <span style={{ flex: 1 }}>
                   <span className="triggered-row__title">
                     {t.ticker} atingiu {t.target_price !== null ? formatBRL(t.target_price) : `${t.target_day_pct}%`}

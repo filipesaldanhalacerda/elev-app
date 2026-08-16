@@ -2,10 +2,10 @@ import { type ReactNode } from "react";
 import { Button } from "./Button";
 
 /** Toast (#2h): superfície invertida — único componente que quebra a regra de superfície. */
-export function Toast({ icon = "ph-check-circle", children, action, onAction }: { icon?: string; children: ReactNode; action?: string; onAction?: () => void }) {
+export function Toast({ icon = "icon-circle-check", children, action, onAction }: { icon?: string; children: ReactNode; action?: string; onAction?: () => void }) {
   return (
     <div className="toast" role="status">
-      <i className={`ph ${icon}`} aria-hidden />
+      <i className={`${icon}`} aria-hidden />
       <span className="toast__text">{children}</span>
       {action && (
         <button type="button" className="toast__action" onClick={onAction}>
@@ -19,10 +19,10 @@ export function Toast({ icon = "ph-check-circle", children, action, onAction }: 
 type BannerKind = "danger" | "warning" | "info" | "success";
 
 const BANNER_ICONS: Record<BannerKind, string> = {
-  danger: "ph-warning-circle",
-  warning: "ph-wifi-slash",
-  info: "ph-info",
-  success: "ph-check-circle",
+  danger: "icon-circle-alert",
+  warning: "icon-wifi-off",
+  info: "icon-info",
+  success: "icon-circle-check",
 };
 
 interface BannerProps {
@@ -38,7 +38,7 @@ interface BannerProps {
 export function Banner({ kind, title, children, icon, action, onAction }: BannerProps) {
   return (
     <div className={`banner banner--${kind}${title ? " banner--multiline" : ""}`} role={kind === "danger" ? "alert" : "status"}>
-      <i className={`ph ${icon ?? BANNER_ICONS[kind]} banner__icon`} aria-hidden />
+      <i className={`${icon ?? BANNER_ICONS[kind]} banner__icon`} aria-hidden />
       <span className="banner__body">
         {title ? (
           <>
@@ -81,7 +81,7 @@ export function Modal({ title, id, onClose, children, impact, note, actions, inl
           {id && <span className="modal__id">{id}</span>}
         </span>
         <button type="button" className="modal__close" aria-label="Fechar" onClick={onClose}>
-          <i className="ph ph-x" aria-hidden />
+          <i className="icon-x" aria-hidden />
         </button>
       </div>
       <div className="modal__body">{children}</div>
@@ -117,7 +117,7 @@ type ChipKind = "success" | "neutral" | "warning" | "info" | "danger";
 export function StatusChip({ kind, dot = true, icon, children }: { kind: ChipKind; dot?: boolean; icon?: string; children: ReactNode }) {
   return (
     <span className={`chip chip--${kind}`}>
-      {icon ? <i className={`ph ${icon}`} aria-hidden /> : dot ? <span className="chip__dot" aria-hidden /> : null}
+      {icon ? <i className={`${icon}`} aria-hidden /> : dot ? <span className="chip__dot" aria-hidden /> : null}
       {children}
     </span>
   );
@@ -127,7 +127,7 @@ export function StatusChip({ kind, dot = true, icon, children }: { kind: ChipKin
 export function MarketChip({ up, children }: { up: boolean; children: ReactNode }) {
   return (
     <span className={`chip chip--market ${up ? "chip--up" : "chip--down"}`}>
-      <i className={`ph ${up ? "ph-arrow-up-right" : "ph-arrow-down-right"}`} aria-hidden />
+      <i className={`${up ? "icon-arrow-up-right" : "icon-arrow-down-right"}`} aria-hidden />
       {children}
     </span>
   );

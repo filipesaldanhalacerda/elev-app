@@ -8,9 +8,9 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: Size;
   block?: boolean;
   loading?: boolean;
-  /** classe do ícone Phosphor, ex. "ph-plus" (leading) */
+  /** classe do ícone Phosphor, ex. "icon-plus" (leading) */
   icon?: string;
-  /** ícone à direita, ex. "ph-caret-down" */
+  /** ícone à direita, ex. "icon-chevron-down" */
   trailingIcon?: string;
   children?: ReactNode;
 }
@@ -43,9 +43,9 @@ export function Button({
   return (
     <button className={classes} disabled={disabled || loading} {...rest}>
       {loading && <span className="btn__spinner" aria-hidden />}
-      {!loading && icon && <i className={`ph ${icon}`} aria-hidden />}
+      {!loading && icon && <i className={`${icon}`} aria-hidden />}
       {children}
-      {trailingIcon && <i className={`ph ${trailingIcon}`} aria-hidden />}
+      {trailingIcon && <i className={`${trailingIcon}`} aria-hidden />}
     </button>
   );
 }

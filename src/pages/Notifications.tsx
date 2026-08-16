@@ -15,11 +15,11 @@ interface NotifRow {
 }
 
 const KIND_ICON: Record<string, { icon: string; brand?: boolean }> = {
-  alerta_atingido: { icon: "ph-target", brand: true },
-  card_delegado: { icon: "ph-kanban" },
-  lembrete_diario: { icon: "ph-bell-ringing" },
-  importacao: { icon: "ph-upload-simple" },
-  reserva_confirmada: { icon: "ph-door-open" },
+  alerta_atingido: { icon: "icon-target", brand: true },
+  card_delegado: { icon: "icon-kanban" },
+  lembrete_diario: { icon: "icon-bell-ring" },
+  importacao: { icon: "icon-upload" },
+  reserva_confirmada: { icon: "icon-door-open" },
 };
 
 export default function Notifications() {
@@ -84,7 +84,7 @@ export default function Notifications() {
 
         {rows !== null && rows.length === 0 && (
           <div className="empty-state" style={{ borderRadius: 14 }}>
-            <span className="empty-state__icon"><i className="ph ph-bell" aria-hidden /></span>
+            <span className="empty-state__icon"><i className="icon-bell" aria-hidden /></span>
             <span className="empty-state__title">Sem notificações</span>
             <span className="empty-state__desc">Alertas atingidos, cards delegados, reservas e importações chegam aqui.</span>
           </div>
@@ -94,7 +94,7 @@ export default function Notifications() {
           <div key={g.day} className="notif-list" style={{ borderRadius: 14, boxShadow: "var(--elev-1)" }}>
             <div className="notif-group__day" style={{ borderTop: "none" }}>{g.label}</div>
             {g.items.map((n) => {
-              const meta = KIND_ICON[n.kind] ?? { icon: "ph-bell" };
+              const meta = KIND_ICON[n.kind] ?? { icon: "icon-bell" };
               const unread = !n.read_at;
               return (
                 <div key={n.id} className={`notif${unread ? " notif--unread" : ""}`} style={{ minHeight: 66 }}>
@@ -107,7 +107,7 @@ export default function Notifications() {
                       display: "flex", alignItems: "center", justifyContent: "center",
                     }}
                   >
-                    <i className={`ph ${meta.icon}`} style={{ fontSize: 15 }} aria-hidden />
+                    <i className={`${meta.icon}`} style={{ fontSize: 15 }} aria-hidden />
                   </span>
                   <span className="notif__main">
                     <span className="notif__title">{n.title}</span>

@@ -44,7 +44,7 @@ export function ClientSearch({ value, onChange, onClear, onSelect, results, load
   return (
     <div className="csearch">
       <div className="csearch__box">
-        <i className="ph ph-magnifying-glass csearch__icon" aria-hidden />
+        <i className="icon-search csearch__icon" aria-hidden />
         <input
           className="csearch__input"
           type="search"
@@ -56,7 +56,7 @@ export function ClientSearch({ value, onChange, onClear, onSelect, results, load
         />
         {value && (
           <button type="button" className="csearch__clear" aria-label="Limpar busca" onClick={onClear}>
-            <i className="ph ph-x" aria-hidden />
+            <i className="icon-x" aria-hidden />
           </button>
         )}
       </div>
@@ -70,7 +70,7 @@ export function ClientSearch({ value, onChange, onClear, onSelect, results, load
 
       {!loading && emptyTerm && (
         <div className="csearch__empty" style={{ marginTop: 8 }}>
-          <i className="ph ph-magnifying-glass" aria-hidden />
+          <i className="icon-search" aria-hidden />
           Nenhum cliente com “{emptyTerm}” na sua carteira.
         </div>
       )}

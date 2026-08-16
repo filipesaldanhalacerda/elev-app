@@ -119,7 +119,7 @@ function EmptyBlock({ icon, title, desc, onAdd }: { icon: string; title: string;
   return (
     <div className="card" style={{ padding: 20, display: "flex", alignItems: "center", gap: 14 }}>
       <span style={{ width: 40, height: 40, borderRadius: 10, border: "1px dashed var(--dashed)", color: "var(--text-3)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
-        <i className={`ph ${icon}`} style={{ fontSize: 19 }} aria-hidden />
+        <i className={`${icon}`} style={{ fontSize: 19 }} aria-hidden />
       </span>
       <span style={{ flex: 1 }}>
         <span style={{ display: "block", font: "500 13.5px/1.35 var(--font-sans)", color: "var(--text-1)" }}>{title}</span>
@@ -127,7 +127,7 @@ function EmptyBlock({ icon, title, desc, onAdd }: { icon: string; title: string;
       </span>
       {onAdd && (
         <button type="button" onClick={onAdd} aria-label="Adicionar" style={{ width: 44, height: 44, borderRadius: 10, border: "1px solid var(--border-strong)", color: "var(--ghost-text)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
-          <i className="ph ph-plus" style={{ fontSize: 19 }} aria-hidden />
+          <i className="icon-plus" style={{ fontSize: 19 }} aria-hidden />
         </button>
       )}
     </div>
@@ -172,7 +172,7 @@ export default function Dashboard() {
           </div>
           <div style={{ display: "flex", gap: 4 }}>
             <button type="button" aria-label="Notificações" onClick={() => navigate("/notificacoes")} style={{ width: 44, height: 44, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-1)", position: "relative" }}>
-              <i className="ph ph-bell" style={{ fontSize: 21 }} aria-hidden />
+              <i className="icon-bell" style={{ fontSize: 21 }} aria-hidden />
               {data !== null && data.unread > 0 && (
                 <span data-badge style={{ position: "absolute", top: 9, right: 10, width: 7, height: 7, borderRadius: 999, background: "var(--market-down)", border: "1.5px solid var(--bg)" }} />
               )}
@@ -215,11 +215,11 @@ export default function Dashboard() {
           {online && (
             <div className="quick-actions" data-home-quick-actions>
               <button type="button" className="quick-action" onClick={() => navigate("/alertas")}>
-                <i className="ph ph-target" aria-hidden />
+                <i className="icon-target" aria-hidden />
                 <span>Alertas</span>
               </button>
               <button type="button" className="quick-action" onClick={() => navigate("/salas")}>
-                <i className="ph ph-door-open" aria-hidden />
+                <i className="icon-door-open" aria-hidden />
                 <span>Sala</span>
               </button>
             </div>
@@ -229,14 +229,14 @@ export default function Dashboard() {
           {!online && (
             <div className="empty-state" style={{ borderRadius: 14, padding: "26px 20px" }} data-offline-central>
               <span className="empty-state__icon" style={{ width: 46, height: 46, borderRadius: 12 }}>
-                <i className="ph ph-cloud-slash" style={{ fontSize: 22 }} aria-hidden />
+                <i className="icon-cloud-off" style={{ fontSize: 22 }} aria-hidden />
               </span>
               <span className="empty-state__title" style={{ fontSize: 15 }}>Sem conexão agora</span>
               <span className="empty-state__desc" style={{ maxWidth: 280 }}>
                 Clientes, carteiras e tarefas seguem disponíveis como estavam às {lastDataAt() ? formatTime(lastDataAt()!) : "—"}. Criar e editar ficam guardados no aparelho e sincronizam quando a rede voltar.
               </span>
               <span className="empty-state__action">
-                <Button variant="secondary" icon="ph-arrow-clockwise" onClick={() => window.location.reload()}>Tentar reconectar</Button>
+                <Button variant="secondary" icon="icon-rotate-cw" onClick={() => window.location.reload()}>Tentar reconectar</Button>
               </span>
             </div>
           )}
@@ -245,7 +245,7 @@ export default function Dashboard() {
           {empty && (
             <div className="empty-state" style={{ borderRadius: 14, padding: "26px 20px" }}>
               <span className="empty-state__icon" style={{ width: 46, height: 46, borderRadius: 12 }}>
-                <i className="ph ph-users-three" style={{ fontSize: 22 }} aria-hidden />
+                <i className="icon-users-round" style={{ fontSize: 22 }} aria-hidden />
               </span>
               <span className="empty-state__title" style={{ fontSize: 15 }}>Nenhum cliente na sua carteira</span>
               <span className="empty-state__desc" style={{ maxWidth: 270 }}>
@@ -264,7 +264,7 @@ export default function Dashboard() {
                 data !== null && data.activeAlerts > 0 ? (
                   <button type="button" onClick={() => navigate("/alertas")} style={{ display: "flex", alignItems: "center", gap: 2, font: "500 12.5px/1 var(--font-sans)", color: "var(--ghost-text)" }}>
                     {data.activeAlerts} ativo{data.activeAlerts > 1 ? "s" : ""}
-                    <i className="ph ph-caret-right" style={{ fontSize: 13 }} aria-hidden />
+                    <i className="icon-chevron-right" style={{ fontSize: 13 }} aria-hidden />
                   </button>
                 ) : undefined
               }
@@ -284,7 +284,7 @@ export default function Dashboard() {
                 </div>
               </div>
             ) : data.alerts.length === 0 ? (
-              <EmptyBlock icon="ph-target" title="Nenhum alerta ativo" desc="Monitore um preço-alvo e receba push." onAdd={() => navigate("/alertas?novo")} />
+              <EmptyBlock icon="icon-target" title="Nenhum alerta ativo" desc="Monitore um preço-alvo e receba push." onAdd={() => navigate("/alertas?novo")} />
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {data.alerts.map((a) => {
@@ -340,7 +340,7 @@ export default function Dashboard() {
                 ))}
               </div>
             ) : data.tasksToday.length === 0 ? (
-              <EmptyBlock icon="ph-check-square-offset" title="Nada para hoje" desc="Crie uma tarefa para não perder um retorno." onAdd={() => navigate("/cards")} />
+              <EmptyBlock icon="icon-square-check-big" title="Nada para hoje" desc="Crie uma tarefa para não perder um retorno." onAdd={() => navigate("/cards")} />
             ) : (
               <div className="card" style={{ padding: 0, overflow: "hidden" }}>
                 {data.tasksToday.map((t, i) => (
@@ -349,7 +349,7 @@ export default function Dashboard() {
                       <span style={{ display: "block", font: "500 13.5px/1.35 var(--font-sans)", color: "var(--text-1)" }}>{t.title}</span>
                       <span style={{ display: "block", marginTop: 3, font: "400 11.5px/1.3 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-2)" }}>{t.meta}</span>
                     </span>
-                    <i className="ph ph-caret-right" style={{ fontSize: 16, color: "var(--text-3)" }} aria-hidden />
+                    <i className="icon-chevron-right" style={{ fontSize: 16, color: "var(--text-3)" }} aria-hidden />
                   </button>
                 ))}
               </div>
@@ -374,7 +374,7 @@ export default function Dashboard() {
                   </span>
                   {b.phone && (
                     <a href={`https://wa.me/55${b.phone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" aria-label={`WhatsApp de ${b.name}`} style={{ width: 44, height: 44, borderRadius: 10, background: "var(--brand-tint)", color: "var(--ghost-text)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
-                      <i className="ph ph-whatsapp-logo" style={{ fontSize: 21 }} aria-hidden />
+                      <i className="icon-message-circle" style={{ fontSize: 21 }} aria-hidden />
                     </a>
                   )}
                 </div>

@@ -15,7 +15,7 @@ export function MobileHeader({
       <span className="mheader__lead">
         {onBack && (
           <button type="button" className="mheader__back" aria-label="Voltar" onClick={onBack}>
-            <i className="ph ph-arrow-left" aria-hidden />
+            <i className="icon-arrow-left" aria-hidden />
           </button>
         )}
         <span className="mheader__title">{title}</span>
@@ -24,7 +24,7 @@ export function MobileHeader({
         <span className="mheader__actions">
           {actions.map((a) => (
             <button key={a.icon} type="button" className="mheader__action" aria-label={a.label} onClick={a.onClick}>
-              <i className={`ph ${a.icon}`} aria-hidden />
+              <i className={`${a.icon}`} aria-hidden />
             </button>
           ))}
         </span>
@@ -54,11 +54,11 @@ export function Tabs({ items, active, onChange }: { items: string[]; active: str
 }
 
 export const BOTTOM_NAV_ITEMS = [
-  { key: "inicio", label: "Início", icon: "ph-house" },
-  { key: "clientes", label: "Clientes", icon: "ph-users-three" },
-  { key: "cotacoes", label: "Cotações", icon: "ph-chart-line" },
-  { key: "cards", label: "Cards", icon: "ph-kanban" },
-  { key: "perfil", label: "Perfil", icon: "ph-user-circle" },
+  { key: "inicio", label: "Início", icon: "icon-house" },
+  { key: "clientes", label: "Clientes", icon: "icon-users-round" },
+  { key: "cotacoes", label: "Cotações", icon: "icon-chart-line" },
+  { key: "cards", label: "Cards", icon: "icon-kanban" },
+  { key: "perfil", label: "Perfil", icon: "icon-circle-user-round" },
 ] as const;
 
 export type BottomNavKey = (typeof BOTTOM_NAV_ITEMS)[number]["key"];
@@ -76,7 +76,7 @@ export function BottomNav({ active, onNavigate }: { active: BottomNavKey; onNavi
           aria-current={item.key === active ? "page" : undefined}
           onClick={() => onNavigate?.(item.key)}
         >
-          <i className={`ph ${item.icon}`} aria-hidden />
+          <i className={`${item.icon}`} aria-hidden />
           <span className="bottom-nav__label">{item.label}</span>
         </button>
       ))}
@@ -85,12 +85,12 @@ export function BottomNav({ active, onNavigate }: { active: BottomNavKey; onNavi
 }
 
 export const ADMIN_SIDEBAR_ITEMS = [
-  { key: "visao-geral", label: "Visão geral", icon: "ph-squares-four" },
-  { key: "metatrader", label: "MetaTrader", icon: "ph-plugs-connected" },
-  { key: "usuarios", label: "Usuários", icon: "ph-users-three" },
-  { key: "salas", label: "Salas", icon: "ph-door-open" },
-  { key: "importacoes", label: "Importações", icon: "ph-upload-simple" },
-  { key: "auditoria", label: "Auditoria", icon: "ph-list-magnifying-glass" },
+  { key: "visao-geral", label: "Visão geral", icon: "icon-layout-grid" },
+  { key: "metatrader", label: "MetaTrader", icon: "icon-plug-zap" },
+  { key: "usuarios", label: "Usuários", icon: "icon-users-round" },
+  { key: "salas", label: "Salas", icon: "icon-door-open" },
+  { key: "importacoes", label: "Importações", icon: "icon-upload" },
+  { key: "auditoria", label: "Auditoria", icon: "icon-text-search" },
 ] as const;
 
 export type AdminSidebarKey = (typeof ADMIN_SIDEBAR_ITEMS)[number]["key"];
@@ -122,7 +122,7 @@ export function AdminSidebar({
             aria-current={item.key === active ? "page" : undefined}
             onClick={() => onNavigate?.(item.key)}
           >
-            <i className={`ph ${item.icon}`} aria-hidden />
+            <i className={`${item.icon}`} aria-hidden />
             {item.label}
           </button>
         ))}

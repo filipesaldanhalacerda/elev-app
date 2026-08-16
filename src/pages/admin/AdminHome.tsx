@@ -21,12 +21,12 @@ const KIND_TITLES: Record<string, string> = {
   positivador: "Positivador", diversificacao: "Diversificação", captacao: "Captação", saldo_consolidado: "Saldo Consolidado",
 };
 const CATEGORY_ICON: Record<string, { icon: string; warn?: boolean }> = {
-  importacao: { icon: "ph-upload-simple" },
-  codigo: { icon: "ph-key" },
-  metatrader: { icon: "ph-plugs", warn: true },
-  usuario: { icon: "ph-user-plus" },
-  login: { icon: "ph-sign-in" },
-  cadastro: { icon: "ph-pencil-simple" },
+  importacao: { icon: "icon-upload" },
+  codigo: { icon: "icon-key-round" },
+  metatrader: { icon: "icon-unplug", warn: true },
+  usuario: { icon: "icon-user-plus" },
+  login: { icon: "icon-log-in" },
+  cadastro: { icon: "icon-pencil" },
 };
 
 export default function AdminHome() {
@@ -89,10 +89,10 @@ export default function AdminHome() {
       title="Visão geral"
       actions={
         <>
-          <Button variant="secondary" size={36} icon="ph-upload-simple" onClick={() => navigate("/admin/importacoes")}>
+          <Button variant="secondary" size={36} icon="icon-upload" onClick={() => navigate("/admin/importacoes")}>
             Importar relatório
           </Button>
-          <Button size={36} icon="ph-plus" onClick={() => navigate("/admin/usuarios")}>
+          <Button size={36} icon="icon-plus" onClick={() => navigate("/admin/usuarios")}>
             Novo usuário
           </Button>
         </>
@@ -114,7 +114,7 @@ export default function AdminHome() {
             </div>
             <div style={{ marginTop: 4, font: "400 11.5px/1.4 var(--font-sans)", color: "var(--text-3)" }}>última cotação recebida</div>
             <button type="button" onClick={() => navigate("/admin/metatrader")} style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--divider)", display: "flex", alignItems: "center", gap: 5, font: "600 12px/1 var(--font-sans)", color: "var(--ghost-text)", width: "100%" }}>
-              Ver conexão<i className="ph ph-caret-right" style={{ fontSize: 13 }} aria-hidden />
+              Ver conexão<i className="icon-chevron-right" style={{ fontSize: 13 }} aria-hidden />
             </button>
           </div>
 
@@ -132,7 +132,7 @@ export default function AdminHome() {
                 : "nenhuma importação ainda"}
             </div>
             <button type="button" onClick={() => navigate("/admin/importacoes")} style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--divider)", display: "flex", alignItems: "center", gap: 5, font: "600 12px/1 var(--font-sans)", color: "var(--ghost-text)", width: "100%" }}>
-              Ver histórico<i className="ph ph-caret-right" style={{ fontSize: 13 }} aria-hidden />
+              Ver histórico<i className="icon-chevron-right" style={{ fontSize: 13 }} aria-hidden />
             </button>
           </div>
 
@@ -151,7 +151,7 @@ export default function AdminHome() {
               {data ? `${formatInt(data.users.pendingCodes)} código${data.users.pendingCodes !== 1 ? "s" : ""} de acesso ainda não usado${data.users.pendingCodes !== 1 ? "s" : ""}` : ""}
             </div>
             <button type="button" onClick={() => navigate("/admin/usuarios")} style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--divider)", display: "flex", alignItems: "center", gap: 5, font: "600 12px/1 var(--font-sans)", color: "var(--ghost-text)", width: "100%" }}>
-              Gerenciar usuários<i className="ph ph-caret-right" style={{ fontSize: 13 }} aria-hidden />
+              Gerenciar usuários<i className="icon-chevron-right" style={{ fontSize: 13 }} aria-hidden />
             </button>
           </div>
         </div>
@@ -161,15 +161,15 @@ export default function AdminHome() {
             <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <span style={{ font: "600 13.5px/1 var(--font-sans)", color: "var(--text-1)" }}>Atividade recente</span>
               <button type="button" onClick={() => navigate("/admin/auditoria")} style={{ display: "flex", alignItems: "center", gap: 5, font: "600 12px/1 var(--font-sans)", color: "var(--ghost-text)" }}>
-                Auditoria completa<i className="ph ph-caret-right" style={{ fontSize: 13 }} aria-hidden />
+                Auditoria completa<i className="icon-chevron-right" style={{ fontSize: 13 }} aria-hidden />
               </button>
             </div>
             {(data?.activity ?? []).map((a, i) => {
-              const meta = CATEGORY_ICON[a.category] ?? { icon: "ph-info" };
+              const meta = CATEGORY_ICON[a.category] ?? { icon: "icon-info" };
               return (
                 <div key={a.id} style={{ minHeight: 56, display: "flex", alignItems: "center", gap: 12, padding: "10px 18px", borderTop: i > 0 ? "1px solid var(--divider)" : undefined }}>
                   <span style={{ width: 30, height: 30, borderRadius: 9, background: meta.warn ? "var(--warning-tint)" : "var(--chip-pill-bg)", color: meta.warn ? "var(--warning)" : "var(--field-label)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
-                    <i className={`ph ${meta.icon}`} style={{ fontSize: 15 }} aria-hidden />
+                    <i className={`${meta.icon}`} style={{ fontSize: 15 }} aria-hidden />
                   </span>
                   <span style={{ flex: 1, font: "400 12.5px/1.4 var(--font-sans)", color: "var(--field-label)" }}>
                     {a.event}

@@ -87,7 +87,7 @@ function NewCardSheet({ initialClient = "", onClose, onCreated }: { initialClien
                     <option key={c.account_code} value={c.account_code}>{c.name ?? `Conta ${c.account_code}`}</option>
                   ))}
                 </select>
-                <i className="ph ph-caret-down field__caret" aria-hidden />
+                <i className="icon-chevron-down field__caret" aria-hidden />
               </div>
             </div>
             <div className="field">
@@ -100,7 +100,7 @@ function NewCardSheet({ initialClient = "", onClose, onCreated }: { initialClien
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>
-                  <i className="ph ph-caret-down field__caret" aria-hidden />
+                  <i className="icon-chevron-down field__caret" aria-hidden />
                 </div>
               ) : (
                 <div className="field__box field__box--tabular" style={{ height: 46 }} aria-describedby="card-resp-hint">
@@ -126,7 +126,7 @@ function NewCardSheet({ initialClient = "", onClose, onCreated }: { initialClien
           {pastDue && (
             <div className="field--error" style={{ marginTop: -6 }}>
               <div className="field__help">
-                <i className="ph ph-warning-circle" aria-hidden />
+                <i className="icon-circle-alert" aria-hidden />
                 O prazo não pode ficar no passado.
               </div>
             </div>
@@ -184,7 +184,7 @@ export default function Cards() {
     <MobileShell active="tarefas">
       <header className="page-header" style={{ background: "var(--surface)" }}>
         <span className="page-header__title">Tarefas</span>
-        <Button icon="ph-plus" style={{ height: 40, fontSize: 12.5 }} onClick={() => setSheet(true)}>Novo</Button>
+        <Button icon="icon-plus" style={{ height: 40, fontSize: 12.5 }} onClick={() => setSheet(true)}>Novo</Button>
       </header>
       <nav className="tabs-42" role="tablist">
         <button type="button" role="tab" aria-selected={tab === "meus"} className={`tab-42${tab === "meus" ? " tab-42--active" : ""}`} onClick={() => setTab("meus")}>
@@ -209,14 +209,14 @@ export default function Cards() {
 
         {rows !== null && byStatus[status].length === 0 && (
           <div className="empty-state" style={{ borderRadius: 14 }}>
-            <span className="empty-state__icon"><i className="ph ph-kanban" aria-hidden /></span>
+            <span className="empty-state__icon"><i className="icon-kanban" aria-hidden /></span>
             <span className="empty-state__title">Nada em {status === "pendente" ? "Pendente" : status === "andamento" ? "Andamento" : "Concluído"}</span>
             <span className="empty-state__desc">
               {status === "pendente" ? "Crie o primeiro card para organizar o dia." : "Os cards chegam aqui conforme avançam de status."}
             </span>
             {status === "pendente" && (
               <span className="empty-state__action">
-                <Button icon="ph-plus" onClick={() => setSheet(true)}>Nova tarefa</Button>
+                <Button icon="icon-plus" onClick={() => setSheet(true)}>Nova tarefa</Button>
               </span>
             )}
           </div>
@@ -250,7 +250,7 @@ export default function Cards() {
                   aria-label={card.status === "pendente" ? `Iniciar ${card.title}` : `Concluir ${card.title}`}
                   onClick={() => advance(card)}
                 >
-                  <i className={`ph ${card.status === "pendente" ? "ph-play" : "ph-check"}`} aria-hidden />
+                  <i className={`${card.status === "pendente" ? "icon-play" : "icon-check"}`} aria-hidden />
                 </button>
               )}
             </div>
@@ -259,7 +259,7 @@ export default function Cards() {
 
         {!hintDismissed && rows !== null && byStatus[status].length > 0 && (
           <div className="swipe-hint">
-            <i className="ph ph-caret-double-right" aria-hidden />
+            <i className="icon-chevrons-right" aria-hidden />
             <span className="swipe-hint__text">Dica: deslizar uma tarefa para a direita também avança o status.</span>
             <button
               type="button"
@@ -270,7 +270,7 @@ export default function Cards() {
                 setHintDismissed(true);
               }}
             >
-              <i className="ph ph-x" aria-hidden />
+              <i className="icon-x" aria-hidden />
             </button>
           </div>
         )}

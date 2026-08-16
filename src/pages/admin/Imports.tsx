@@ -145,11 +145,11 @@ export default function Imports() {
       actions={
         <span className="stepper">
           <span className={`stepper__step${step > 1 ? " stepper__step--done" : " stepper__step--current"}`}>
-            <span className="stepper__num">{step > 1 ? <i className="ph ph-check" aria-hidden /> : "1"}</span>Enviar
+            <span className="stepper__num">{step > 1 ? <i className="icon-check" aria-hidden /> : "1"}</span>Enviar
           </span>
           <span className="stepper__line" aria-hidden />
           <span className={`stepper__step${step === 2 ? " stepper__step--current" : step > 2 ? " stepper__step--done" : ""}`}>
-            <span className="stepper__num">{step > 2 ? <i className="ph ph-check" aria-hidden /> : "2"}</span>Conferir
+            <span className="stepper__num">{step > 2 ? <i className="icon-check" aria-hidden /> : "2"}</span>Conferir
           </span>
           <span className="stepper__line" aria-hidden />
           <span className={`stepper__step${step === 3 ? " stepper__step--current" : ""}`}>
@@ -166,7 +166,7 @@ export default function Imports() {
             </Banner>
           )}
           {done !== null && (
-            <Toast icon="ph-check-circle">Importação concluída — {formatInt(done)} registros processados.</Toast>
+            <Toast icon="icon-circle-check">Importação concluída — {formatInt(done)} registros processados.</Toast>
           )}
 
           {step === 1 && (
@@ -180,7 +180,7 @@ export default function Imports() {
                 onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
               />
               <EmptyState
-                icon="ph-upload-simple"
+                icon="icon-upload"
                 title="Envie o relatório da XP"
                 description="Positivador (mensal ou semanal), Diversificação, Captação ou Saldo Consolidado — o tipo é detectado automaticamente."
                 action="Escolher arquivo"
@@ -193,14 +193,14 @@ export default function Imports() {
             <div className="import-card">
               <div className="import-file">
                 <span className="import-file__icon">
-                  <i className="ph ph-file-xls" aria-hidden />
+                  <i className="icon-file-spreadsheet" aria-hidden />
                 </span>
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span className="import-file__name">{file.name}</span>
                   <span className="import-file__meta">{mb(file.size)} · enviado agora</span>
                 </span>
                 <span className="import-file__chip">
-                  <i className="ph ph-sparkle" aria-hidden />
+                  <i className="icon-sparkles" aria-hidden />
                   {parsed.kindLabel}
                   {parsed.variant ? ` ${parsed.variant}` : ""} detectado
                 </span>
@@ -233,7 +233,7 @@ export default function Imports() {
                 <div className="import-warnings">
                   {warnings.map((w, i) => (
                     <div key={i} className={`import-warning import-warning--${w.level}`}>
-                      <i className={`ph ${w.level === "warning" ? "ph-warning-circle" : "ph-info"} import-warning__icon`} aria-hidden />
+                      <i className={`${w.level === "warning" ? "icon-circle-alert" : "icon-info"} import-warning__icon`} aria-hidden />
                       <span className="import-warning__text">
                         <strong>{w.title}</strong> {w.text}
                       </span>
@@ -270,7 +270,7 @@ export default function Imports() {
                   </Button>
                   <span className="import-footer__right">
                     <span className="import-footer__note">Nada é gravado antes desta confirmação.</span>
-                    <Button icon="ph-check" onClick={confirm}>
+                    <Button icon="icon-check" onClick={confirm}>
                       Confirmar e processar
                     </Button>
                   </span>

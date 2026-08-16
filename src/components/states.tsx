@@ -35,13 +35,13 @@ export function EmptyState({ icon, title, description, action, onAction, error, 
   return (
     <div className={`empty-state${error ? " empty-state--error" : ""}`}>
       <span className="empty-state__icon">
-        <i className={`ph ${icon ?? (error ? "ph-cloud-warning" : "ph-tray")}`} aria-hidden />
+        <i className={`${icon ?? (error ? "icon-cloud-alert" : "icon-inbox")}`} aria-hidden />
       </span>
       <span className="empty-state__title">{title}</span>
       <span className="empty-state__desc">{description}</span>
       {action && (
         <span className="empty-state__action">
-          <Button variant={error ? "secondary" : "primary"} icon={error ? (actionIcon ?? "ph-arrow-clockwise") : actionIcon} onClick={onAction}>
+          <Button variant={error ? "secondary" : "primary"} icon={error ? (actionIcon ?? "icon-rotate-cw") : actionIcon} onClick={onAction}>
             {action}
           </Button>
         </span>

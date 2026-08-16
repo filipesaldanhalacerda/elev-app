@@ -40,7 +40,7 @@ function UserFormModal({
 }: {
   user: AdminUser | null; // null = novo
   onClose: () => void;
-  onSaved: (createdId?: string) => Promise<void>;
+  onSaved: (created?: AdminUser) => Promise<void>;
 }) {
   const [name, setName] = useState(user?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
@@ -72,8 +72,8 @@ function UserFormModal({
         const body = (await workerFetch("/api/admin/users", {
           method: "POST",
           body: JSON.stringify({ name, email, advisor_code: advisorCode || null, role }),
-        })) as { id: string };
-        await onSaved(body.id);
+        })) as { id: string; user: AdminUser };
+        await onSaved(body.user);
       }
     } catch (e) {
       setError((e as Error).message);
@@ -131,7 +131,7 @@ function UserFormModal({
                     </option>
                   ))}
                 </select>
-                <i className="ph ph-caret-down field__caret" aria-hidden />
+                <i className="icon-chevron-down field__caret" aria-hidden />
               </div>
             </div>
           )}
@@ -152,7 +152,7 @@ function UserFormModal({
                     <option value="advisor">Assessor</option>
                     <option value="admin">Administrador</option>
                   </select>
-                  <i className="ph ph-caret-down field__caret" aria-hidden />
+                  <i className="icon-chevron-down field__caret" aria-hidden />
                 </>
               ) : (
                 <input id="perfil-select" className="field__input" value="Assessor" disabled readOnly />
@@ -228,10 +228,10 @@ export default function Users() {
       actions={
         <>
           <span className="admin-search">
-            <i className="ph ph-magnifying-glass" aria-hidden />
+            <i className="icon-search" aria-hidden />
             <input placeholder="Buscar por nome ou e-mail" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Buscar por nome ou e-mail" />
           </span>
-          <Button size={36} icon="ph-plus" onClick={() => setForm({ open: true, user: null })}>
+          <Button size={36} icon="icon-plus" onClick={() => setForm({ open: true, user: null })}>
             Novo usuário
           </Button>
         </>
@@ -265,14 +265,14 @@ export default function Users() {
                     disabled={busy === u.id}
                     onClick={() => generateCode(u)}
                   >
-                    <i className="ph ph-key" aria-hidden />
+                    <i className="icon-key-round" aria-hidden />
                     {u.pending_code_expires_at ? "Ver código ativo" : "Gerar código"}
                   </button>
                   <button type="button" className="row-btn row-btn--icon" aria-label={`Editar ${u.name}`} onClick={() => setForm({ open: true, user: u })}>
-                    <i className="ph ph-pencil-simple" aria-hidden />
+                    <i className="icon-pencil" aria-hidden />
                   </button>
                   <button type="button" className="row-btn row-btn--icon row-btn--danger" aria-label={`Desativar ${u.name}`} onClick={() => setDeactivating(u)}>
-                    <i className="ph ph-prohibit" aria-hidden />
+                    <i className="icon-ban" aria-hidden />
                   </button>
                 </>
               ) : (
@@ -293,18 +293,16 @@ export default function Users() {
         <UserFormModal
           user={form.user}
           onClose={() => setForm({ open: false, user: null })}
-          onSaved={async (createdId) => {
+          onSaved={async (created) => {
             setForm({ open: false, user: null });
-            await load();
-            if (createdId) {
-              // criação emenda no fluxo do código (fluxo a): gera e exibe uma vez
-              const body = (await workerFetch(`/api/admin/users/${createdId}/code`, { method: "POST" })) as { code: string; expires_at: string };
-              const fresh = (await workerFetch("/api/admin/users")) as { users: AdminUser[] };
-              setUsers(fresh.users);
-              const user = fresh.users.find((u) => u.id === createdId)!;
-              setGenerated({ user, code: body.code, expires_at: body.expires_at });
+            if (created) {
+              // criação emenda no fluxo do código (fluxo a): gera e exibe uma vez —
+              // sem esperar a listagem completa (pesada) no caminho crítico
+              const body = (await workerFetch(`/api/admin/users/${created.id}/code`, { method: "POST" })) as { code: string; expires_at: string };
+              setGenerated({ user: { ...created, pending_code_expires_at: body.expires_at }, code: body.code, expires_at: body.expires_at });
               setCopied(false);
             }
+            void load();
           }}
         />
       )}
@@ -324,7 +322,7 @@ export default function Users() {
           <div className="code-modal__box" style={{ margin: "0 0 0" }}>
             <span className="code-modal__code">{generated.code}</span>
             <Button
-              icon="ph-copy"
+              icon="icon-copy"
               onClick={async () => {
                 await navigator.clipboard.writeText(generated.code);
                 setCopied(true);
@@ -351,7 +349,7 @@ export default function Users() {
               <Button variant="secondary" onClick={() => setDeactivating(null)}>
                 Cancelar
               </Button>
-              <Button variant="destructive" icon="ph-prohibit" loading={busy === deactivating.id} onClick={() => setActive(deactivating, false)}>
+              <Button variant="destructive" icon="icon-ban" loading={busy === deactivating.id} onClick={() => setActive(deactivating, false)}>
                 Desativar
               </Button>
             </>

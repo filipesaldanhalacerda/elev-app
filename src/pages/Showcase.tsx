@@ -56,8 +56,8 @@ export default function Showcase() {
           <Button>Salvar</Button>
           <Button variant="secondary">Cancelar</Button>
           <Button variant="ghost">Ver todos</Button>
-          <Button variant="destructive" icon="ph-prohibit">Desativar</Button>
-          <Button variant="icon" icon="ph-plus" aria-label="Adicionar" />
+          <Button variant="destructive" icon="icon-ban">Desativar</Button>
+          <Button variant="icon" icon="icon-plus" aria-label="Adicionar" />
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <Button disabled>Salvar</Button>
@@ -71,9 +71,9 @@ export default function Showcase() {
           <Button size={52}>52 · ação única</Button>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <Button icon="ph-plus">Novo alerta</Button>
-          <Button variant="secondary" trailingIcon="ph-caret-down">Período</Button>
-          <Button variant="secondary" icon="ph-whatsapp-logo" style={{ color: "var(--ghost-text)" }}>WhatsApp</Button>
+          <Button icon="icon-plus">Novo alerta</Button>
+          <Button variant="secondary" trailingIcon="icon-chevron-down">Período</Button>
+          <Button variant="secondary" icon="icon-message-circle" style={{ color: "var(--ghost-text)" }}>WhatsApp</Button>
         </div>
         <Button block data-testid="btn-block">Entrar</Button>
       </Section>
@@ -83,11 +83,11 @@ export default function Showcase() {
         <PasswordField label="Senha" defaultValue="12345678" />
         <TextField label="Código de assessor · erro" mono defaultValue="A-0" error="Código deve ter 5 dígitos." />
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <TextField label="Data" tabular defaultValue="15/08/2026" trailingIcon="ph-calendar-blank" />
-          <TextField label="Hora" tabular defaultValue="14:30" trailingIcon="ph-clock" />
+          <TextField label="Data" tabular defaultValue="15/08/2026" trailingIcon="icon-calendar" />
+          <TextField label="Hora" tabular defaultValue="14:30" trailingIcon="icon-clock" />
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <TextField label="Seleção" defaultValue="Assessor" trailingIcon="ph-caret-down" readOnly />
+          <TextField label="Seleção" defaultValue="Assessor" trailingIcon="icon-chevron-down" readOnly />
           <MoneyField label="Valor monetário" defaultValue="250.000,00" />
         </div>
         <TextareaField label="Observações · desabilitado" disabled defaultValue="Somente leitura para o perfil assessor." />
@@ -192,7 +192,7 @@ export default function Showcase() {
           <MobileHeader
             title="Ana Bertoldi"
             onBack={() => {}}
-            actions={[{ icon: "ph-plus", label: "Adicionar" }, { icon: "ph-dots-three-vertical", label: "Mais opções" }]}
+            actions={[{ icon: "icon-plus", label: "Adicionar" }, { icon: "icon-ellipsis-vertical", label: "Mais opções" }]}
           />
           <Tabs items={["Visão geral", "Carteira", "Movimentações", "Cadastro"]} active={tab} onChange={setTab} />
           <BottomNav active="inicio" />
@@ -224,7 +224,7 @@ export default function Showcase() {
             actions={
               <>
                 <Button variant="secondary">Cancelar</Button>
-                <Button variant="destructive" icon="ph-prohibit">Desativar</Button>
+                <Button variant="destructive" icon="icon-ban">Desativar</Button>
               </>
             }
           >
@@ -239,8 +239,8 @@ export default function Showcase() {
           <StatusChip kind="success" dot={false}>Concluído</StatusChip>
           <MarketChip up>+1,4%</MarketChip>
           <MarketChip up={false}>-0,6%</MarketChip>
-          <StatusChip kind="success" icon="ph-plugs-connected">Conectado</StatusChip>
-          <StatusChip kind="danger" icon="ph-plugs">Desconectado</StatusChip>
+          <StatusChip kind="success" icon="icon-plug-zap">Conectado</StatusChip>
+          <StatusChip kind="danger" icon="icon-unplug">Desconectado</StatusChip>
         </div>
       </Section>
 

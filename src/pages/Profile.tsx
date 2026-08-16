@@ -136,7 +136,7 @@ export default function Profile() {
         <div className="card" style={{ padding: 14 }}>
           <div style={{ font: "600 12.5px/1 var(--font-sans)", color: "var(--text-1)" }}>Tema</div>
           <div className="segmented" style={{ height: 44, marginTop: 10, background: "var(--chip-pill-bg)", border: "1px solid var(--border)" }}>
-            {([["claro", "Claro", "ph-sun"], ["escuro", "Escuro", "ph-moon"], ["sistema", "Sistema", "ph-circle-half"]] as const).map(([key, label, icon]) => (
+            {([["claro", "Claro", "icon-sun"], ["escuro", "Escuro", "icon-moon"], ["sistema", "Sistema", "icon-sun-moon"]] as const).map(([key, label, icon]) => (
               <button
                 key={key}
                 type="button"
@@ -144,7 +144,7 @@ export default function Profile() {
                 style={theme === key && key === "claro" ? { background: "var(--surface)", border: "1px solid var(--border-strong)", color: "var(--text-1)" } : undefined}
                 onClick={() => pickTheme(key)}
               >
-                <i className={`ph ${icon}`} style={{ fontSize: 14 }} aria-hidden />
+                <i className={`${icon}`} style={{ fontSize: 14 }} aria-hidden />
                 {label}
               </button>
             ))}
@@ -193,10 +193,10 @@ export default function Profile() {
           </div>
           <button type="button" style={{ width: "100%", minHeight: 56, display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderBottom: "1px solid var(--divider)", textAlign: "left" }} onClick={() => setChangingPw(true)}>
             <span style={{ width: 30, height: 30, borderRadius: 9, background: "var(--chip-pill-bg)", color: "var(--field-label)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
-              <i className="ph ph-lock-key" style={{ fontSize: 15 }} aria-hidden />
+              <i className="icon-lock-keyhole" style={{ fontSize: 15 }} aria-hidden />
             </span>
             <span style={{ flex: 1, font: "400 13px/1.35 var(--font-sans)", color: "var(--text-1)" }}>Trocar senha</span>
-            <i className="ph ph-caret-right" style={{ fontSize: 16, color: "var(--icon-decor)" }} aria-hidden />
+            <i className="icon-chevron-right" style={{ fontSize: 16, color: "var(--icon-decor)" }} aria-hidden />
           </button>
           <button
             type="button"
@@ -207,7 +207,7 @@ export default function Profile() {
             }}
           >
             <span style={{ width: 30, height: 30, borderRadius: 9, background: "var(--danger-action-hover-bg)", color: "var(--danger-action-text)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
-              <i className="ph ph-sign-out" style={{ fontSize: 15 }} aria-hidden />
+              <i className="icon-log-out" style={{ fontSize: 15 }} aria-hidden />
             </span>
             <span style={{ flex: 1, font: "600 13px/1.35 var(--font-sans)", color: "var(--danger-action-text)" }}>Sair da conta</span>
           </button>

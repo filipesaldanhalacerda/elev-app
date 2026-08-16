@@ -44,7 +44,7 @@ export function DenseTable({ columns, rows, totalRow }: DenseTableProps) {
         {columns.map((col) => (
           <span key={col.key} className={col.align === "right" ? "table__cell--right" : col.sorted ? "table__sort" : undefined}>
             {col.label}
-            {col.sorted && <i className="ph ph-caret-up" aria-hidden />}
+            {col.sorted && <i className="icon-chevron-up" aria-hidden />}
           </span>
         ))}
       </div>

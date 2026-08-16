@@ -91,7 +91,7 @@ export default function Audit() {
             </select>
           </span>
           <button type="button" className="row-btn" onClick={exportCsv}>
-            <i className="ph ph-download-simple" aria-hidden />
+            <i className="icon-download" aria-hidden />
             Exportar CSV
           </button>
         </>

@@ -15,7 +15,7 @@ import { formatTime } from "../../lib/format";
 function Requirement({ ok, children }: { ok: boolean; children: string }) {
   return (
     <span className={`pw-req${ok ? " pw-req--ok" : ""}`}>
-      <span className="pw-req__dot">{ok && <i className="ph ph-check" aria-hidden />}</span>
+      <span className="pw-req__dot">{ok && <i className="icon-check" aria-hidden />}</span>
       {children}
     </span>
   );
@@ -92,7 +92,7 @@ export default function FirstAccess() {
     <div className="auth-screen" data-screen="02" data-step={step}>
       <header className="auth-header">
         <button type="button" className="auth-header__back" aria-label="Voltar" onClick={() => (step === 2 ? setStep(1) : navigate("/login"))}>
-          <i className="ph ph-arrow-left" aria-hidden />
+          <i className="icon-arrow-left" aria-hidden />
         </button>
         <span className="auth-header__title">Primeiro acesso</span>
       </header>
@@ -116,11 +116,11 @@ export default function FirstAccess() {
           </div>
           <div className="code-meta">
             <span className="code-meta__expiry">
-              <i className="ph ph-clock" aria-hidden />
+              <i className="icon-clock" aria-hidden />
               {expiresAt ? `expira em ${formatTime(expiresAt)}` : "vale por 24 horas"}
             </span>
             <button type="button" className="btn btn--paste" onClick={paste}>
-              <i className="ph ph-clipboard-text" aria-hidden />
+              <i className="icon-clipboard-list" aria-hidden />
               Colar código
             </button>
           </div>
@@ -135,7 +135,7 @@ export default function FirstAccess() {
               <span className="contact-card__sub">administrador da sua assessoria</span>
             </span>
             <a className="contact-card__wa" href="https://wa.me/" target="_blank" rel="noreferrer" aria-label="WhatsApp do administrador">
-              <i className="ph ph-whatsapp-logo" aria-hidden />
+              <i className="icon-message-circle" aria-hidden />
             </a>
           </div>
         </div>
@@ -149,7 +149,7 @@ export default function FirstAccess() {
 
           <div className="code-confirm" style={{ marginTop: 18 }}>
             <span className="code-confirm__label">
-              <i className="ph ph-check-circle" aria-hidden />
+              <i className="icon-circle-check" aria-hidden />
               Código <span className="code-confirm__code">{code}</span>
             </span>
             <span className="code-confirm__email">{emailMasked}</span>

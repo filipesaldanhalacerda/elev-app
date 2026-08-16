@@ -40,7 +40,7 @@ function OverviewTab({ account }: { account: string }) {
     return (
       <div className="ficha-body">
         <div className="empty-state" style={{ borderRadius: 14 }} data-testid="ficha-nao-encontrada">
-          <span className="empty-state__icon"><i className="ph ph-user" aria-hidden /></span>
+          <span className="empty-state__icon"><i className="icon-user" aria-hidden /></span>
           <span className="empty-state__title">Cliente não encontrado na sua carteira</span>
           <span className="empty-state__desc">Confira a conta ou volte para a lista de clientes.</span>
         </div>
@@ -119,19 +119,19 @@ function OverviewTab({ account }: { account: string }) {
 
       <div className="quick-actions">
         <a className="quick-action quick-action--wa" href={extras?.phone ? `https://wa.me/55${extras.phone.replace(/\D/g, "")}` : "https://wa.me/"} target="_blank" rel="noreferrer">
-          <i className="ph ph-whatsapp-logo" aria-hidden />
+          <i className="icon-message-circle" aria-hidden />
           <span>WhatsApp</span>
         </a>
         <button type="button" className="quick-action" onClick={() => (window.location.href = "/cards")}>
-          <i className="ph ph-kanban" aria-hidden />
+          <i className="icon-kanban" aria-hidden />
           <span>Tarefa</span>
         </button>
         <button type="button" className="quick-action" onClick={() => (window.location.href = "/alertas?novo")}>
-          <i className="ph ph-target" aria-hidden />
+          <i className="icon-target" aria-hidden />
           <span>Alerta</span>
         </button>
         <button type="button" className="quick-action" onClick={() => (window.location.href = "/salas")}>
-          <i className="ph ph-door-open" aria-hidden />
+          <i className="icon-door-open" aria-hidden />
           <span>Sala</span>
         </button>
       </div>
@@ -174,7 +174,7 @@ function PortfolioTab({ account }: { account: string }) {
     return (
       <div className="ficha-body">
         <div className="empty-state" style={{ borderRadius: 14 }}>
-          <span className="empty-state__icon"><i className="ph ph-chart-pie-slice" aria-hidden /></span>
+          <span className="empty-state__icon"><i className="icon-chart-pie" aria-hidden /></span>
           <span className="empty-state__title">Sem posições importadas</span>
           <span className="empty-state__desc">A carteira aparece após a importação do relatório de Diversificação.</span>
         </div>
@@ -211,7 +211,7 @@ function PortfolioTab({ account }: { account: string }) {
               }
             >
               <span className="class-group__title">
-                <i className={`ph ${isOpen ? "ph-caret-down" : "ph-caret-right"}`} aria-hidden />
+                <i className={`${isOpen ? "icon-chevron-down" : "icon-chevron-right"}`} aria-hidden />
                 {group.product}
               </span>
               <span className="class-group__totals">
@@ -278,7 +278,7 @@ function MovementsTab({ account }: { account: string }) {
         ))}
         <button type="button" className="filter-sort" onClick={() => setDays((d) => (d === 365 ? 30 : 365))}>
           {days === 365 ? "12 meses" : "30 dias"}
-          <i className="ph ph-caret-down" aria-hidden />
+          <i className="icon-chevron-down" aria-hidden />
         </button>
       </div>
 
@@ -287,7 +287,7 @@ function MovementsTab({ account }: { account: string }) {
       {!loading && data && groups.length === 0 && (
         <div className="empty-state" style={{ borderRadius: 14, padding: "28px 20px" }}>
           <span className="empty-state__icon" style={{ width: 46, height: 46, borderRadius: 12 }}>
-            <i className="ph ph-arrows-down-up" style={{ fontSize: 22 }} aria-hidden />
+            <i className="icon-arrow-down-up" style={{ fontSize: 22 }} aria-hidden />
           </span>
           <span className="empty-state__title" style={{ fontSize: 15 }}>
             Nenhuma movimentação em {days === 30 ? "30 dias" : "12 meses"}
@@ -299,7 +299,7 @@ function MovementsTab({ account }: { account: string }) {
           </span>
           {days === 30 && (
             <span style={{ marginTop: 16 }}>
-              <Button icon="ph-calendar-blank" onClick={() => setDays(365)}>Ver 12 meses</Button>
+              <Button icon="icon-calendar" onClick={() => setDays(365)}>Ver 12 meses</Button>
             </span>
           )}
         </div>
@@ -315,7 +315,7 @@ function MovementsTab({ account }: { account: string }) {
             {g.rows.map((m) => (
               <div key={m.id} className="mov-row">
                 <span className="mov-row__icon">
-                  <i className={`ph ${m.amount >= 0 ? "ph-arrow-down-left" : "ph-arrow-up-right"}`} aria-hidden />
+                  <i className={`${m.amount >= 0 ? "icon-arrow-down-left" : "icon-arrow-up-right"}`} aria-hidden />
                 </span>
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span className="mov-row__title">{m.amount >= 0 ? "Aporte" : "Resgate"} · {m.kind}</span>
@@ -375,7 +375,7 @@ function ExtrasTab({ account, advisorCode }: { account: string; advisorCode: str
           </div>
           {field === "email" && emailInvalid && (
             <div className="field__help">
-              <i className="ph ph-warning-circle" aria-hidden />
+              <i className="icon-circle-alert" aria-hidden />
               Digite um e-mail válido, como nome@dominio.com.
             </div>
           )}
@@ -392,7 +392,7 @@ function ExtrasTab({ account, advisorCode }: { account: string; advisorCode: str
           <span className={`extras-row__value${extras?.[field] ? "" : " extras-row__value--empty"}`}>{extras?.[field] ?? "não informado"}</span>
         </span>
         <button type="button" className="extras-row__edit" aria-label={`Editar ${label.toLowerCase()}`} onClick={() => startEdit(field)}>
-          <i className="ph ph-pencil-simple" aria-hidden />
+          <i className="icon-pencil" aria-hidden />
         </button>
       </div>
     );
@@ -433,7 +433,7 @@ function ExtrasTab({ account, advisorCode }: { account: string; advisorCode: str
           <>
             <div className="obs-body">{extras?.notes ?? "Nenhuma observação ainda."}</div>
             <div style={{ marginTop: 12 }}>
-              <Button variant="secondary" icon="ph-pencil-simple" style={{ height: 40, fontSize: 12.5 }} onClick={() => startEdit("notes")}>
+              <Button variant="secondary" icon="icon-pencil" style={{ height: 40, fontSize: 12.5 }} onClick={() => startEdit("notes")}>
                 Editar observações
               </Button>
             </div>
@@ -441,7 +441,7 @@ function ExtrasTab({ account, advisorCode }: { account: string; advisorCode: str
         )}
       </Card>
 
-      <Banner kind="info" icon="ph-list-magnifying-glass">
+      <Banner kind="info" icon="icon-text-search">
         Toda alteração aqui fica registrada na auditoria com autor e horário. Dados vindos da XP são somente leitura.
       </Banner>
     </div>
@@ -476,7 +476,7 @@ function TimelineTab({ account, advisorCode }: { account: string; advisorCode: s
       for (const n of data.notes) {
         list.push({
           at: n.created_at,
-          icon: "ph-note-pencil",
+          icon: "icon-square-pen",
           title: "Anotação",
           extra: (
             <>
@@ -496,7 +496,7 @@ function TimelineTab({ account, advisorCode }: { account: string; advisorCode: s
       for (const m of data.movements) {
         list.push({
           at: `${m.mov_date}T12:00:00Z`,
-          icon: m.amount >= 0 ? "ph-arrow-down-left" : "ph-arrow-up-right",
+          icon: m.amount >= 0 ? "icon-arrow-down-left" : "icon-arrow-up-right",
           title: `${m.amount >= 0 ? "Aporte" : "Resgate"} liquidado`,
           extra: (
             <span className="tl-item__row">
@@ -511,7 +511,7 @@ function TimelineTab({ account, advisorCode }: { account: string; advisorCode: s
       for (const a of data.alerts) {
         list.push({
           at: a.triggered_at ?? new Date().toISOString(),
-          icon: "ph-target",
+          icon: "icon-target",
           nodeClass: "tl-item__node--brand",
           title: (
             <>
@@ -531,7 +531,7 @@ function TimelineTab({ account, advisorCode }: { account: string; advisorCode: s
         const done = c.status === "concluido";
         list.push({
           at: c.completed_at ?? c.created_at,
-          icon: done ? "ph-check" : "ph-kanban",
+          icon: done ? "icon-check" : "icon-kanban",
           nodeClass: done ? "tl-item__node--success" : undefined,
           title: done ? "Card concluído" : "Card criado",
           extra: (
@@ -609,7 +609,7 @@ function TimelineTab({ account, advisorCode }: { account: string; advisorCode: s
 
       {!loading && events.length === 0 && (
         <div className="empty-state" style={{ borderRadius: 14 }}>
-          <span className="empty-state__icon"><i className="ph ph-clock-counter-clockwise" aria-hidden /></span>
+          <span className="empty-state__icon"><i className="icon-history" aria-hidden /></span>
           <span className="empty-state__title">Nada registrado ainda</span>
           <span className="empty-state__desc">Anote a primeira conversa abaixo — reuniões, cards e alertas entram aqui sozinhos.</span>
         </div>
@@ -628,7 +628,7 @@ function TimelineTab({ account, advisorCode }: { account: string; advisorCode: s
                 <span className="tl-item__time">{e.at.includes("T") ? new Date(e.at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }) : ""}</span>
                 <span className="tl-item__node-col">
                   <span className={`tl-item__node${e.nodeClass ? ` ${e.nodeClass}` : ""}`}>
-                    <i className={`ph ${e.icon}`} aria-hidden />
+                    <i className={`${e.icon}`} aria-hidden />
                   </span>
                 </span>
                 <span className="tl-item__main">
@@ -656,7 +656,7 @@ function TimelineTab({ account, advisorCode }: { account: string; advisorCode: s
             disabled={sending}
           />
           <button type="button" className="tl-composer__send" aria-label="Enviar anotação" onClick={send} disabled={sending}>
-            <i className="ph ph-paper-plane-tilt" aria-hidden />
+            <i className="icon-send" aria-hidden />
           </button>
         </span>
       </div>
@@ -705,7 +705,7 @@ export default function ClientFile() {
       <header className="ficha-header">
         <span className="ficha-header__lead">
           <button type="button" className="ficha-header__back" aria-label="Voltar" onClick={() => navigate("/clientes")}>
-            <i className="ph ph-arrow-left" aria-hidden />
+            <i className="icon-arrow-left" aria-hidden />
           </button>
           <span>
             <span className="ficha-header__name">{client?.name ?? maskAccount(account)}</span>
@@ -713,7 +713,7 @@ export default function ClientFile() {
           </span>
         </span>
         <button type="button" className="ficha-header__menu" aria-label="Mais opções" onClick={() => setMenu(true)}>
-          <i className="ph ph-dots-three-vertical" aria-hidden />
+          <i className="icon-ellipsis-vertical" aria-hidden />
         </button>
       </header>
 
@@ -722,9 +722,9 @@ export default function ClientFile() {
             <div className="sheet__title">{client?.name ?? maskAccount(account)}</div>
             <div className="card" style={{ padding: 0, overflow: "hidden", marginTop: 4 }}>
               {[
-                { icon: "ph-check-square", label: "Nova tarefa", go: `/cards?novo=1&cliente=${account}` },
-                { icon: "ph-target", label: "Novo alerta", go: `/alertas?novo=1&cliente=${account}` },
-                { icon: "ph-door-open", label: "Reservar sala", go: `/salas?novo=1&cliente=${account}` },
+                { icon: "icon-square-check", label: "Nova tarefa", go: `/cards?novo=1&cliente=${account}` },
+                { icon: "icon-target", label: "Novo alerta", go: `/alertas?novo=1&cliente=${account}` },
+                { icon: "icon-door-open", label: "Reservar sala", go: `/salas?novo=1&cliente=${account}` },
               ].map((a, i) => (
                 <button
                   key={a.label}
@@ -733,10 +733,10 @@ export default function ClientFile() {
                   onClick={() => { setMenu(false); navigate(a.go); }}
                 >
                   <span style={{ width: 30, height: 30, borderRadius: 9, background: "var(--chip-pill-bg)", color: "var(--field-label)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
-                    <i className={`ph ${a.icon}`} style={{ fontSize: 15 }} aria-hidden />
+                    <i className={`${a.icon}`} style={{ fontSize: 15 }} aria-hidden />
                   </span>
                   <span style={{ flex: 1, font: "400 13px/1.35 var(--font-sans)", color: "var(--text-1)" }}>{a.label}</span>
-                  <i className="ph ph-caret-right" style={{ fontSize: 16, color: "var(--icon-decor)" }} aria-hidden />
+                  <i className="icon-chevron-right" style={{ fontSize: 16, color: "var(--icon-decor)" }} aria-hidden />
                 </button>
               ))}
               <button
@@ -749,7 +749,7 @@ export default function ClientFile() {
                 }}
               >
                 <span style={{ width: 30, height: 30, borderRadius: 9, background: "var(--chip-pill-bg)", color: "var(--field-label)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
-                  <i className="ph ph-copy" style={{ fontSize: 15 }} aria-hidden />
+                  <i className="icon-copy" style={{ fontSize: 15 }} aria-hidden />
                 </span>
                 <span style={{ flex: 1, font: "400 13px/1.35 var(--font-sans)", color: "var(--text-1)" }}>
                   {copied ? "Conta copiada." : "Copiar número da conta"}

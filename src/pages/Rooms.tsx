@@ -92,7 +92,7 @@ function NewReservation({ rooms, defaults, onClose, onCreated }: {
                   <option key={r.id} value={r.id}>{r.name}</option>
                 ))}
               </select>
-              <i className="ph ph-caret-down field__caret" aria-hidden />
+              <i className="icon-chevron-down field__caret" aria-hidden />
             </div>
           </div>
           <div className={`field${past ? " field--error" : ""}`}>
@@ -147,13 +147,13 @@ function NewReservation({ rooms, defaults, onClose, onCreated }: {
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {alternatives.map((alt, i) => (
                 <button key={i} type="button" className={`alt-chip alt-chip--row${chosen === i ? " alt-chip--active" : ""}`} onClick={() => setChosen(i)}>
-                  <i className={`ph ${alt.sameRoom ? "ph-clock" : "ph-door-open"}`} aria-hidden />
+                  <i className={`${alt.sameRoom ? "icon-clock" : "icon-door-open"}`} aria-hidden />
                   <span style={{ flex: 1, textAlign: "left" }}>
                     {alt.roomName}
                     <span className="alt-chip__meta">{alt.sameRoom ? "mesma sala, outro horário" : "outra sala, mesmo horário"}</span>
                   </span>
                   <span style={{ fontVariantNumeric: "tabular-nums" }}>{alt.start}–{alt.end}</span>
-                  <i className={`ph ${chosen === i ? "ph-check-circle" : "ph-circle"} alt-chip__check`} aria-hidden />
+                  <i className={`${chosen === i ? "icon-circle-check" : "icon-circle"} alt-chip__check`} aria-hidden />
                 </button>
               ))}
             </div>
@@ -180,14 +180,14 @@ function NewReservation({ rooms, defaults, onClose, onCreated }: {
                 <option key={c.account_code} value={c.account_code}>{c.name ?? `Conta ${c.account_code}`}</option>
               ))}
             </select>
-            <i className="ph ph-caret-down field__caret" aria-hidden />
+            <i className="icon-chevron-down field__caret" aria-hidden />
           </div>
         </div>
 
         {past && (
           <div className="field--error">
             <div className="field__help">
-              <i className="ph ph-warning-circle" aria-hidden />
+              <i className="icon-circle-alert" aria-hidden />
               Não é possível reservar um horário no passado.
             </div>
           </div>
@@ -307,7 +307,7 @@ export default function Rooms() {
     <MobileShell active="inicio">
       <header className="page-header" style={{ background: "var(--surface)" }}>
         <span className="page-header__title">Sala de reunião</span>
-        <Button icon="ph-plus" style={{ height: 40, fontSize: 12.5 }} onClick={() => setCreating({ start: suggestedStart(day) })}>
+        <Button icon="icon-plus" style={{ height: 40, fontSize: 12.5 }} onClick={() => setCreating({ start: suggestedStart(day) })}>
           Reservar
         </Button>
       </header>
@@ -322,7 +322,7 @@ export default function Rooms() {
               style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 5, font: "600 15px/1.2 var(--font-sans)", letterSpacing: "-0.01em", color: "var(--text-1)" }}
             >
               {monthLabel}
-              <i className="ph ph-caret-down" style={{ fontSize: 13, color: "var(--text-2)" }} aria-hidden />
+              <i className="icon-chevron-down" style={{ fontSize: 13, color: "var(--text-2)" }} aria-hidden />
               <input
                 type="date"
                 aria-label="Escolher data da agenda"
@@ -372,7 +372,7 @@ export default function Rooms() {
 
         {rooms !== null && rooms.length === 0 && (
           <div className="empty-state" style={{ borderRadius: 14 }}>
-            <span className="empty-state__icon"><i className="ph ph-door-open" aria-hidden /></span>
+            <span className="empty-state__icon"><i className="icon-door-open" aria-hidden /></span>
             <span className="empty-state__title">Nenhuma sala cadastrada</span>
             <span className="empty-state__desc">O administrador cadastra as salas na área administrativa.</span>
           </div>
@@ -448,7 +448,7 @@ export default function Rooms() {
                       {isToday ? "hoje" : formatDate(p.start).slice(0, 5)} · {r.room_name} · {fmtHM(p.start)}–{fmtHM(p.end)}
                     </span>
                   </span>
-                  <Button variant="destructive" icon="ph-prohibit" onClick={() => setCancelling(r)}>
+                  <Button variant="destructive" icon="icon-ban" onClick={() => setCancelling(r)}>
                     Cancelar
                   </Button>
                 </div>
@@ -478,7 +478,7 @@ export default function Rooms() {
               {formatDate(p.start)} · {activeRoomName} · {fmtHM(p.start)}–{fmtHM(p.end)}
             </div>
             <div className="card" style={{ marginTop: 14, padding: 14, display: "flex", alignItems: "center", gap: 10 }}>
-              <i className="ph ph-user" style={{ fontSize: 16, color: "var(--field-label)" }} aria-hidden />
+              <i className="icon-user" style={{ fontSize: 16, color: "var(--field-label)" }} aria-hidden />
               <span style={{ font: "400 12.5px/1.4 var(--font-sans)", color: "var(--text-1)" }}>
                 {mineFlag ? "Sua reserva" : `Reservada por ${details.owner_name ?? "colega"}`}
               </span>
@@ -491,7 +491,7 @@ export default function Rooms() {
             <div className="sheet__footer" style={{ marginTop: 16 }}>
               <Button variant="secondary" block={!mineFlag} onClick={() => setDetails(null)}>Fechar</Button>
               {mineFlag && (
-                <Button variant="destructive" icon="ph-prohibit" onClick={() => { setCancelling(details); setDetails(null); }}>
+                <Button variant="destructive" icon="icon-ban" onClick={() => { setCancelling(details); setDetails(null); }}>
                   Cancelar reserva
                 </Button>
               )}
@@ -521,7 +521,7 @@ export default function Rooms() {
               <Button variant="secondary" onClick={() => setCancelling(null)}>Voltar</Button>
               <Button
                 variant="destructive"
-                icon="ph-prohibit"
+                icon="icon-ban"
                 loading={cancelBusy}
                 onClick={async () => {
                   setCancelBusy(true);
