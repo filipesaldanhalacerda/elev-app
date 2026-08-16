@@ -71,21 +71,44 @@ test.describe("tela 13 · lista por status (mobile)", () => {
     await expect(page.locator(".card-row", { hasText: "Ligar sobre vencimento do CDB" })).toBeVisible();
   });
 
-  test("tocar na tarefa abre para ver e editar", async ({ page }) => {
+  test("tocar na tarefa abre a visualização; editar, excluir e concluída travada", async ({ page }) => {
     const svc = serviceClient();
-    await svc.from("cards").insert({ title: `Revisar contrato ${RUN}`, description: "Conferir cláusula de rescisão", creator: rafaId, assignee: rafaId, priority: "media", status: "pendente" });
+    await svc.from("cards").insert([
+      { title: `Revisar contrato ${RUN}`, description: "Conferir cláusula de rescisão", creator: rafaId, assignee: rafaId, priority: "media", status: "pendente" },
+      { title: `Fechada ${RUN}`, creator: rafaId, assignee: rafaId, priority: "baixa", status: "concluido", completed_at: new Date().toISOString() },
+    ]);
     await login(page, RAFA.email, RAFA.password);
     await page.goto("/cards");
-    // a descrição aparece na lista
-    await expect(page.getByText("Conferir cláusula de rescisão")).toBeVisible();
-    // toque abre o sheet pré-preenchido
+    // padrão da lista: descrição NÃO aparece — só na visualização
+    await expect(page.getByText("Conferir cláusula de rescisão")).toHaveCount(0);
+
+    // toque → visualização com a descrição completa
     await page.getByRole("button", { name: `Abrir tarefa Revisar contrato ${RUN}` }).click();
+    await expect(page.getByRole("dialog", { name: "Detalhes da tarefa" }).getByText("Conferir cláusula de rescisão")).toBeVisible();
+
+    // editar a partir da visualização
+    await page.getByText("Editar tarefa").click();
     const sheet = page.getByRole("dialog", { name: "Editar tarefa" });
     await expect(sheet.getByLabel("Título")).toHaveValue(`Revisar contrato ${RUN}`);
-    await expect(sheet.getByLabel("Descrição · opcional")).toHaveValue("Conferir cláusula de rescisão");
     await sheet.getByLabel("Descrição · opcional").fill("Conferir cláusula de rescisão e multa");
     await sheet.getByRole("button", { name: "Salvar alterações" }).click();
+    await page.getByRole("button", { name: `Abrir tarefa Revisar contrato ${RUN}` }).click();
     await expect(page.getByText("Conferir cláusula de rescisão e multa")).toBeVisible();
+
+    // excluir com confirmação
+    await page.getByText("Excluir tarefa", { exact: true }).click();
+    await expect(page.locator(".sheet__title").last()).toHaveText("Excluir esta tarefa?");
+    await page.locator(".sheet").getByRole("button", { name: "Excluir tarefa" }).click();
+    await expect(page.locator(".card-row", { hasText: `Revisar contrato ${RUN}` })).toHaveCount(0);
+    const { data: gone } = await svc.from("cards").select("id").ilike("title", `Revisar contrato ${RUN}`);
+    expect(gone).toHaveLength(0);
+
+    // concluída: sem opção de editar
+    await page.getByRole("tab", { name: "Concluído" }).click();
+    await page.getByRole("button", { name: `Abrir tarefa Fechada ${RUN}` }).click();
+    await expect(page.getByText("Tarefa concluída não pode mais ser editada.")).toBeVisible();
+    await expect(page.getByText("Editar tarefa")).toHaveCount(0);
+    await page.locator(".sheet").getByRole("button", { name: "Fechar" }).click();
   });
 
   test("delegação: aparece em 'Minhas tarefas' do delegado com origem e notifica", async ({ page }) => {

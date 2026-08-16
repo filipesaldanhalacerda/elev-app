@@ -10,7 +10,7 @@ import { Button } from "../components/Button";
 import { Toggle } from "../components/Field";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabase";
-import { useCards, createCard, updateCard, advanceCard, isOverdue, type CardRow, type CardStatus } from "../lib/cards";
+import { useCards, createCard, updateCard, deleteCard, advanceCard, isOverdue, type CardRow, type CardStatus } from "../lib/cards";
 import { formatDate, formatTime } from "../lib/format";
 
 const HINT_KEY = "elev.cards.dica-dispensada";
@@ -86,7 +86,7 @@ function NewCardSheet({ initialClient = "", editing, onClose, onCreated }: { ini
           <div className="field">
             <label className="field__label" htmlFor="card-titulo" style={{ display: "block" }}>Título</label>
             <div className="field__box" style={{ height: 46 }}>
-              <input id="card-titulo" className="field__input" autoFocus={!editing} value={title} onChange={(e) => setTitle(e.target.value)} />
+              <input id="card-titulo" className="field__input" maxLength={80} autoFocus={!editing} value={title} onChange={(e) => setTitle(e.target.value)} />
             </div>
           </div>
           <div className="field">
@@ -167,6 +167,9 @@ export default function Cards() {
   const [status, setStatus] = useState<CardStatus>("pendente");
   const [sheet, setSheet] = useState(params.get("novo") !== null);
   const [editing, setEditing] = useState<CardRow | null>(null);
+  const [viewing, setViewing] = useState<CardRow | null>(null);
+  const [removing, setRemoving] = useState<CardRow | null>(null);
+  const [removeBusy, setRemoveBusy] = useState(false);
   const [hintDismissed, setHintDismissed] = useState(() => localStorage.getItem(HINT_KEY) === "1");
   const { rows, reload } = useCards("meus", profile?.id);
   const touchStart = useRef<number | null>(null);
@@ -234,18 +237,13 @@ export default function Cards() {
                 type="button"
                 style={{ flex: 1, minWidth: 0, display: "block", textAlign: "left" }}
                 aria-label={`Abrir tarefa ${card.title}`}
-                onClick={() => { setEditing(card); setSheet(true); }}
+                onClick={() => setViewing(card)}
               >
-                <span className="card-row__title" style={card.status === "concluido" ? { color: "var(--text-2)" } : undefined}>{card.title}</span>
+                <span className="card-row__title" style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", ...(card.status === "concluido" ? { color: "var(--text-2)" } : {}) }}>{card.title}</span>
                 <span className="card-row__meta-row">
                   {isOverdue(card) && <span className="card-row__late">atrasada</span>}
                   <span className="card-row__meta">{cardMeta(card, profile?.id ?? "")}</span>
                 </span>
-                {card.description && (
-                  <span style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", marginTop: 4, font: "400 11.5px/1.45 var(--font-sans)", color: "var(--text-2)" }}>
-                    {card.description}
-                  </span>
-                )}
               </button>
               {card.status !== "concluido" && (
                 <button
@@ -286,6 +284,88 @@ export default function Cards() {
       </div>
 
       {sheet && <NewCardSheet initialClient={params.get("cliente") ?? ""} editing={editing} onClose={() => { setSheet(false); setEditing(null); }} onCreated={reload} />}
+
+      {viewing && (
+        <Sheet label="Detalhes da tarefa" onClose={() => setViewing(null)}>
+          <div className="sheet__title" style={{ overflowWrap: "anywhere" }}>{viewing.title}</div>
+          <div style={{ marginTop: 6, font: "400 12px/1.5 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-2)" }}>
+            {viewing.status === "pendente" ? "Pendente" : viewing.status === "andamento" ? "Em andamento" : "Concluída"}
+            {viewing.client_name ? ` · ${viewing.client_name}` : ""}
+            {viewing.due_at ? ` · prazo ${formatDate(viewing.due_at)} ${formatTime(viewing.due_at)}` : ""}
+            {` · prioridade ${viewing.priority === "media" ? "média" : viewing.priority}`}
+          </div>
+          {viewing.description ? (
+            <div className="card" style={{ marginTop: 14, padding: 14, font: "400 13px/1.55 var(--font-sans)", color: "var(--text-1)", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+              {viewing.description}
+            </div>
+          ) : (
+            <div style={{ marginTop: 14, font: "400 12px/1.5 var(--font-sans)", color: "var(--text-3)" }}>Sem descrição.</div>
+          )}
+          <div className="card" style={{ padding: 0, overflow: "hidden", marginTop: 14 }}>
+            {viewing.status !== "concluido" && (
+              <button
+                type="button"
+                style={{ width: "100%", minHeight: 52, display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", textAlign: "left" }}
+                onClick={() => { setEditing(viewing); setViewing(null); setSheet(true); }}
+              >
+                <span style={{ width: 30, height: 30, borderRadius: 9, background: "var(--chip-pill-bg)", color: "var(--field-label)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+                  <i className="icon-pencil" style={{ fontSize: 15 }} aria-hidden />
+                </span>
+                <span style={{ flex: 1, font: "400 13px/1.35 var(--font-sans)", color: "var(--text-1)" }}>Editar tarefa</span>
+                <i className="icon-chevron-right" style={{ fontSize: 16, color: "var(--icon-decor)" }} aria-hidden />
+              </button>
+            )}
+            <button
+              type="button"
+              style={{ width: "100%", minHeight: 52, display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", textAlign: "left", borderTop: viewing.status !== "concluido" ? "1px solid var(--divider)" : undefined }}
+              onClick={() => { setRemoving(viewing); setViewing(null); }}
+            >
+              <span style={{ width: 30, height: 30, borderRadius: 9, background: "var(--danger-action-hover-bg)", color: "var(--danger-action-text)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+                <i className="icon-ban" style={{ fontSize: 15 }} aria-hidden />
+              </span>
+              <span style={{ flex: 1, font: "600 13px/1.35 var(--font-sans)", color: "var(--danger-action-text)" }}>Excluir tarefa</span>
+            </button>
+          </div>
+          {viewing.status === "concluido" && (
+            <div style={{ marginTop: 12, font: "400 11.5px/1.5 var(--font-sans)", color: "var(--text-2)" }}>
+              Tarefa concluída não pode mais ser editada.
+            </div>
+          )}
+          <div className="sheet__footer" style={{ marginTop: 14 }}>
+            <Button variant="secondary" block onClick={() => setViewing(null)}>Fechar</Button>
+          </div>
+        </Sheet>
+      )}
+
+      {removing && (
+        <Sheet label="Excluir tarefa" onClose={() => setRemoving(null)}>
+          <div className="sheet__title">Excluir esta tarefa?</div>
+          <div className="card" style={{ marginTop: 14, padding: 14 }}>
+            <span style={{ display: "block", font: "500 13px/1.4 var(--font-sans)", color: "var(--text-1)", overflowWrap: "anywhere" }}>{removing.title}</span>
+            <span style={{ display: "block", marginTop: 3, font: "400 11.5px/1.4 var(--font-sans)", color: "var(--text-2)" }}>{cardMeta(removing, profile?.id ?? "")}</span>
+          </div>
+          <div style={{ marginTop: 12, font: "400 11.5px/1.5 var(--font-sans)", color: "var(--text-2)" }}>
+            A exclusão é definitiva — a tarefa some da lista e do kanban do administrador.
+          </div>
+          <div className="sheet__footer" style={{ marginTop: 16 }}>
+            <Button variant="secondary" onClick={() => setRemoving(null)}>Voltar</Button>
+            <Button
+              variant="destructive"
+              icon="icon-ban"
+              loading={removeBusy}
+              onClick={async () => {
+                setRemoveBusy(true);
+                await deleteCard(removing.id);
+                setRemoveBusy(false);
+                setRemoving(null);
+                await reload();
+              }}
+            >
+              Excluir tarefa
+            </Button>
+          </div>
+        </Sheet>
+      )}
     </MobileShell>
   );
 }

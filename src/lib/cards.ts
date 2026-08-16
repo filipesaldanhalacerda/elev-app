@@ -97,6 +97,11 @@ export async function updateCard(id: string, patch: Omit<NewCard, "assignee">): 
   if (error) throw new Error(error.message);
 }
 
+export async function deleteCard(id: string): Promise<void> {
+  const { error } = await supabase.from("cards").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
 export async function createCard(creator: string, card: NewCard): Promise<void> {
   const { error } = await supabase.from("cards").insert({ ...card, creator, status: "pendente" });
   if (error) throw new Error(error.message);
