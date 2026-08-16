@@ -15,6 +15,7 @@ import {
   saveClientExtra, addTimelineNote, type Position,
 } from "../lib/clientData";
 import { useAuth } from "../lib/auth";
+import { supabase } from "../lib/supabase";
 import { recordClientVisit } from "./Dashboard";
 import { enqueueNote } from "../lib/offline";
 import { formatBRL, formatSignedBRL, formatPct, formatDate, formatInt, initials, formatPhone, isValidEmail } from "../lib/format";
@@ -34,6 +35,20 @@ function OverviewTab({ account }: { account: string }) {
   const [period, setPeriod] = useState<3 | 6 | 12>(12);
   const { data: series, loading: seriesLoading } = usePatrimonySeries(account, period);
   const { data: extras } = useClientExtras(account);
+  const navigate = useNavigate();
+  // tarefas ABERTAS vinculadas a este cliente — o vínculo aparece na Visão geral
+  const [openTasks, setOpenTasks] = useState<{ id: string; title: string; due_at: string | null }[]>([]);
+  useMemo(() => {
+    supabase
+      .from("cards")
+      .select("id, title, due_at")
+      .eq("account_code", account)
+      .neq("status", "concluido")
+      .order("due_at", { ascending: true, nullsFirst: false })
+      .limit(5)
+      .then(({ data }) => setOpenTasks((data ?? []) as { id: string; title: string; due_at: string | null }[]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account]);
 
   if (loading) return <FichaSkeleton />;
   if (!client)
@@ -135,6 +150,29 @@ function OverviewTab({ account }: { account: string }) {
           <span>Sala</span>
         </button>
       </div>
+
+      {openTasks.length > 0 && (
+        <button
+          type="button"
+          className="card"
+          data-client-tasks
+          style={{ padding: 14, display: "flex", alignItems: "center", gap: 12, textAlign: "left", width: "100%" }}
+          onClick={() => navigate("/cards")}
+        >
+          <span style={{ width: 34, height: 34, borderRadius: 10, background: "var(--brand-tint)", color: "var(--ghost-text)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+            <i className="icon-square-check" style={{ fontSize: 17 }} aria-hidden />
+          </span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: "block", font: "500 13px/1.35 var(--font-sans)", color: "var(--text-1)" }}>
+              {openTasks.length} tarefa{openTasks.length > 1 ? "s" : ""} aberta{openTasks.length > 1 ? "s" : ""} deste cliente
+            </span>
+            <span style={{ display: "block", marginTop: 2, font: "400 11.5px/1.4 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              próxima: {openTasks[0].title}{openTasks[0].due_at ? ` · ${formatDate(openTasks[0].due_at).slice(0, 5)}` : ""}
+            </span>
+          </span>
+          <i className="icon-chevron-right" style={{ fontSize: 16, color: "var(--icon-decor)" }} aria-hidden />
+        </button>
+      )}
 
       <Card style={{ padding: 14 }}>
         <div style={{ font: "600 12.5px/1 var(--font-sans)", color: "var(--text-1)" }}>Dados cadastrais</div>
@@ -533,7 +571,7 @@ function TimelineTab({ account, advisorCode }: { account: string; advisorCode: s
           at: c.completed_at ?? c.created_at,
           icon: done ? "icon-check" : "icon-kanban",
           nodeClass: done ? "tl-item__node--success" : undefined,
-          title: done ? "Card concluído" : "Card criado",
+          title: done ? "Tarefa concluída" : "Tarefa criada",
           extra: (
             <span className="tl-item__row">
               <span style={{ font: "400 11.5px/1 var(--font-sans)", color: "var(--field-label)" }}>{c.title}</span>

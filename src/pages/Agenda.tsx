@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
 import { Sheet } from "../components/Sheet";
+import { DetailSheet } from "../components/DetailSheet";
 import { Button } from "../components/Button";
 import { GoogleCalendarLogo } from "../components/GoogleLogo";
 import { addMinutes, durationLabel, nextSlotSP } from "../lib/format";
@@ -441,40 +442,24 @@ export default function Agenda() {
       )}
 
       {actions && (
-        <Sheet label="Ações do agendamento" onClose={() => setActions(null)}>
-          <div className="sheet__title">{actions.title}</div>
-          <div style={{ marginTop: 6, font: "400 12px/1.5 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-2)" }}>
-            {formatDate(actions.starts_at)} · {hm(actions.starts_at)}–{hm(actions.ends_at)}
-            {eventClientName(actions) ? ` · ${eventClientName(actions)}` : ""}
-            {actions.origin === "google" ? " · criado no Google" : ""}
-          </div>
-          <div className="card" style={{ padding: 0, overflow: "hidden", marginTop: 14 }}>
-            <button
-              type="button"
-              style={{ width: "100%", minHeight: 52, display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", textAlign: "left" }}
-              onClick={() => { setEditing(actions); setActions(null); setSheet(true); }}
-            >
-              <span style={{ width: 30, height: 30, borderRadius: 9, background: "var(--chip-pill-bg)", color: "var(--field-label)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
-                <i className="icon-pencil" style={{ fontSize: 15 }} aria-hidden />
-              </span>
-              <span style={{ flex: 1, font: "400 13px/1.35 var(--font-sans)", color: "var(--text-1)" }}>Editar agendamento</span>
-              <i className="icon-chevron-right" style={{ fontSize: 16, color: "var(--icon-decor)" }} aria-hidden />
-            </button>
-            <button
-              type="button"
-              style={{ width: "100%", minHeight: 52, display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", textAlign: "left", borderTop: "1px solid var(--divider)" }}
-              onClick={() => { setCancelling(actions); setActions(null); }}
-            >
-              <span style={{ width: 30, height: 30, borderRadius: 9, background: "var(--danger-action-hover-bg)", color: "var(--danger-action-text)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
-                <i className="icon-ban" style={{ fontSize: 15 }} aria-hidden />
-              </span>
-              <span style={{ flex: 1, font: "600 13px/1.35 var(--font-sans)", color: "var(--danger-action-text)" }}>Cancelar agendamento</span>
-            </button>
-          </div>
-          <div className="sheet__footer" style={{ marginTop: 14 }}>
-            <Button variant="secondary" block onClick={() => setActions(null)}>Fechar</Button>
-          </div>
-        </Sheet>
+        <DetailSheet
+          label="Ações do agendamento"
+          icon="icon-calendar"
+          title={actions.title}
+          chip={actions.origin === "google" ? "Google Agenda" : "Elev"}
+          chipKind="neutral"
+          rows={[
+            { icon: "icon-calendar", label: "Data", value: formatDate(actions.starts_at) },
+            { icon: "icon-clock", label: "Horário", value: `${hm(actions.starts_at)}–${hm(actions.ends_at)}` },
+            ...(eventClientName(actions) ? [{ icon: "icon-user", label: "Cliente", value: eventClientName(actions) }] : []),
+          ]}
+          actions={[
+            { icon: "icon-pencil", label: "Editar agendamento", onClick: () => { setEditing(actions); setActions(null); setSheet(true); } },
+            { icon: "icon-ban", label: "Cancelar agendamento", danger: true, onClick: () => { setCancelling(actions); setActions(null); } },
+          ]}
+          footnote={actions.origin === "google" ? "Criado no Google — mudanças feitas aqui também valem lá." : undefined}
+          onClose={() => setActions(null)}
+        />
       )}
 
       {cancelling && (

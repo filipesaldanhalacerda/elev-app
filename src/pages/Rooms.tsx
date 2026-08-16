@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
 import { Sheet } from "../components/Sheet";
+import { DetailSheet } from "../components/DetailSheet";
 import { Button } from "../components/Button";
 import { Banner } from "../components/feedback";
 import { useAuth } from "../lib/auth";
@@ -472,31 +473,22 @@ export default function Rooms() {
         const p = parsePeriod(details.period);
         const mineFlag = details.owner === profile?.id;
         return (
-          <Sheet label="Detalhes da reserva" onClose={() => setDetails(null)}>
-            <div className="sheet__title">{details.title}</div>
-            <div style={{ marginTop: 6, font: "400 12px/1.5 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-2)" }}>
-              {formatDate(p.start)} · {activeRoomName} · {fmtHM(p.start)}–{fmtHM(p.end)}
-            </div>
-            <div className="card" style={{ marginTop: 14, padding: 14, display: "flex", alignItems: "center", gap: 10 }}>
-              <i className="icon-user" style={{ fontSize: 16, color: "var(--field-label)" }} aria-hidden />
-              <span style={{ font: "400 12.5px/1.4 var(--font-sans)", color: "var(--text-1)" }}>
-                {mineFlag ? "Sua reserva" : `Reservada por ${details.owner_name ?? "colega"}`}
-              </span>
-            </div>
-            {!mineFlag && (
-              <div style={{ marginTop: 12, font: "400 11.5px/1.5 var(--font-sans)", color: "var(--text-2)" }}>
-                Só quem criou a reserva pode cancelá-la.
-              </div>
-            )}
-            <div className="sheet__footer" style={{ marginTop: 16 }}>
-              <Button variant="secondary" block={!mineFlag} onClick={() => setDetails(null)}>Fechar</Button>
-              {mineFlag && (
-                <Button variant="destructive" icon="icon-ban" onClick={() => { setCancelling(details); setDetails(null); }}>
-                  Cancelar reserva
-                </Button>
-              )}
-            </div>
-          </Sheet>
+          <DetailSheet
+            label="Detalhes da reserva"
+            icon="icon-presentation"
+            title={details.title}
+            chip={mineFlag ? "Sua reserva" : "Reserva de colega"}
+            chipKind={mineFlag ? "success" : "neutral"}
+            rows={[
+              { icon: "icon-presentation", label: "Sala", value: activeRoomName },
+              { icon: "icon-calendar", label: "Data", value: formatDate(p.start) },
+              { icon: "icon-clock", label: "Horário", value: `${fmtHM(p.start)}–${fmtHM(p.end)}` },
+              { icon: "icon-user", label: "Reservada por", value: mineFlag ? "Você" : details.owner_name ?? "colega" },
+            ]}
+            actions={mineFlag ? [{ icon: "icon-ban", label: "Cancelar reserva", danger: true, onClick: () => { setCancelling(details); setDetails(null); } }] : []}
+            footnote={mineFlag ? undefined : "Só quem criou a reserva pode cancelá-la."}
+            onClose={() => setDetails(null)}
+          />
         );
       })()}
 

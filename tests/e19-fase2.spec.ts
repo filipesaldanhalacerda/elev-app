@@ -74,6 +74,20 @@ test.describe("fase 2 · mobile", () => {
     await expect(page.getByLabel("Cliente")).toHaveValue(ANA);
   });
 
+  test("tarefa vinculada ao cliente aparece na Visão geral e na Linha do tempo", async ({ page }) => {
+    const svc = serviceClient();
+    await svc.from("cards").insert({ title: `Vinculada ${RUN.slice(-5)}`, creator: advId, assignee: advId, account_code: ANA, priority: "media", status: "pendente" });
+    await login(page);
+    await page.goto(`/clientes/${ANA}`);
+    // Visão geral: indicador com contagem e próxima tarefa
+    const chip = page.locator("[data-client-tasks]");
+    await expect(chip).toContainText("tarefa");
+    await expect(chip).toContainText(`Vinculada ${RUN.slice(-5)}`);
+    // Linha do tempo: evento com a linguagem nova
+    await page.goto(`/clientes/${ANA}?aba=Linha%20do%20tempo`);
+    await expect(page.getByText("Tarefa criada").first()).toBeVisible();
+  });
+
   test("F2-05/F2-06: telefone ganha máscara e e-mail inválido não salva", async ({ page }) => {
     await login(page);
     await page.goto(`/clientes/${ANA}?aba=Cadastro`);
