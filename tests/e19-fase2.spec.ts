@@ -357,6 +357,20 @@ test.describe("fase 2 · mobile", () => {
     await expect(page.locator(".cal-event", { hasText: `Reunião editada ${RUN}` })).toHaveCount(0);
   });
 
+  test("reservas marcadas ANTES de conectar entram na agenda ao conectar (backfill)", async ({ page }) => {
+    const svc = serviceClient();
+    const { data: room } = await svc.from("rooms").upsert({ name: `Backfill ${RUN.slice(-5)}`, capacity: 2, resources: [] }, { onConflict: "name" }).select("id").single();
+    await svc.from("reservations").delete().eq("room_id", room!.id);
+    const depois = new Date(Date.now() + 2 * 86400000).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+    // reserva criada "no passado da conexão" — sem evento correspondente
+    await svc.from("reservations").insert({ room_id: room!.id, owner: advId, title: `Antiga ${RUN.slice(-4)}`, period: `[${depois}T09:00:00-03:00,${depois}T10:00:00-03:00)` });
+
+    await login(page);
+    await page.goto("/agenda"); // o GET de eventos faz o backfill
+    await page.locator(`[data-agenda-day="${depois}"]`).click();
+    await expect(page.locator(".cal-event", { hasText: `Reserva · Antiga ${RUN.slice(-4)}` })).toBeVisible();
+  });
+
   test("novo agendamento abre já num horário à frente — nunca com erro de passado", async ({ page }) => {
     await login(page);
     await page.goto("/agenda");

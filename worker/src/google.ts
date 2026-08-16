@@ -107,6 +107,34 @@ const calBody = (title: string, startsAt: string, endsAt: string): CalendarEvent
 
 const CAL = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
 
+export interface RemoteEvent {
+  googleId: string;
+  title: string;
+  startsAt: string;
+  endsAt: string;
+}
+
+/** Lê os próximos compromissos do calendário primário (modo real). */
+export async function listFromGoogle(env: GoogleEnv, svc: SupabaseClient, userId: string, timeMin: string, timeMax: string): Promise<RemoteEvent[] | null> {
+  if (googleMode(env) === "simulado") return null;
+  const token = await freshToken(env, svc, userId);
+  if (!token) return null;
+  const p = new URLSearchParams({ timeMin, timeMax, singleEvents: "true", orderBy: "startTime", maxResults: "250" });
+  const res = await fetch(`${CAL}?${p}`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) return null;
+  const body = (await res.json()) as { items?: { id: string; summary?: string; status?: string; start?: { dateTime?: string; date?: string }; end?: { dateTime?: string; date?: string } }[] };
+  return (body.items ?? [])
+    .filter((i) => i.status !== "cancelled")
+    .map((i) => ({
+      googleId: i.id,
+      title: i.summary?.trim() || "(sem título)",
+      // evento de dia inteiro vem só com "date": vira 08:00–18:00 no fuso do produto
+      startsAt: i.start?.dateTime ?? (i.start?.date ? `${i.start.date}T08:00:00-03:00` : ""),
+      endsAt: i.end?.dateTime ?? (i.end?.date ? `${i.start?.date}T18:00:00-03:00` : ""),
+    }))
+    .filter((i) => i.startsAt && i.endsAt);
+}
+
 /** Replica a operação no Google (modo real); no simulado devolve um id determinístico. */
 export async function pushToGoogle(
   env: GoogleEnv, svc: SupabaseClient, userId: string,

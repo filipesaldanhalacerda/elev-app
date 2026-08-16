@@ -7,7 +7,7 @@ import { Hono } from "hono";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { fakeQuote, fakeSeries, fakeMtTest } from "./quotes";
 import { sendWebPush, type PushSubscriptionRecord, type PushEnv } from "./webpush";
-import { googleMode, signedState, verifyState, authUrl, exchangeCode, userEmail, pushToGoogle, type GoogleEnv } from "./google";
+import { googleMode, signedState, verifyState, authUrl, exchangeCode, userEmail, pushToGoogle, listFromGoogle, type GoogleEnv } from "./google";
 
 type Env = { SUPABASE_URL: string; SERVICE_ROLE_KEY: string; METAAPI_TOKEN?: string } & PushEnv & GoogleEnv;
 type Ctx = { Bindings: Env; Variables: { svc: SupabaseClient; admin: { id: string; name: string } } };
@@ -782,9 +782,76 @@ async function requireGoogle(c: Parameters<typeof requireUser>[0]) {
   return data ? auth : null;
 }
 
+/** Reservas futuras do usuário que ainda não viraram evento — cobre quem conecta DEPOIS de já ter marcado. */
+async function backfillReservations(env: Env, svc: SupabaseClient, userId: string) {
+  const { data: acc } = await svc.from("google_accounts").select("user_id").eq("user_id", userId).maybeSingle();
+  if (!acc) return;
+  const { data: resv } = await svc
+    .from("reservations")
+    .select("id, title, period, account_code, rooms(name)")
+    .eq("owner", userId)
+    .is("cancelled_at", null);
+  const { data: existing } = await svc.from("google_events").select("reservation_id").eq("user_id", userId).not("reservation_id", "is", null);
+  const synced = new Set((existing ?? []).map((e) => String(e.reservation_id)));
+  for (const r of resv ?? []) {
+    if (synced.has(String(r.id))) continue;
+    const m = String(r.period).match(/[\[\(]"?([^",]+)"?\s*,\s*"?([^"\)\]]+)"?[\)\]]/);
+    if (!m) continue;
+    const startsAt = new Date(m[1]).toISOString();
+    const endsAt = new Date(m[2]).toISOString();
+    if (new Date(endsAt).getTime() < Date.now()) continue; // só o futuro interessa
+    const roomName = ((Array.isArray(r.rooms) ? r.rooms[0] : r.rooms) as { name?: string } | null)?.name ?? "sala";
+    const title = `Reserva · ${r.title} — ${roomName}`;
+    const googleId = await pushToGoogle(env, svc, userId, { kind: "create", title, startsAt, endsAt });
+    await svc.from("google_events").insert({
+      user_id: userId, google_id: googleId, title, starts_at: startsAt, ends_at: endsAt,
+      account_code: r.account_code ?? null, reservation_id: r.id,
+    });
+  }
+}
+/** Espelha a agenda REAL do Google para dentro do Elev (importação de mão dupla). */
+async function importFromGoogle(env: Env, svc: SupabaseClient, userId: string) {
+  const timeMin = new Date(Date.now() - 86400000).toISOString();
+  const timeMax = new Date(Date.now() + 60 * 86400000).toISOString();
+  const remote = await listFromGoogle(env, svc, userId, timeMin, timeMax);
+  if (remote === null) return; // simulado ou sem token: nada a importar
+  const { data: locals } = await svc
+    .from("google_events")
+    .select("id, google_id, title, starts_at, ends_at, status")
+    .eq("user_id", userId)
+    .gte("starts_at", timeMin)
+    .lte("starts_at", timeMax);
+  const byGoogleId = new Map((locals ?? []).filter((l) => l.google_id).map((l) => [String(l.google_id), l]));
+  const remoteIds = new Set(remote.map((r) => r.googleId));
+  for (const r of remote) {
+    const local = byGoogleId.get(r.googleId);
+    if (!local) {
+      await svc.from("google_events").insert({
+        user_id: userId, google_id: r.googleId, title: r.title,
+        starts_at: r.startsAt, ends_at: r.endsAt, origin: "google",
+      });
+    } else if (local.title !== r.title || new Date(local.starts_at).getTime() !== new Date(r.startsAt).getTime() || new Date(local.ends_at).getTime() !== new Date(r.endsAt).getTime() || local.status !== "confirmado") {
+      await svc.from("google_events").update({ title: r.title, starts_at: r.startsAt, ends_at: r.endsAt, status: "confirmado" }).eq("id", local.id);
+    }
+  }
+  // sumiu do Google dentro da janela → cancelado também aqui
+  for (const l of locals ?? []) {
+    if (l.google_id && l.status === "confirmado" && !remoteIds.has(String(l.google_id))) {
+      await svc.from("google_events").update({ status: "cancelado" }).eq("id", l.id);
+    }
+  }
+}
+
 app.get("/api/google/events", async (c) => {
   const auth = await requireUser(c);
   if (!auth) return c.json({ error: "Não autenticado." }, 401);
+  // melhor esforço: reservas antigas viram eventos e a agenda real do Google é espelhada
+  try {
+    await backfillReservations(c.env, auth.svc, auth.userId);
+    await importFromGoogle(c.env, auth.svc, auth.userId);
+  } catch {
+    // sem rede/token: a lista local continua respondendo
+  }
   const { data } = await auth.svc
     .from("google_events")
     .select("*, clients(name)")

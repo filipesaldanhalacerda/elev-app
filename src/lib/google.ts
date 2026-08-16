@@ -15,6 +15,7 @@ export interface GoogleEvent {
   ends_at: string;
   account_code: string | null;
   reservation_id: string | null;
+  origin: "elev" | "google";
   status: "confirmado" | "cancelado";
   clients?: { name?: string } | { name?: string }[] | null;
 }

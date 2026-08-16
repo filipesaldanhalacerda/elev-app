@@ -410,6 +410,7 @@ export default function Agenda() {
                       <span className="cal-event__meta">
                         {hm(e.starts_at)}–{hm(e.ends_at)}
                         {!compact && eventClientName(e) ? ` · ${eventClientName(e)}` : ""}
+                        {!compact && e.origin === "google" ? " · Google" : ""}
                       </span>
                     </button>
                   );
@@ -448,6 +449,7 @@ export default function Agenda() {
             {formatDate(actions.starts_at)} · {hm(actions.starts_at)}–{hm(actions.ends_at)}
             {eventClientName(actions) ? ` · ${eventClientName(actions)}` : ""}
             {actions.reservation_id ? " · reserva de sala" : ""}
+            {actions.origin === "google" ? " · criado no Google" : ""}
           </div>
           <div className="card" style={{ padding: 0, overflow: "hidden", marginTop: 14 }}>
             <button
