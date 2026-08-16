@@ -42,16 +42,19 @@ test.beforeAll(async () => {
     import_id: importId, account_code: account, advisor_code: advisor, ref_date: ref, variant: "mensal",
     net_em_m: net, net_em_m1: net1, captacao_liquida_m: capt,
   });
-  // idempotente: retries re-executam o beforeAll — nunca duplicar fatos do mesmo import
-  await svc.from("positivador_snapshots").delete().eq("import_id", importId);
-  await svc.from("positions").delete().eq("import_id", importId);
-  await svc.from("movements").delete().eq("import_id", importId);
-  await svc.from("positivador_snapshots").insert([
+  // idempotente e à prova de colisão: contas de rodadas antigas podem repetir o sufixo —
+  // limpa qualquer fato dessas contas (unique account_code+ref_date+variant) antes de inserir
+  const ACCOUNTS = [ANA, CARLOS, DO_B];
+  await svc.from("positivador_snapshots").delete().in("account_code", ACCOUNTS);
+  await svc.from("positions").delete().in("account_code", ACCOUNTS);
+  await svc.from("movements").delete().in("account_code", ACCOUNTS);
+  const { error: snapErr } = await svc.from("positivador_snapshots").insert([
     snap(ANA, ADV_A.code, "2026-07-15", 4745887, 4600000),
     snap(ANA, ADV_A.code, "2026-08-15", 4812330, 4745887, 250000),
     snap(CARLOS, ADV_A.code, "2026-08-15", 918740.55, 924300),
     snap(DO_B, ADV_B.code, "2026-08-15", 7777777, 7000000),
   ]);
+  if (snapErr) throw new Error(`seed positivador_snapshots: ${snapErr.message}`);
   await svc.from("positions").insert([
     { import_id: importId, account_code: ANA, advisor_code: ADV_A.code, ref_date: "2026-08-15", product: "Renda Fixa", sub_product: "CDB", asset: "CDB Banco Fictício", issuer: "Banco Fictício", maturity_date: "2026-08-18", quantity: 1, value: 812400 },
     { import_id: importId, account_code: ANA, advisor_code: ADV_A.code, ref_date: "2026-08-15", product: "Renda Fixa", sub_product: "Tesouro", asset: "Tesouro IPCA+ 2029", maturity_date: "2029-05-15", quantity: 100, value: 568778.6 },
@@ -101,6 +104,26 @@ emAmbosTemas("tela 05 · lista de clientes", () => {
   });
 });
 
+emAmbosTemas("ficha · atalhos rápidos", () => {
+  test("Tarefa e Alerta abrem o modal com o cliente vinculado preenchido; sem atalho de Sala", async ({ page }) => {
+    await loginA(page);
+    await page.goto(`/clientes/${ANA}`);
+    await page.waitForSelector(".quick-action");
+
+    // Tarefa → sheet de nova tarefa com o cliente já selecionado
+    await page.locator(".quick-action", { hasText: "Tarefa" }).click();
+    await page.waitForURL(`**/cards?novo=1&cliente=${ANA}`);
+    await expect(page.getByRole("dialog", { name: "Nova tarefa" })).toBeVisible();
+    await expect(page.locator("#card-cliente")).toHaveValue(ANA);
+
+    // Alerta → sheet de novo alerta com o cliente já selecionado
+    await page.goto(`/clientes/${ANA}`);
+    await page.locator(".quick-action", { hasText: "Alerta" }).click();
+    await page.waitForURL(`**/alertas?novo=1&cliente=${ANA}`);
+    await expect(page.locator("#alerta-cliente")).toHaveValue(ANA);
+  });
+});
+
 test.describe.serial("fluxo (b) · busca → ficha → abas → volta", () => {
   test("busca com destaque, ficha completa em 5 abas e volta", async ({ page }) => {
     await loginA(page);
@@ -125,7 +148,8 @@ test.describe.serial("fluxo (b) · busca → ficha → abas → volta", () => {
     await expect(page.locator(".patrimony-source")).toHaveText("posição de 15/08/2026 · fonte Positivador");
     await expect(page.getByText("Captação líquida · agosto")).toBeVisible();
     await expect(page.getByText("R$ 250.000,00").first()).toBeVisible();
-    await expect(page.locator(".quick-action")).toHaveCount(4);
+    await expect(page.locator(".quick-action")).toHaveCount(3);
+    await expect(page.locator(".quick-action", { hasText: "Sala" })).toHaveCount(0);
     await expect(page.getByText("Dados cadastrais")).toBeVisible();
     await expect(page.getByText("02/03/1971")).toBeVisible();
 
@@ -162,11 +186,10 @@ test.describe.serial("fluxo (b) · busca → ficha → abas → volta", () => {
     await page.getByRole("button", { name: "Salvar" }).click();
     await expect(page.locator(".extras-row__value").first()).toHaveText("(11) 98812-4402");
 
-    // 10 · linha do tempo: anotação via compositor + aporte importado
-    await page.getByRole("tab", { name: "Linha do tempo" }).click();
-    await expect(page.getByText("Aporte liquidado").first()).toBeVisible();
-    await page.getByLabel("Anotar algo desta conversa").fill("Quer antecipar a aposentadoria em 2028.");
-    await page.getByRole("button", { name: "Enviar anotação" }).click();
+    // 10 · notas: registro via compositor
+    await page.getByRole("tab", { name: "Notas" }).click();
+    await page.getByLabel("Escrever uma nota sobre o cliente").fill("Quer antecipar a aposentadoria em 2028.");
+    await page.getByRole("button", { name: "Salvar nota" }).click();
     await expect(page.locator(".tl-item__note")).toContainText("Quer antecipar a aposentadoria em 2028.");
     await expect(page.getByText("Rafael Moura")).toBeVisible();
 

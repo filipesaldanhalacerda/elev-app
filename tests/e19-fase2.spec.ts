@@ -60,21 +60,19 @@ test.describe("fase 2 · mobile", () => {
     expect(st.underline).toBe("2px");
   });
 
-  test("F2-04: menu ⋮ da ficha abre ações e leva à nova tarefa com o cliente vinculado", async ({ page }) => {
+  test("F2-04: atalho Tarefa da ficha leva à nova tarefa com o cliente vinculado; sem menu ⋮", async ({ page }) => {
     await login(page);
     await page.goto(`/clientes/${ANA}`);
-    await page.getByRole("button", { name: "Mais opções" }).click();
-    const sheet = page.getByRole("dialog", { name: "Ações do cliente" });
-    await expect(sheet.getByText("Novo alerta")).toBeVisible();
-    await expect(sheet.getByText("Reservar sala")).toBeVisible();
-    await expect(sheet.getByText("Copiar número da conta")).toBeVisible();
-    await sheet.getByText("Nova tarefa", { exact: true }).click();
+    await page.waitForSelector(".quick-action");
+    // o menu ⋮ não existe mais — as ações viraram atalhos rápidos
+    await expect(page.getByRole("button", { name: "Mais opções" })).toHaveCount(0);
+    await page.locator(".quick-action", { hasText: "Tarefa" }).click();
     await page.waitForURL("**/cards?novo=1*");
     await page.waitForSelector(".sheet__title");
     await expect(page.getByLabel("Cliente")).toHaveValue(ANA);
   });
 
-  test("tarefa vinculada ao cliente aparece na Visão geral e na Linha do tempo", async ({ page }) => {
+  test("tarefa vinculada ao cliente aparece na Visão geral", async ({ page }) => {
     const svc = serviceClient();
     await svc.from("cards").insert({ title: `Vinculada ${RUN.slice(-5)}`, creator: advId, assignee: advId, account_code: ANA, priority: "media", status: "pendente" });
     await login(page);
@@ -83,9 +81,6 @@ test.describe("fase 2 · mobile", () => {
     const chip = page.locator("[data-client-tasks]");
     await expect(chip).toContainText("tarefa");
     await expect(chip).toContainText(`Vinculada ${RUN.slice(-5)}`);
-    // Linha do tempo: evento com a linguagem nova
-    await page.goto(`/clientes/${ANA}?aba=Linha%20do%20tempo`);
-    await expect(page.getByText("Tarefa criada").first()).toBeVisible();
   });
 
   test("F2-05/F2-06: telefone ganha máscara e e-mail inválido não salva", async ({ page }) => {

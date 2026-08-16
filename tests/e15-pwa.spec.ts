@@ -46,14 +46,14 @@ test("tela 24: banner fixo com horário, estado central e retorno online", async
 test("fila de sincronização: anotação offline entra na fila e sincroniza ao voltar", async ({ page, context }) => {
   const svc = serviceClient();
   await login(page);
-  await page.goto(`/clientes/${ANA}?aba=Linha%20do%20tempo`);
-  await expect(page.getByLabel("Anotar algo desta conversa")).toBeVisible();
+  await page.goto(`/clientes/${ANA}?aba=Notas`);
+  await expect(page.getByLabel("Escrever uma nota sobre o cliente")).toBeVisible();
 
   // offline: anotar → vai para a fila
   await context.setOffline(true);
   await page.evaluate(() => window.dispatchEvent(new Event("offline")));
-  await page.getByLabel("Anotar algo desta conversa").fill(`Anotação offline ${RUN}`);
-  await page.getByRole("button", { name: "Enviar anotação" }).click();
+  await page.getByLabel("Escrever uma nota sobre o cliente").fill(`Anotação offline ${RUN}`);
+  await page.getByRole("button", { name: "Salvar nota" }).click();
   await expect(page.locator("[data-sync-queue]")).toContainText("1 anotação aguardando sincronizar");
   await expect(page.locator("[data-sync-queue]")).toContainText("na fila");
   const { data: before } = await svc.from("timeline_notes").select("id").ilike("body", `%${RUN}%`);

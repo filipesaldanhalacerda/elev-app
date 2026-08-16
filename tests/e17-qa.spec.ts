@@ -143,7 +143,7 @@ const MOBILE_ROUTES: { path: string; label: string; ready: string }[] = [
   { path: `/clientes/__ANA__?aba=Carteira`, label: "07-carteira", ready: ".class-group" },
   { path: `/clientes/__ANA__?aba=Movimenta%C3%A7%C3%B5es`, label: "08-movimentacoes", ready: ".mov-group" },
   { path: `/clientes/__ANA__?aba=Cadastro`, label: "09-cadastro", ready: ".extras-card" },
-  { path: `/clientes/__ANA__?aba=Linha%20do%20tempo`, label: "10-linha-do-tempo", ready: ".tl-composer" },
+  { path: `/clientes/__ANA__?aba=Notas`, label: "10-notas", ready: ".tl-composer" },
   { path: "/cotacoes", label: "11-cotacoes", ready: ".fav-row" },
   { path: "/alertas", label: "12-alertas", ready: ".alert-card__track" },
   { path: "/cards", label: "13-cards", ready: ".status-segment" },

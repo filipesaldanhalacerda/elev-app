@@ -5,7 +5,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
-import { Sheet } from "../components/Sheet";
 import { Card } from "../components/cards";
 import { LineChart, Donut } from "../components/charts";
 import { StatusChip, Banner } from "../components/feedback";
@@ -21,7 +20,7 @@ import { recordClientVisit } from "./Dashboard";
 import { enqueueNote } from "../lib/offline";
 import { formatBRL, formatSignedBRL, formatPct, formatDate, formatInt, initials, formatPhone, isValidEmail } from "../lib/format";
 
-const TABS = ["Visão geral", "Carteira", "Movimentações", "Cadastro", "Linha do tempo"] as const;
+const TABS = ["Visão geral", "Carteira", "Movimentações", "Cadastro", "Notas"] as const;
 type Tab = (typeof TABS)[number];
 
 const maskAccount = (acc: string) =>
@@ -138,17 +137,13 @@ function OverviewTab({ account }: { account: string }) {
           <i className="icon-message-circle" aria-hidden />
           <span>WhatsApp</span>
         </a>
-        <button type="button" className="quick-action" onClick={() => (window.location.href = "/cards")}>
-          <i className="icon-kanban" aria-hidden />
+        <button type="button" className="quick-action" onClick={() => (window.location.href = `/cards?novo=1&cliente=${account}`)}>
+          <i className="icon-square-check" aria-hidden />
           <span>Tarefa</span>
         </button>
-        <button type="button" className="quick-action" onClick={() => (window.location.href = "/alertas?novo")}>
-          <i className="icon-target" aria-hidden />
+        <button type="button" className="quick-action" onClick={() => (window.location.href = `/alertas?novo=1&cliente=${account}`)}>
+          <i className="icon-radar" aria-hidden />
           <span>Alerta</span>
-        </button>
-        <button type="button" className="quick-action" onClick={() => (window.location.href = "/salas")}>
-          <i className="icon-door-open" aria-hidden />
-          <span>Sala</span>
         </button>
       </div>
 
@@ -494,102 +489,19 @@ function spDay(at: string): string {
   return at.includes("T") ? new Date(at).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" }) : at.slice(0, 10);
 }
 
-interface TlEvent {
-  at: string;
-  icon: string;
-  nodeClass?: string;
-  title: React.ReactNode;
-  extra?: React.ReactNode;
-}
-
-function TimelineTab({ account, advisorCode }: { account: string; advisorCode: string }) {
+function NotesTab({ account, advisorCode }: { account: string; advisorCode: string }) {
   const { profile } = useAuth();
   const { data, loading, reload } = useTimeline(account);
-  const [filter, setFilter] = useState<"tudo" | "alertas" | "reunioes" | "cards" | "anotacoes">("tudo");
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
 
-  const events = useMemo(() => {
-    if (!data) return [];
-    const list: TlEvent[] = [];
-    if (filter === "tudo" || filter === "anotacoes") {
-      for (const n of data.notes) {
-        list.push({
-          at: n.created_at,
-          icon: "icon-square-pen",
-          title: "Anotação",
-          extra: (
-            <>
-              <span className="tl-item__note">{n.body}</span>
-              <span className="tl-item__row">
-                <span style={{ width: 20, height: 20, borderRadius: 999, background: "var(--brand-tint)", color: "var(--ghost-text)", display: "flex", alignItems: "center", justifyContent: "center", font: "600 8.5px/1 var(--font-sans)" }}>
-                  {initials(n.author_name || "?")}
-                </span>
-                <span style={{ font: "400 10.5px/1 var(--font-sans)", color: "var(--text-3)" }}>{n.author_name}</span>
-              </span>
-            </>
-          ),
-        });
-      }
-    }
-    if (filter === "tudo") {
-      for (const m of data.movements) {
-        list.push({
-          at: `${m.mov_date}T12:00:00Z`,
-          icon: m.amount >= 0 ? "icon-arrow-down-left" : "icon-arrow-up-right",
-          title: `${m.amount >= 0 ? "Aporte" : "Resgate"} liquidado`,
-          extra: (
-            <span className="tl-item__row">
-              <span className="tl-item__amount">{formatSignedBRL(m.amount)}</span>
-              <span className="tl-item__source">importação Captação</span>
-            </span>
-          ),
-        });
-      }
-    }
-    if (filter === "tudo" || filter === "alertas") {
-      for (const a of data.alerts) {
-        list.push({
-          at: a.triggered_at ?? new Date().toISOString(),
-          icon: "icon-target",
-          nodeClass: "tl-item__node--brand",
-          title: (
-            <>
-              Alerta de <code>{a.ticker}</code> {a.status === "disparado" ? "disparado" : "ativo"}
-            </>
-          ),
-          extra: a.target_price ? (
-            <span className="tl-item__row">
-              <span className="tl-item__chip">alvo {formatBRL(a.target_price)}</span>
-            </span>
-          ) : undefined,
-        });
-      }
-    }
-    if (filter === "tudo" || filter === "cards") {
-      for (const c of data.cards) {
-        const done = c.status === "concluido";
-        list.push({
-          at: c.completed_at ?? c.created_at,
-          icon: done ? "icon-check" : "icon-kanban",
-          nodeClass: done ? "tl-item__node--success" : undefined,
-          title: done ? "Tarefa concluída" : "Tarefa criada",
-          extra: (
-            <span className="tl-item__row">
-              <span style={{ font: "400 11.5px/1 var(--font-sans)", color: "var(--field-label)" }}>{c.title}</span>
-            </span>
-          ),
-        });
-      }
-    }
-    return list.sort((a, b) => (a.at < b.at ? 1 : -1));
-  }, [data, filter]);
+  const notes = useMemo(() => [...(data?.notes ?? [])].sort((a, b) => (a.created_at < b.created_at ? 1 : -1)), [data]);
 
   const days = useMemo(() => {
-    const map = new Map<string, TlEvent[]>();
-    for (const e of events) {
-      const key = spDay(e.at);
-      map.set(key, [...(map.get(key) ?? []), e]);
+    const map = new Map<string, typeof notes>();
+    for (const n of notes) {
+      const key = spDay(n.created_at);
+      map.set(key, [...(map.get(key) ?? []), n]);
     }
     const today = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
     const yesterday = new Date(Date.now() - 86400000).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
@@ -598,7 +510,7 @@ function TimelineTab({ account, advisorCode }: { account: string; advisorCode: s
       label: day === today ? `Hoje · ${formatDate(day).slice(0, 5)}` : day === yesterday ? `Ontem · ${formatDate(day).slice(0, 5)}` : formatDate(day),
       items,
     }));
-  }, [events]);
+  }, [notes]);
 
   async function send() {
     if (!draft.trim()) return;
@@ -617,41 +529,13 @@ function TimelineTab({ account, advisorCode }: { account: string; advisorCode: s
 
   return (
     <div className="ficha-body" style={{ gap: 18, paddingTop: 12 }}>
-      <div className="filter-row" style={{ overflowX: "auto" }}>
-        {([["tudo", "Tudo"], ["alertas", "Alertas"], ["reunioes", "Reuniões"], ["cards", "Tarefas"], ["anotacoes", "Anotações"]] as const).map(([key, label]) => (
-          <button key={key} type="button" className={`filter-chip${filter === key ? " filter-chip--active" : ""}`} onClick={() => setFilter(key)}>
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {!loading && events.length > 0 && (
-        <div style={{ padding: "0 2px" }}>
-          <div className="tl-summary__title">
-            {(() => {
-              const last = spDay(events[0].at);
-              const today = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
-              const yesterday = new Date(Date.now() - 86400000).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
-              return `Último contato ${last === today ? "hoje" : last === yesterday ? "ontem" : `em ${formatDate(last)}`}`;
-            })()}
-          </div>
-          <div className="tl-summary__meta">
-            {(() => {
-              const month = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" }).slice(0, 7);
-              const inMonth = events.filter((e) => spDay(e.at).startsWith(month)).length;
-              return `${inMonth} evento${inMonth !== 1 ? "s" : ""} em ${MONTHS[new Date().getMonth()]}`;
-            })()}
-          </div>
-        </div>
-      )}
-
       {loading && <div className="skeleton" style={{ height: 160, borderRadius: 14 }} />}
 
-      {!loading && events.length === 0 && (
+      {!loading && notes.length === 0 && (
         <div className="empty-state" style={{ borderRadius: 14 }}>
-          <span className="empty-state__icon"><i className="icon-history" aria-hidden /></span>
-          <span className="empty-state__title">Nada registrado ainda</span>
-          <span className="empty-state__desc">Anote a primeira conversa abaixo — reuniões, cards e alertas entram aqui sozinhos.</span>
+          <span className="empty-state__icon"><i className="icon-square-pen" aria-hidden /></span>
+          <span className="empty-state__title">Nenhuma nota ainda</span>
+          <span className="empty-state__desc">Registre abaixo pontos importantes de conversas com o cliente — as notas ficam guardadas só nesta ficha.</span>
         </div>
       )}
 
@@ -659,21 +543,26 @@ function TimelineTab({ account, advisorCode }: { account: string; advisorCode: s
         <div key={d.day}>
           <div className="tl-day__head">
             <span className="tl-day__label">{d.label}</span>
-            <span className="tl-day__count">{d.items.length} evento{d.items.length > 1 ? "s" : ""}</span>
+            <span className="tl-day__count">{d.items.length} nota{d.items.length > 1 ? "s" : ""}</span>
           </div>
           <div className="tl-track">
             {d.items.length > 1 && <span className="tl-track__rail" aria-hidden />}
-            {d.items.map((e, i) => (
+            {d.items.map((n, i) => (
               <div key={i} className="tl-item" style={i === d.items.length - 1 ? { paddingBottom: 0 } : undefined}>
-                <span className="tl-item__time">{e.at.includes("T") ? new Date(e.at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }) : ""}</span>
+                <span className="tl-item__time">{new Date(n.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" })}</span>
                 <span className="tl-item__node-col">
-                  <span className={`tl-item__node${e.nodeClass ? ` ${e.nodeClass}` : ""}`}>
-                    <i className={`${e.icon}`} aria-hidden />
+                  <span className="tl-item__node">
+                    <i className="icon-square-pen" aria-hidden />
                   </span>
                 </span>
                 <span className="tl-item__main">
-                  <span className="tl-item__title">{e.title}</span>
-                  {e.extra}
+                  <span className="tl-item__note">{n.body}</span>
+                  <span className="tl-item__row">
+                    <span style={{ width: 20, height: 20, borderRadius: 999, background: "var(--brand-tint)", color: "var(--ghost-text)", display: "flex", alignItems: "center", justifyContent: "center", font: "600 8.5px/1 var(--font-sans)" }}>
+                      {initials(n.author_name || "?")}
+                    </span>
+                    <span style={{ font: "400 10.5px/1 var(--font-sans)", color: "var(--text-3)" }}>{n.author_name}</span>
+                  </span>
                 </span>
               </div>
             ))}
@@ -688,14 +577,15 @@ function TimelineTab({ account, advisorCode }: { account: string; advisorCode: s
         <span className="tl-composer__box">
           <input
             className="tl-composer__input"
-            placeholder="Anotar algo desta conversa"
+            placeholder="Escrever uma nota sobre o cliente"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && send()}
-            aria-label="Anotar algo desta conversa"
+            aria-label="Escrever uma nota sobre o cliente"
+            maxLength={500}
             disabled={sending}
           />
-          <button type="button" className="tl-composer__send" aria-label="Enviar anotação" onClick={send} disabled={sending}>
+          <button type="button" className="tl-composer__send" aria-label="Salvar nota" onClick={send} disabled={sending}>
             <i className="icon-send" aria-hidden />
           </button>
         </span>
@@ -734,8 +624,6 @@ export default function ClientFile() {
   const { data: client } = useClient(account);
   const { profile } = useAuth();
   const advisorCode = client?.advisor_code ?? profile?.advisor_code ?? "";
-  const [menu, setMenu] = useState(false);
-  const [copied, setCopied] = useState(false);
   useMemo(() => {
     if (client?.name) recordClientVisit(account, client.name);
   }, [client?.name, account]);
@@ -752,55 +640,7 @@ export default function ClientFile() {
             <span className="ficha-header__account">{maskAccount(account)}</span>
           </span>
         </span>
-        <button type="button" className="ficha-header__menu" aria-label="Mais opções" onClick={() => setMenu(true)}>
-          <i className="icon-ellipsis-vertical" aria-hidden />
-        </button>
       </header>
-
-      {menu && (
-        <Sheet label="Ações do cliente" onClose={() => setMenu(false)}>
-            <div className="sheet__title">{client?.name ?? maskAccount(account)}</div>
-            <div className="card" style={{ padding: 0, overflow: "hidden", marginTop: 4 }}>
-              {[
-                { icon: "icon-square-check", label: "Nova tarefa", go: `/cards?novo=1&cliente=${account}` },
-                { icon: "icon-target", label: "Novo alerta", go: `/alertas?novo=1&cliente=${account}` },
-                { icon: "icon-door-open", label: "Reservar sala", go: `/salas?novo=1&cliente=${account}` },
-              ].map((a, i) => (
-                <button
-                  key={a.label}
-                  type="button"
-                  style={{ width: "100%", minHeight: 52, display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", textAlign: "left", borderTop: i > 0 ? "1px solid var(--divider)" : undefined }}
-                  onClick={() => { setMenu(false); navigate(a.go); }}
-                >
-                  <span style={{ width: 30, height: 30, borderRadius: 9, background: "var(--chip-pill-bg)", color: "var(--field-label)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
-                    <i className={`${a.icon}`} style={{ fontSize: 15 }} aria-hidden />
-                  </span>
-                  <span style={{ flex: 1, font: "400 13px/1.35 var(--font-sans)", color: "var(--text-1)" }}>{a.label}</span>
-                  <i className="icon-chevron-right" style={{ fontSize: 16, color: "var(--icon-decor)" }} aria-hidden />
-                </button>
-              ))}
-              <button
-                type="button"
-                style={{ width: "100%", minHeight: 52, display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", textAlign: "left", borderTop: "1px solid var(--divider)" }}
-                onClick={async () => {
-                  await navigator.clipboard.writeText(account).catch(() => {});
-                  setCopied(true);
-                  setTimeout(() => { setCopied(false); setMenu(false); }, 1100);
-                }}
-              >
-                <span style={{ width: 30, height: 30, borderRadius: 9, background: "var(--chip-pill-bg)", color: "var(--field-label)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
-                  <i className="icon-copy" style={{ fontSize: 15 }} aria-hidden />
-                </span>
-                <span style={{ flex: 1, font: "400 13px/1.35 var(--font-sans)", color: "var(--text-1)" }}>
-                  {copied ? "Conta copiada." : "Copiar número da conta"}
-                </span>
-              </button>
-            </div>
-            <div className="sheet__footer" style={{ marginTop: 14 }}>
-              <Button variant="secondary" block onClick={() => setMenu(false)}>Fechar</Button>
-            </div>
-        </Sheet>
-      )}
 
       <nav className="ficha-tabs" role="tablist">
         {TABS.map((t) => (
@@ -810,7 +650,7 @@ export default function ClientFile() {
             role="tab"
             aria-selected={t === tab}
             className={`ficha-tab${t === tab ? " ficha-tab--active" : ""}`}
-            onClick={() => setParams({ aba: t })}
+            onClick={(e) => { e.currentTarget.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" }); setParams({ aba: t }); }}
           >
             {t}
           </button>
@@ -822,7 +662,7 @@ export default function ClientFile() {
       {tab === "Carteira" && <PortfolioTab account={account} />}
       {tab === "Movimentações" && <MovementsTab account={account} />}
       {tab === "Cadastro" && <ExtrasTab account={account} advisorCode={advisorCode} />}
-      {tab === "Linha do tempo" && <TimelineTab account={account} advisorCode={advisorCode} />}
+      {tab === "Notas" && <NotesTab account={account} advisorCode={advisorCode} />}
     </MobileShell>
   );
 }

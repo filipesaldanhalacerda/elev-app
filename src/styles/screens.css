@@ -212,10 +212,11 @@
 .ficha-header__menu { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: var(--text-1); }
 .ficha-header__menu i { font-size: 20px; }
 
-.ficha-tabs { flex: none; display: flex; gap: 16px; padding: 0 14px; background: var(--surface); border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; position: relative; }
+.ficha-tabs { flex: none; display: flex; gap: 4px; padding: 0 6px; background: var(--surface); border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; position: relative; }
 .ficha-tabs::-webkit-scrollbar { display: none; }
 .ficha-tabs__fade { position: sticky; right: 0; top: 0; bottom: 0; width: 44px; margin-left: -44px; background: linear-gradient(90deg, transparent 0%, var(--surface) 72%); pointer-events: none; flex: none; }
-.ficha-tab { height: 42px; flex: none; display: flex; align-items: center; font: 400 12.5px/1 var(--font-sans); color: var(--text-2); white-space: nowrap; }
+.ficha-tab { height: 48px; flex: none; display: flex; align-items: center; padding: 0 10px; font: 400 13px/1 var(--font-sans); color: var(--text-2); white-space: nowrap; }
+.ficha-tab:last-of-type { margin-right: 40px; }
 .ficha-tab { position: relative; }
 .ficha-tab--active { font-weight: 600; color: var(--text-1); }
 .ficha-tab--active::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--action); }
