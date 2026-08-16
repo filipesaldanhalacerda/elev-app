@@ -215,11 +215,11 @@ export default function Dashboard() {
           {online && (
             <div className="quick-actions" data-home-quick-actions>
               <button type="button" className="quick-action" onClick={() => navigate("/alertas")}>
-                <i className="icon-target" aria-hidden />
+                <i className="icon-radar" aria-hidden />
                 <span>Alertas</span>
               </button>
               <button type="button" className="quick-action" onClick={() => navigate("/salas")}>
-                <i className="icon-door-open" aria-hidden />
+                <i className="icon-presentation" aria-hidden />
                 <span>Sala</span>
               </button>
             </div>
