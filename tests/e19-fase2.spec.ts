@@ -129,7 +129,14 @@ test.describe("fase 2 · mobile", () => {
     const { data: room } = await svc.from("rooms").upsert({ name: `A0 Quebrada ${RUN.slice(-4)}`, capacity: 4, resources: [] }, { onConflict: "name" }).select("id").single();
     await svc.from("reservations").delete().eq("room_id", room!.id);
     const day = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
-    await svc.from("reservations").insert({ room_id: room!.id, owner: advId, title: "Quebrada", period: `[${day}T10:00:00-03:00,${day}T11:12:00-03:00)` });
+    const amanha = new Date(Date.now() + 86400000).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+    await svc.from("reservations").insert([
+      { room_id: room!.id, owner: advId, title: "Quebrada", period: `[${day}T10:00:00-03:00,${day}T11:12:00-03:00)` },
+      // segunda reserva COMEÇANDO dentro da hora da continuação (o bug do PO: ela sumia)
+      { room_id: room!.id, owner: advId, title: "Emenda", period: `[${day}T11:12:00-03:00,${day}T12:00:00-03:00)` },
+      // e uma amanhã, para o seletor de data
+      { room_id: room!.id, owner: advId, title: "De amanhã", period: `[${amanha}T09:00:00-03:00,${amanha}T10:00:00-03:00)` },
+    ]);
 
     await login(page);
     await page.goto("/salas");
@@ -137,10 +144,24 @@ test.describe("fase 2 · mobile", () => {
     await page.waitForSelector(".agenda__row");
     // o cartão da reserva aparece UMA única vez…
     await expect(page.locator(".agenda__block", { hasText: "10:00–11:12" })).toHaveCount(1);
-    // …e a hora seguinte é continuação discreta, não um segundo cartão
+    // …a hora seguinte mostra a continuação discreta E a reserva que começa no meio dela
     await expect(page.getByText("ocupada até 11:12")).toBeVisible();
+    await expect(page.locator(".agenda__block", { hasText: "Emenda" })).toBeVisible();
+    await expect(page.locator(".agenda__block", { hasText: "11:12–12:00" })).toHaveCount(1);
     // agenda completa: 08:00–17:00
     await expect(page.locator(".agenda__row")).toHaveCount(10);
+
+    // o chip de data muda o dia da agenda
+    await expect(page.locator(".agenda__block", { hasText: "De amanhã" })).toHaveCount(0);
+    await page.evaluate((d) => {
+      const input = document.querySelector('input[aria-label="Escolher data da agenda"]') as HTMLInputElement;
+      const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
+      set.call(input, d);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    }, amanha);
+    await expect(page.locator(".date-chip")).toContainText("amanhã");
+    await expect(page.locator(".agenda__block", { hasText: "De amanhã" })).toBeVisible();
+    await expect(page.locator(".agenda__block", { hasText: "Quebrada" })).toHaveCount(0);
   });
 
   test("F2-10: reserva não aceita passado nem fim antes do início", async ({ page }) => {

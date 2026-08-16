@@ -2,7 +2,7 @@
  * Tela 14 · Sala de reunião — quadros "14 Sala de reuniao claro" e
  * "14 Reserva conflito escuro" (#3f). Conflito impedido com alternativas em um toque.
  */
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
 import { Sheet } from "../components/Sheet";
@@ -210,7 +210,8 @@ export default function Rooms() {
   const { profile } = useAuth();
   const { rooms } = useRooms();
   const [params] = useSearchParams();
-  const [day] = useState(todayISO());
+  const [day, setDay] = useState(todayISO());
+  const dateInputRef = useRef<HTMLInputElement>(null);
   const [roomId, setRoomId] = useState<string | null>(null);
   const activeRoom = roomId ?? rooms?.find((r) => r.is_active)?.id ?? null;
   const { rows: reservations, reload: reloadDay } = useDayReservations(activeRoom, day);
@@ -222,28 +223,32 @@ export default function Rooms() {
   const [cancelling, setCancelling] = useState<Reservation | null>(null);
   const [cancelBusy, setCancelBusy] = useState(false);
 
-  // F2-07: cada reserva aparece UMA vez, na hora em que começa; as horas seguintes
-  // que ela ainda ocupa viram continuação discreta ("ocupada até HH:MM"), nunca um segundo cartão.
+  // F2-07: cada reserva aparece UMA vez, na hora em que começa; horas que ela ainda
+  // atravessa viram continuação discreta. A mesma hora pode ter continuação E uma
+  // reserva nova começando no meio dela (10:00–11:15 e 11:15–12:00) — as duas aparecem.
   const slots = useMemo(() => {
     const list = reservations ?? [];
     return HOURS.map((hour) => {
       const hourStart = new Date(`${day}T${hour}:00-03:00`).getTime();
       const hourEnd = hourStart + 3600000;
-      const hit = list.find((r) => {
-        const p = parsePeriod(r.period);
-        return p.start.getTime() < hourEnd && p.end.getTime() > hourStart;
-      });
-      if (!hit) return { hour, kind: "free" as const };
-      const p = parsePeriod(hit.period);
-      const mineFlag = hit.owner === profile?.id;
-      const startsHere = p.start.getTime() >= hourStart || hour === HOURS[0];
-      if (!startsHere) return { hour, kind: "cont" as const, until: fmtHM(p.end) };
+      const overlapping = list
+        .map((r) => ({ r, p: parsePeriod(r.period) }))
+        .filter(({ p }) => p.start.getTime() < hourEnd && p.end.getTime() > hourStart);
+      const startsHere = overlapping.filter(({ p }) => p.start.getTime() >= hourStart || hour === HOURS[0]);
+      const continuing = overlapping.filter((x) => !startsHere.includes(x));
+      const contUntil = continuing.length > 0 ? fmtHM(new Date(Math.max(...continuing.map(({ p }) => p.end.getTime())))) : null;
       return {
         hour,
-        kind: "busy" as const,
-        mine: mineFlag,
-        title: `${hit.title}${hit.owner_name && !mineFlag ? ` — ${hit.owner_name}` : ""}`,
-        meta: `${fmtHM(p.start)}–${fmtHM(p.end)}${mineFlag ? " · sua reserva" : ""}`,
+        contUntil,
+        blocks: startsHere.map(({ r, p }) => {
+          const mineFlag = r.owner === profile?.id;
+          return {
+            id: r.id,
+            mine: mineFlag,
+            title: `${r.title}${r.owner_name && !mineFlag ? ` — ${r.owner_name}` : ""}`,
+            meta: `${fmtHM(p.start)}–${fmtHM(p.end)}${mineFlag ? " · sua reserva" : ""}`,
+          };
+        }),
       };
     });
   }, [reservations, day, profile?.id]);
@@ -264,11 +269,34 @@ export default function Rooms() {
 
       <div className="room-toolbar">
         <div className="room-toolbar__row">
-          <span className="date-chip">
+          <button
+            type="button"
+            className="date-chip"
+            style={{ position: "relative" }}
+            onClick={() => {
+              const el = dateInputRef.current;
+              if (!el) return;
+              if (typeof el.showPicker === "function") el.showPicker();
+              else el.click();
+            }}
+          >
             <i className="ph ph-calendar-blank" aria-hidden />
-            hoje, {formatDate(day).slice(0, 5)}
+            {day === todayISO()
+              ? `hoje, ${formatDate(day).slice(0, 5)}`
+              : day === new Date(Date.now() + 86400000).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" })
+                ? `amanhã, ${formatDate(day).slice(0, 5)}`
+                : formatDate(day)}
             <i className="ph ph-caret-down" aria-hidden />
-          </span>
+            <input
+              ref={dateInputRef}
+              type="date"
+              aria-label="Escolher data da agenda"
+              value={day}
+              onChange={(e) => e.target.value && setDay(e.target.value)}
+              style={{ position: "absolute", inset: 0, opacity: 0, pointerEvents: "none" }}
+              tabIndex={-1}
+            />
+          </button>
           {(rooms ?? []).map((r) => (
             <button key={r.id} type="button" className={`room-chip${activeRoom === r.id ? " room-chip--active" : ""}`} onClick={() => setRoomId(r.id)}>
               {r.name} · {r.capacity} lug.
@@ -289,31 +317,26 @@ export default function Rooms() {
         {activeRoom && (
           <div className="card" style={{ padding: 14 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-              {slots.map((slot) =>
-                slot.kind === "free" ? (
-                  <div key={slot.hour} className="agenda__row">
-                    <span className="agenda__hour">{slot.hour}</span>
+              {slots.map((slot) => (
+                <div key={slot.hour} className="agenda__row">
+                  <span className="agenda__hour">{slot.hour}</span>
+                  {slot.contUntil === null && slot.blocks.length === 0 ? (
                     <button type="button" className="agenda__free agenda__free--action" onClick={() => setCreating({ start: slot.hour })}>
                       livre
                     </button>
-                  </div>
-                ) : slot.kind === "cont" ? (
-                  <div key={slot.hour} className="agenda__row">
-                    <span className="agenda__hour">{slot.hour}</span>
-                    <span className="agenda__free" style={{ borderStyle: "solid", color: "var(--text-3)" }}>
-                      ocupada até {slot.until}
+                  ) : (
+                    <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>
+                      {slot.contUntil && <span className="agenda__cont">ocupada até {slot.contUntil}</span>}
+                      {slot.blocks.map((b) => (
+                        <span key={b.id} className={`agenda__block${b.mine ? "" : " agenda__block--other"}`} style={{ minHeight: 44 }}>
+                          <span className="agenda__block-title">{b.title}</span>
+                          <span className="agenda__block-meta">{b.meta}</span>
+                        </span>
+                      ))}
                     </span>
-                  </div>
-                ) : (
-                  <div key={slot.hour} className="agenda__row">
-                    <span className="agenda__hour">{slot.hour}</span>
-                    <span className={`agenda__block${slot.mine ? "" : " agenda__block--other"}`} style={{ minHeight: 44 }}>
-                      <span className="agenda__block-title">{slot.title}</span>
-                      <span className="agenda__block-meta">{slot.meta}</span>
-                    </span>
-                  </div>
-                )
-              )}
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         )}

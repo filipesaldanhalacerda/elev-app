@@ -421,6 +421,8 @@
 .agenda__row + .agenda__row { margin-top: 5px; }
 .agenda__hour { width: 44px; flex: none; font: 500 10.5px/1 var(--font-mono); color: var(--text-3); padding-top: 12px; }
 .agenda__free { flex: 1; height: 36px; border: 1px dashed var(--field-border); border-radius: 8px; }
+/* Continuação de reserva que atravessa a hora: discreta, nunca um segundo cartão */
+.agenda__cont { flex: 1; min-height: 36px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--divider); border-radius: 8px; font: 400 10.5px/1 var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text-3); }
 .agenda__free--action { display: flex; align-items: center; justify-content: center; font: 500 10.5px/1 var(--font-sans); color: var(--ghost-text); }
 [data-theme="dark"] .agenda__free { border-color: var(--border-strong); }
 [data-theme="dark"] .agenda__free--action { color: var(--action); }
