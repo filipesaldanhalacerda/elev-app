@@ -291,9 +291,11 @@ test.describe("fase 2 · mobile", () => {
 
   test("F2-03: conecta a conta Google, agenda cria/edita/cancela e reserva sincroniza", async ({ page }) => {
     await login(page);
+    // com credenciais reais no ambiente o Conectar redireciona ao Google (não dá para
+    // automatizar o consentimento); o teste planta a conexão de demonstração e valida o estado
+    await serviceClient().from("google_accounts").upsert({ user_id: advId, email: `agenda.rafa.${RUN.slice(-5)}@gmail.com`, mode: "simulado" });
     await page.goto("/perfil");
-    await page.getByRole("button", { name: "Conectar" }).first().click();
-    // no modo demonstração isso fica EXPLÍCITO para o PO
+    await expect(page.getByRole("button", { name: "Desconectar" })).toBeVisible();
     await expect(page.getByText(/agenda sincronizada \(demonstração\)/)).toBeVisible();
     // a Agenda vive nas ações rápidas da home
     await page.goto("/");
