@@ -369,6 +369,28 @@ test.describe("fase 2 · mobile", () => {
     await page.locator(".sheet").getByRole("button", { name: "Cancelar", exact: true }).click();
   });
 
+  test("cabeçalho da agenda escolhe mês e ano; 'hoje' traz de volta", async ({ page }) => {
+    await login(page);
+    await page.goto("/agenda");
+    await page.waitForSelector(".cal-strip");
+    // pular para um dia de outro mês pelo seletor do cabeçalho
+    const target = new Date(Date.now() + 45 * 86400000).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+    await page.evaluate((d) => {
+      const input = document.querySelector('input[aria-label="Data da agenda"]') as HTMLInputElement;
+      const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
+      set.call(input, d);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    }, target);
+    const monthName = new Date(`${target}T12:00:00-03:00`).toLocaleDateString("pt-BR", { month: "long", timeZone: "America/Sao_Paulo" });
+    await expect(page.getByRole("button", { name: "Escolher mês e ano" })).toContainText(new RegExp(monthName, "i"));
+    // a faixa de dias reancora no dia escolhido
+    await expect(page.locator(`[data-agenda-day="${target}"]`)).toHaveClass(/cal-day--active/);
+    // atalho de volta para hoje
+    await page.getByRole("button", { name: "hoje", exact: true }).click();
+    const today = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+    await expect(page.locator(`[data-agenda-day="${today}"]`)).toHaveClass(/cal-day--active/);
+  });
+
   test("duração: atalhos + Mais (Manhã/Tarde/Dia todo e término personalizado)", async ({ page }) => {
     await login(page);
     await page.goto("/agenda");

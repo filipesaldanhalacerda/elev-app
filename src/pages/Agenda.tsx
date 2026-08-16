@@ -3,7 +3,7 @@
  * (page-header, sheet, campos #2c, linhas de reserva, estados vazios).
  * Criar, editar e cancelar agendamentos sincronizados com a conta Google conectada.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
 import { Sheet } from "../components/Sheet";
@@ -192,7 +192,15 @@ export default function Agenda() {
   const [cancelBusy, setCancelBusy] = useState(false);
   const [actions, setActions] = useState<GoogleEvent | null>(null);
   const [selected, setSelected] = useState(todaySP());
+  // âncora da faixa de dias — muda quando o mês/ano é escolhido pelo cabeçalho
+  const [stripStart, setStripStart] = useState(todaySP());
+  const monthPickerRef = useRef<HTMLInputElement>(null);
   const [newDefaults, setNewDefaults] = useState<{ day: string; start: string } | null>(null);
+
+  function jumpTo(iso: string) {
+    setSelected(iso);
+    setStripStart(iso);
+  }
 
   const load = async () => {
     try {
@@ -214,8 +222,9 @@ export default function Agenda() {
     }
     return map;
   })();
+  const stripZero = new Date(`${stripStart}T12:00:00-03:00`).getTime();
   const strip = Array.from({ length: 14 }, (_, i) => {
-    const d = new Date(Date.now() + i * 86400000);
+    const d = new Date(stripZero + i * 86400000);
     const iso = d.toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
     return {
       iso,
@@ -292,10 +301,44 @@ export default function Agenda() {
           <>
             {/* mês + faixa de dias */}
             <div>
-              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "0 2px 10px" }}>
-                <span style={{ font: "600 15px/1.2 var(--font-sans)", letterSpacing: "-0.01em", color: "var(--text-1)" }}>{monthLabel}</span>
-                <span style={{ font: "400 11px/1 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-2)" }}>
-                  {dayEvents.length === 0 ? "dia livre" : `${dayEvents.length} compromisso${dayEvents.length > 1 ? "s" : ""}`}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "0 2px 10px" }}>
+                <button
+                  type="button"
+                  style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 5, font: "600 15px/1.2 var(--font-sans)", letterSpacing: "-0.01em", color: "var(--text-1)" }}
+                  aria-label="Escolher mês e ano"
+                  onClick={() => {
+                    const el = monthPickerRef.current;
+                    if (!el) return;
+                    if (typeof el.showPicker === "function") el.showPicker();
+                    else el.click();
+                  }}
+                >
+                  {monthLabel}
+                  <i className="ph ph-caret-down" style={{ fontSize: 13, color: "var(--text-2)" }} aria-hidden />
+                  <input
+                    ref={monthPickerRef}
+                    type="date"
+                    aria-label="Data da agenda"
+                    value={selected}
+                    onChange={(e) => e.target.value && jumpTo(e.target.value)}
+                    style={{ position: "absolute", inset: 0, opacity: 0, pointerEvents: "none" }}
+                    tabIndex={-1}
+                  />
+                </button>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  {selected !== todaySP() && (
+                    <button
+                      type="button"
+                      className="filter-chip"
+                      style={{ height: 26, fontSize: 11 }}
+                      onClick={() => jumpTo(todaySP())}
+                    >
+                      hoje
+                    </button>
+                  )}
+                  <span style={{ font: "400 11px/1 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-2)" }}>
+                    {dayEvents.length === 0 ? "dia livre" : `${dayEvents.length} compromisso${dayEvents.length > 1 ? "s" : ""}`}
+                  </span>
                 </span>
               </div>
               <div className="cal-strip">
