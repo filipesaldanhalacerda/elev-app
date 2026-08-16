@@ -7,7 +7,9 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
 import { Card } from "../components/cards";
 import { LineChart, AllocationBar } from "../components/charts";
-import { StatusChip, Banner } from "../components/feedback";
+import { StatusChip, Banner, Toast } from "../components/feedback";
+import { NewCardSheet } from "./Cards";
+import { AlertSheet } from "./Alerts";
 import { Button } from "../components/Button";
 import { CharLimit } from "../components/Field";
 import {
@@ -15,6 +17,7 @@ import {
   saveClientExtra, addTimelineNote, updateTimelineNote, deleteTimelineNote, type Position, type TimelineNote,
 } from "../lib/clientData";
 import { Sheet } from "../components/Sheet";
+import { Filters } from "../components/Filters";
 import { DetailSheet } from "../components/DetailSheet";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabase";
@@ -38,6 +41,13 @@ function OverviewTab({ account }: { account: string }) {
   const { data: series, loading: seriesLoading } = usePatrimonySeries(account, period);
   const { data: extras } = useClientExtras(account);
   const navigate = useNavigate();
+  // atalhos abrem o sheet AQUI DENTRO — o assessor nunca sai da ficha (feedback por toast)
+  const [quick, setQuick] = useState<"tarefa" | "alerta" | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 2600);
+  };
   // tarefas ABERTAS vinculadas a este cliente — o vínculo aparece na Visão geral
   const [openTasks, setOpenTasks] = useState<{ id: string; title: string; due_at: string | null }[]>([]);
   useMemo(() => {
@@ -139,15 +149,27 @@ function OverviewTab({ account }: { account: string }) {
           <i className="icon-message-circle" aria-hidden />
           <span>WhatsApp</span>
         </a>
-        <button type="button" className="quick-action" onClick={() => (window.location.href = `/cards?novo=1&cliente=${account}`)}>
+        <button type="button" className="quick-action" onClick={() => setQuick("tarefa")}>
           <i className="icon-square-check" aria-hidden />
           <span>Tarefa</span>
         </button>
-        <button type="button" className="quick-action" onClick={() => (window.location.href = `/alertas?novo=1&cliente=${account}`)}>
+        <button type="button" className="quick-action" onClick={() => setQuick("alerta")}>
           <i className="icon-radar" aria-hidden />
           <span>Alerta</span>
         </button>
       </div>
+
+      {quick === "tarefa" && (
+        <NewCardSheet initialClient={account} onClose={() => setQuick(null)} onCreated={() => showToast("Tarefa criada.")} />
+      )}
+      {quick === "alerta" && (
+        <AlertSheet initialTicker="" initialClient={account} onClose={() => setQuick(null)} onSaved={() => showToast("Alerta criado.")} />
+      )}
+      {toast && (
+        <div style={{ position: "fixed", left: 16, right: 16, bottom: 86, zIndex: 60 }}>
+          <Toast>{toast}</Toast>
+        </div>
+      )}
 
       {openTasks.length > 0 && (
         <button
@@ -283,7 +305,6 @@ function PortfolioTab({ account }: { account: string }) {
 function MovementsTab({ account }: { account: string }) {
   const [filter, setFilter] = useState<"tudo" | "aportes" | "resgates">("tudo");
   const [days, setDays] = useState<30 | 365>(365);
-  const [filterSheet, setFilterSheet] = useState(false);
   const { data, loading } = useMovements(account, filter, days);
 
   const groups = useMemo(() => {
@@ -303,41 +324,19 @@ function MovementsTab({ account }: { account: string }) {
 
   return (
     <div className="ficha-body" style={{ gap: 12, paddingTop: 14 }}>
-      <button type="button" className="filter-sort" data-open-mov-filters style={{ width: "100%", height: 44, justifyContent: "space-between", gap: 8, paddingInline: 14 }} onClick={() => setFilterSheet(true)}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <i className="icon-sliders-horizontal" aria-hidden />
-          Filtros · {filter === "tudo" ? "Tudo" : filter === "aportes" ? "Aportes" : "Resgates"} · {days === 365 ? "12 meses" : "30 dias"}
-        </span>
-      </button>
-
-      {filterSheet && (
-        <Sheet label="Filtros de movimentações" onClose={() => setFilterSheet(false)}>
-            <div className="sheet__title">Filtros</div>
-            <div className="sheet__fields" style={{ gap: 14 }}>
-              <div className="field">
-                <span className="field__label" style={{ display: "block" }}>Tipo</span>
-                <div className="segmented" style={{ height: 44 }}>
-                  {(["tudo", "aportes", "resgates"] as const).map((f) => (
-                    <button key={f} type="button" className={`segmented__item${filter === f ? " segmented__item--active" : ""}`} onClick={() => setFilter(f)}>
-                      {f === "tudo" ? "Tudo" : f === "aportes" ? "Aportes" : "Resgates"}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="field">
-                <span className="field__label" style={{ display: "block" }}>Período</span>
-                <div className="segmented" style={{ height: 44 }}>
-                  <button type="button" className={`segmented__item${days === 365 ? " segmented__item--active" : ""}`} onClick={() => setDays(365)}>12 meses</button>
-                  <button type="button" className={`segmented__item${days === 30 ? " segmented__item--active" : ""}`} onClick={() => setDays(30)}>30 dias</button>
-                </div>
-              </div>
-            </div>
-            <div className="sheet__footer" style={{ marginTop: 14 }}>
-              <Button variant="secondary" onClick={() => { setFilter("tudo"); setDays(365); }}>Limpar</Button>
-              <Button onClick={() => setFilterSheet(false)}>Aplicar</Button>
-            </div>
-        </Sheet>
-      )}
+      <Filters
+        label="Filtros de movimentações"
+        sections={[
+          { key: "tipo", label: "Tipo", options: [{ value: "tudo", label: "Tudo" }, { value: "aportes", label: "Aportes" }, { value: "resgates", label: "Resgates" }] },
+          { key: "periodo", label: "Período", options: [{ value: "365", label: "12 meses" }, { value: "30", label: "30 dias" }] },
+        ]}
+        values={{ tipo: filter, periodo: String(days) }}
+        onChange={(key, value) => {
+          if (key === "tipo") setFilter(value as typeof filter);
+          else setDays(Number(value) as 30 | 365);
+        }}
+        onClear={() => { setFilter("tudo"); setDays(365); }}
+      />
 
       {loading && <div className="skeleton" style={{ height: 140, borderRadius: 14 }} />}
 
@@ -409,94 +408,145 @@ function ExtrasTab({ account, advisorCode }: { account: string; advisorCode: str
 
   // F2-05/F2-06: telefone com máscara progressiva; e-mail validado antes de salvar.
   const emailInvalid = editing === "email" && value.trim() !== "" && !isValidEmail(value);
-  const row = (field: "phone" | "email", label: string) =>
-    editing === field ? (
-      <div key={field} className="extras-edit">
+
+  const sectionTitle = (text: string) => (
+    <div style={{ font: "600 11px/1 var(--font-mono)", letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--text-2)", padding: "2px 2px 0" }}>{text}</div>
+  );
+
+  const contactRow = (field: "phone" | "email", label: string, icon: string) => (
+    <button
+      key={field}
+      type="button"
+      aria-label={`Editar ${field === "phone" ? "telefone" : "e-mail"}`}
+      style={{ width: "100%", minHeight: 56, display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", textAlign: "left", borderTop: field === "email" ? "1px solid var(--divider)" : undefined }}
+      onClick={() => startEdit(field)}
+    >
+      <span style={{ width: 30, height: 30, borderRadius: 9, background: "var(--chip-pill-bg)", color: "var(--field-label)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+        <i className={icon} style={{ fontSize: 15 }} aria-hidden />
+      </span>
+      <span style={{ flex: 1, minWidth: 0 }}>
         <span className="extras-row__label">{label}</span>
-        <div className={`field${field === "email" && emailInvalid ? " field--error" : ""}`} style={{ marginTop: 7 }}>
-          <div className="field__box">
-            <input
-              className="field__input"
-              autoFocus
-              inputMode={field === "phone" ? "tel" : "email"}
-              placeholder={field === "phone" ? "(11) 98812-4402" : "nome@dominio.com"}
-              value={value}
-              onChange={(e) => setValue(field === "phone" ? formatPhone(e.target.value) : e.target.value)}
-              aria-label={label}
-            />
-          </div>
-          {field === "email" && emailInvalid && (
-            <div className="field__help">
-              <i className="icon-circle-alert" aria-hidden />
-              Digite um e-mail válido, como nome@dominio.com.
-            </div>
-          )}
-        </div>
-        <div className="extras-edit__buttons">
-          <Button variant="secondary" onClick={() => setEditing(null)}>Cancelar</Button>
-          <Button loading={saving} disabled={field === "email" && emailInvalid} onClick={save}>Salvar</Button>
-        </div>
-      </div>
-    ) : (
-      <div key={field} className="extras-row">
-        <span style={{ flex: 1 }}>
-          <span className="extras-row__label">{label}</span>
-          <span className={`extras-row__value${extras?.[field] ? "" : " extras-row__value--empty"}`}>{extras?.[field] ?? "não informado"}</span>
+        <span className={`extras-row__value${extras?.[field] ? "" : " extras-row__value--empty"}`} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>
+          {extras?.[field] ?? "não informado"}
         </span>
-        <button type="button" className="extras-row__edit" aria-label={`Editar ${label.toLowerCase()}`} onClick={() => startEdit(field)}>
-          <i className="icon-pencil" aria-hidden />
-        </button>
-      </div>
-    );
+      </span>
+      <i className="icon-pencil" style={{ fontSize: 15, color: "var(--icon-decor)", flex: "none" }} aria-hidden />
+    </button>
+  );
+
+  const xpRow = (icon: string, label: string, val: string | null, first = false) => (
+    <div style={{ minHeight: 44, display: "flex", alignItems: "center", gap: 10, padding: "8px 14px", borderTop: first ? undefined : "1px solid var(--divider)" }}>
+      <i className={icon} style={{ fontSize: 15, color: "var(--field-label)", flex: "none" }} aria-hidden />
+      <span style={{ flex: "none", font: "400 12px/1.4 var(--font-sans)", color: "var(--text-2)" }}>{label}</span>
+      <span style={{ flex: 1, minWidth: 0, textAlign: "right", font: "500 12.5px/1.4 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: val ? "var(--text-1)" : "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {val ?? "—"}
+      </span>
+    </div>
+  );
+
+  const capitalize = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();
 
   return (
     <div className="ficha-body" style={{ gap: 12 }}>
-      <div className="extras-card">
-        {row("phone", "Telefone")}
-        {row("email", "E-mail")}
-        <div className="extras-row">
-          <span style={{ flex: 1 }}>
-            <span className="extras-row__label">Nascimento</span>
-            <span className={`extras-row__value${client?.birth_date ? "" : " extras-row__value--empty"}`}>
-              {client?.birth_date ? formatDate(client.birth_date) : "não informado"}
-            </span>
-          </span>
-        </div>
+      {sectionTitle("Contato")}
+      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+        {contactRow("phone", "Telefone", "icon-phone")}
+        {contactRow("email", "E-mail", "icon-mail")}
       </div>
 
-      <Card style={{ padding: 14 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span style={{ font: "600 12.5px/1 var(--font-sans)", color: "var(--text-1)" }}>Observações</span>
+      {sectionTitle("Dados da XP · somente leitura")}
+      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+        {xpRow("icon-calendar", "Nascimento", client?.birth_date ? formatDate(client.birth_date) : null, true)}
+        {xpRow("icon-briefcase", "Profissão", client?.profession ? capitalize(client.profession) : null)}
+        {xpRow("icon-layers", "Segmento", client?.segment ?? null)}
+        {xpRow("icon-gauge", "Suitability", client?.suitability ? capitalize(client.suitability) : null)}
+        {xpRow("icon-id-card", "Cliente desde", client?.xp_registered_at ? formatDate(client.xp_registered_at) : null)}
+      </div>
+
+      {sectionTitle("Observações")}
+      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+        <div style={{ padding: "13px 14px" }}>
+          <div className="obs-body" style={{ marginTop: 0 }}>{extras?.notes ?? "Nenhuma observação ainda."}</div>
           {extras?.updated_at && (
-            <span className="obs-meta">
+            <div className="obs-meta" style={{ marginTop: 8, display: "block" }}>
               editado {formatDate(extras.updated_at)}{extras.updated_by_name ? ` por ${extras.updated_by_name.split(" ")[0]}` : ""}
-            </span>
+            </div>
           )}
         </div>
-        {editing === "notes" ? (
-          <>
-            <textarea className="field__textarea" style={{ marginTop: 10 }} maxLength={500} autoFocus value={value} onChange={(e) => setValue(e.target.value)} aria-label="Observações" />
-            <CharLimit value={value} max={500} />
-            <div className="extras-edit__buttons">
-              <Button variant="secondary" onClick={() => setEditing(null)}>Cancelar</Button>
-              <Button loading={saving} onClick={save}>Salvar</Button>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="obs-body">{extras?.notes ?? "Nenhuma observação ainda."}</div>
-            <div style={{ marginTop: 12 }}>
-              <Button variant="secondary" icon="icon-pencil" style={{ height: 40, fontSize: 12.5 }} onClick={() => startEdit("notes")}>
-                Editar observações
-              </Button>
-            </div>
-          </>
-        )}
-      </Card>
+        <button
+          type="button"
+          style={{ width: "100%", minHeight: 52, display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", textAlign: "left", borderTop: "1px solid var(--divider)" }}
+          onClick={() => startEdit("notes")}
+        >
+          <span style={{ width: 30, height: 30, borderRadius: 9, background: "var(--chip-pill-bg)", color: "var(--field-label)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+            <i className="icon-pencil" style={{ fontSize: 15 }} aria-hidden />
+          </span>
+          <span style={{ flex: 1, font: "400 13px/1.35 var(--font-sans)", color: "var(--text-1)" }}>Editar observações</span>
+          <i className="icon-chevron-right" style={{ fontSize: 16, color: "var(--icon-decor)" }} aria-hidden />
+        </button>
+      </div>
 
       <Banner kind="info" icon="icon-text-search">
         Toda alteração aqui fica registrada na auditoria com autor e horário. Dados vindos da XP são somente leitura.
       </Banner>
+
+      {(editing === "phone" || editing === "email") && (
+        <Sheet label={editing === "phone" ? "Editar telefone" : "Editar e-mail"} onClose={() => setEditing(null)}>
+          <div className="sheet__title">{editing === "phone" ? "Editar telefone" : "Editar e-mail"}</div>
+          <div className="sheet__fields">
+            <div className={`field${emailInvalid ? " field--error" : ""}`}>
+              <label className="field__label" htmlFor="extra-campo" style={{ display: "block" }}>{editing === "phone" ? "Telefone" : "E-mail"}</label>
+              <div className="field__box">
+                <input
+                  id="extra-campo"
+                  className="field__input"
+                  autoFocus
+                  inputMode={editing === "phone" ? "tel" : "email"}
+                  placeholder={editing === "phone" ? "(11) 98812-4402" : "nome@dominio.com"}
+                  value={value}
+                  onChange={(e) => setValue(editing === "phone" ? formatPhone(e.target.value) : e.target.value)}
+                />
+              </div>
+              {emailInvalid && (
+                <div className="field__help">
+                  <i className="icon-circle-alert" aria-hidden />
+                  Digite um e-mail válido, como nome@dominio.com.
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="sheet__footer">
+            <Button variant="secondary" onClick={() => setEditing(null)}>Cancelar</Button>
+            <Button loading={saving} disabled={emailInvalid} onClick={save}>Salvar</Button>
+          </div>
+        </Sheet>
+      )}
+
+      {editing === "notes" && (
+        <Sheet label="Editar observações" onClose={() => setEditing(null)}>
+          <div className="sheet__title">Editar observações</div>
+          <div className="sheet__fields">
+            <div className="field">
+              <label className="field__label" htmlFor="extra-obs" style={{ display: "block" }}>Observações</label>
+              <textarea
+                id="extra-obs"
+                className="field__textarea"
+                style={{ minHeight: 130 }}
+                placeholder="Preferências de contato, contexto da família, restrições…"
+                maxLength={500}
+                autoFocus
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+              />
+              <CharLimit value={value} max={500} />
+            </div>
+          </div>
+          <div className="sheet__footer">
+            <Button variant="secondary" onClick={() => setEditing(null)}>Cancelar</Button>
+            <Button loading={saving} onClick={save}>Salvar</Button>
+          </div>
+        </Sheet>
+      )}
     </div>
   );
 }
@@ -561,9 +611,13 @@ function NotesTab({ account, advisorCode }: { account: string; advisorCode: stri
 
   return (
     <div className="ficha-body" data-notes style={{ gap: 12, paddingTop: 12 }}>
-      <Button block onClick={() => setEditor({ editing: null })}>
-        <i className="icon-plus" aria-hidden /> Nova nota
-      </Button>
+      <button
+        type="button"
+        onClick={() => setEditor({ editing: null })}
+        style={{ minHeight: 46, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 12, border: "1.5px dashed var(--action)", color: "var(--action)", background: "transparent", font: "600 13px/1 var(--font-sans)" }}
+      >
+        <i className="icon-plus" style={{ fontSize: 16 }} aria-hidden /> Nova nota
+      </button>
 
       {loading && <div className="skeleton" style={{ height: 160, borderRadius: 14 }} />}
 

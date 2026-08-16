@@ -24,13 +24,13 @@ const fmtHM = (d: Date) => d.toLocaleTimeString("pt-BR", { hour: "2-digit", minu
 const DURATIONS = [30, 60, 90, 120];
 
 /** Início sugerido para HOJE: sempre um horário à frente (limitado à janela das salas). */
-function suggestedStart(day: string): string {
+export function suggestedStart(day: string): string {
   const next = nextSlotSP();
   if (day !== next.day) return day > next.day ? "10:00" : next.start;
   return next.start > "17:00" ? "17:00" : next.start;
 }
 
-function NewReservation({ rooms, defaults, onClose, onCreated }: {
+export function NewReservation({ rooms, defaults, onClose, onCreated }: {
   rooms: Room[];
   defaults: { roomId: string; day: string; start: string; account?: string };
   onClose: () => void;

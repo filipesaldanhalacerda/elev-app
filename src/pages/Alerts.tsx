@@ -65,7 +65,7 @@ function moneyText(n: number | null): string {
   return n === null ? "" : n.toFixed(2).replace(".", ",");
 }
 
-function AlertSheet({ initialTicker, initialClient = "", editing, onClose, onSaved }: { initialTicker: string; initialClient?: string; editing?: AlertRow; onClose: () => void; onSaved: () => void }) {
+export function AlertSheet({ initialTicker, initialClient = "", editing, onClose, onSaved }: { initialTicker: string; initialClient?: string; editing?: AlertRow; onClose: () => void; onSaved: () => void }) {
   const { profile } = useAuth();
   const [ticker, setTicker] = useState(editing?.ticker ?? initialTicker);
   const [direction, setDirection] = useState<"alta" | "baixa">(editing?.direction ?? "alta");

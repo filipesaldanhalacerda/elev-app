@@ -105,22 +105,26 @@ emAmbosTemas("tela 05 · lista de clientes", () => {
 });
 
 emAmbosTemas("ficha · atalhos rápidos", () => {
-  test("Tarefa e Alerta abrem o modal com o cliente vinculado preenchido; sem atalho de Sala", async ({ page }) => {
+  test("Tarefa e Alerta abrem o sheet NA ficha (sem sair), com cliente preenchido e toast de sucesso", async ({ page }) => {
     await loginA(page);
     await page.goto(`/clientes/${ANA}`);
     await page.waitForSelector(".quick-action");
 
-    // Tarefa → sheet de nova tarefa com o cliente já selecionado
+    // Tarefa → sheet na própria ficha, cliente já selecionado; criar mostra toast e NÃO navega
     await page.locator(".quick-action", { hasText: "Tarefa" }).click();
-    await page.waitForURL(`**/cards?novo=1&cliente=${ANA}`);
     await expect(page.getByRole("dialog", { name: "Nova tarefa" })).toBeVisible();
     await expect(page.locator("#card-cliente")).toHaveValue(ANA);
+    await page.locator("#card-titulo").fill("Ligar sobre aporte");
+    await page.getByRole("button", { name: "Criar tarefa" }).click();
+    await expect(page.locator(".toast")).toContainText("Tarefa criada.");
+    expect(page.url()).toContain(`/clientes/${ANA}`);
 
-    // Alerta → sheet de novo alerta com o cliente já selecionado
-    await page.goto(`/clientes/${ANA}`);
+    // Alerta → sheet na própria ficha com o cliente já selecionado
     await page.locator(".quick-action", { hasText: "Alerta" }).click();
-    await page.waitForURL(`**/alertas?novo=1&cliente=${ANA}`);
+    await expect(page.getByRole("dialog", { name: "Novo alerta de preço" })).toBeVisible();
     await expect(page.locator("#alerta-cliente")).toHaveValue(ANA);
+    await page.getByRole("button", { name: "Cancelar" }).click();
+    expect(page.url()).toContain(`/clientes/${ANA}`);
   });
 });
 
@@ -177,7 +181,7 @@ test.describe.serial("fluxo (b) · busca → ficha → abas → volta", () => {
     await expect(page.locator(".mov-group", { hasText: "Julho 2026" }).locator(".mov-group__net")).toHaveText("líquido −R$ 80.000,00");
 
     // filtro Resgates pelo sheet padrão
-    await page.locator("[data-open-mov-filters]").click();
+    await page.locator("[data-open-filters]").click();
     await page.getByRole("dialog", { name: "Filtros de movimentações" }).getByRole("button", { name: "Resgates" }).click();
     await page.getByRole("button", { name: "Aplicar" }).click();
     await expect(page.locator(".mov-row")).toHaveCount(2);
@@ -186,7 +190,7 @@ test.describe.serial("fluxo (b) · busca → ficha → abas → volta", () => {
     await page.getByRole("tab", { name: "Cadastro" }).click();
     await expect(page.getByText("Toda alteração aqui fica registrada na auditoria")).toBeVisible();
     await page.getByRole("button", { name: "Editar telefone" }).click();
-    await page.getByLabel("Telefone").fill("(11) 98812-4402");
+    await page.getByLabel("Telefone", { exact: true }).fill("(11) 98812-4402");
     await page.getByRole("button", { name: "Salvar" }).click();
     await expect(page.locator(".extras-row__value").first()).toHaveText("(11) 98812-4402");
 

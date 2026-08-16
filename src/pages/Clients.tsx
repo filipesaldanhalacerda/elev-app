@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
-import { Sheet } from "../components/Sheet";
+import { Filters } from "../components/Filters";
 import { ClientSearch, type ClientSearchResult } from "../components/ClientSearch";
 import { Avatar } from "../components/Avatar";
 import { Banner } from "../components/feedback";
@@ -31,7 +31,6 @@ export default function Clients() {
   const [limit, setLimit] = useState(PAGE);
   // F2-08: o funil abre o sheet de filtros (status + ordenação)
   const [sort, setSort] = useState<ClientSort>({ by: "patrimony", asc: false });
-  const [filterSheet, setFilterSheet] = useState(false);
   const { data, loading, error, reload } = useClientList(filter, limit, sort);
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<ClientSearchResult[] | null>(null);
@@ -117,17 +116,25 @@ export default function Clients() {
           onSelect={(r) => openClient((r as ClientSearchResult & { raw: string }).raw)}
         />
         {!error && (
-          <button type="button" className="filter-sort" data-open-filters style={{ marginTop: 10, width: "100%", height: 44, justifyContent: "space-between", gap: 8, paddingInline: 14 }} onClick={() => setFilterSheet(true)}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-              <i className="icon-sliders-horizontal" aria-hidden />
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                Filtros · {filter === "todos" ? "Todos" : filter === "ativos" ? "Ativos" : "Inativos"} · {sort.by === "patrimony" ? "Patrimônio" : sort.by === "name" ? "Nome" : "Variação"}
-              </span>
-            </span>
-            {data && (
+          <Filters
+            label="Filtros de clientes"
+            style={{ marginTop: 10 }}
+            sections={[
+              { key: "status", label: "Status", options: [{ value: "todos", label: "Todos" }, { value: "ativos", label: "Ativos" }, { value: "inativos", label: "Inativos" }] },
+              { key: "by", label: "Ordenar por", options: [{ value: "patrimony", label: "Patrimônio" }, { value: "name", label: "Nome" }, { value: "month_pct", label: "Variação" }] },
+              { key: "dir", label: "Direção", options: [{ value: "desc", label: "Maior primeiro", icon: "icon-arrow-down" }, { value: "asc", label: "Menor primeiro", icon: "icon-arrow-up" }] },
+            ]}
+            values={{ status: filter, by: sort.by, dir: sort.asc ? "asc" : "desc" }}
+            onChange={(key, value) => {
+              if (key === "status") setFilter(value as typeof filter);
+              else if (key === "by") setSort((s) => ({ ...s, by: value as ClientSort["by"] }));
+              else setSort((s) => ({ ...s, asc: value === "asc" }));
+            }}
+            onClear={() => { setFilter("todos"); setSort({ by: "patrimony", asc: false }); }}
+            trailing={data && (
               <span className="page-header__count" style={{ flex: "none", display: "inline-flex", alignItems: "center", padding: "4px 10px", borderRadius: 999, background: "var(--chip-pill-bg)", font: "600 12px/1 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-body)" }}>{formatInt(data.total)}</span>
             )}
-          </button>
+          />
         )}
       </div>
 
@@ -229,48 +236,6 @@ export default function Clients() {
         )}
       </div>
 
-      {filterSheet && (
-        <Sheet label="Filtros de clientes" onClose={() => setFilterSheet(false)}>
-            <div className="sheet__title">Filtros</div>
-            <div className="sheet__fields" style={{ gap: 14 }}>
-              <div className="field">
-                <span className="field__label" style={{ display: "block" }}>Status</span>
-                <div className="segmented" style={{ height: 44 }}>
-                  {(["todos", "ativos", "inativos"] as const).map((f) => (
-                    <button key={f} type="button" className={`segmented__item${filter === f ? " segmented__item--active" : ""}`} onClick={() => setFilter(f)}>
-                      {f === "todos" ? "Todos" : f === "ativos" ? "Ativos" : "Inativos"}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="field">
-                <span className="field__label" style={{ display: "block" }}>Ordenar por</span>
-                <div className="segmented" style={{ height: 44 }}>
-                  {([["patrimony", "Patrimônio"], ["name", "Nome"], ["month_pct", "Variação"]] as const).map(([by, label]) => (
-                    <button key={by} type="button" className={`segmented__item${sort.by === by ? " segmented__item--active" : ""}`} onClick={() => setSort((s) => ({ ...s, by }))}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="field">
-                <span className="field__label" style={{ display: "block" }}>Direção</span>
-                <div className="segmented" style={{ height: 44 }}>
-                  <button type="button" className={`segmented__item${!sort.asc ? " segmented__item--active" : ""}`} onClick={() => setSort((s) => ({ ...s, asc: false }))}>
-                    <i className="icon-arrow-down" aria-hidden />Maior primeiro
-                  </button>
-                  <button type="button" className={`segmented__item${sort.asc ? " segmented__item--active" : ""}`} onClick={() => setSort((s) => ({ ...s, asc: true }))}>
-                    <i className="icon-arrow-up" aria-hidden />Menor primeiro
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div className="sheet__footer" style={{ marginTop: 14 }}>
-              <Button variant="secondary" onClick={() => { setFilter("todos"); setSort({ by: "patrimony", asc: false }); }}>Limpar</Button>
-              <Button onClick={() => setFilterSheet(false)}>Aplicar</Button>
-            </div>
-        </Sheet>
-      )}
     </MobileShell>
   );
 }

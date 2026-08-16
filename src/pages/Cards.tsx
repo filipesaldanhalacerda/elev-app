@@ -30,7 +30,7 @@ function cardMeta(card: CardRow, myId: string): string {
 const spDayOf = (iso: string) => new Date(iso).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
 const spTimeOf = (iso: string) => new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/Sao_Paulo" });
 
-function NewCardSheet({ initialClient = "", editing, onClose, onCreated }: { initialClient?: string; editing?: CardRow | null; onClose: () => void; onCreated: () => void }) {
+export function NewCardSheet({ initialClient = "", editing, onClose, onCreated }: { initialClient?: string; editing?: CardRow | null; onClose: () => void; onCreated: () => void }) {
   const { profile } = useAuth();
   const [title, setTitle] = useState(editing?.title ?? "");
   const [description, setDescription] = useState(editing?.description ?? "");
