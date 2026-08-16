@@ -346,12 +346,12 @@ export default function Dashboard() {
                 {data.tasksToday.map((t, i) => (
                   <button key={t.id} type="button" onClick={() => navigate("/cards")} style={{ width: "100%", minHeight: 56, display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", textAlign: "left", borderTop: i > 0 ? "1px solid var(--divider)" : undefined }}>
                     <span style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ display: "block", font: "500 13.5px/1.35 var(--font-sans)", color: "var(--text-1)" }}>{t.title}</span>
-                      {t.priority === "alta" && (
-                        <span style={{ display: "inline-flex", alignItems: "center", marginLeft: 7, padding: "2px 7px", borderRadius: 999, background: "var(--chip-pill-bg)", boxShadow: "var(--elev-1)", font: "600 9.5px/1 var(--font-sans)", color: "var(--text-body)", verticalAlign: "middle" }}>alta</span>
-                      )}
+                      <span style={{ display: "block", font: "500 13.5px/1.35 var(--font-sans)", color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</span>
                       <span style={{ display: "block", marginTop: 3, font: "400 11.5px/1.3 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-2)" }}>{t.meta}</span>
                     </span>
+                    {t.priority === "alta" && (
+                      <span style={{ flex: "none", display: "inline-flex", alignItems: "center", padding: "3px 8px", borderRadius: 999, background: "var(--chip-pill-bg)", boxShadow: "var(--elev-1)", font: "600 9.5px/1 var(--font-sans)", color: "var(--text-body)" }}>alta</span>
+                    )}
                     <i className="icon-chevron-right" style={{ fontSize: 16, color: "var(--text-3)" }} aria-hidden />
                   </button>
                 ))}
