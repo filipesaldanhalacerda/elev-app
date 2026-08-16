@@ -151,7 +151,8 @@ export default function Dashboard() {
       if (favs && favs.length > 0) setFavSymbols(favs.map((r) => r.ticker));
     });
   }, [profile?.id]);
-  const symbols = useMemo(() => ["IBOV", ...favSymbols.filter((s) => s !== "IBOV")].slice(0, 7), [favSymbols.join(",")]);
+  // limite da home: IBOV + 4 favoritos — o restante vive em Cotações ("Ver todos")
+  const symbols = useMemo(() => ["IBOV", ...favSymbols.filter((s) => s !== "IBOV")].slice(0, 5), [favSymbols.join(",")]);
   const { data: quotesData, flashes } = useQuotes(symbols);
   // atalhos criam NO LUGAR (sheet + toast) — a home nunca fica para trás
   const { rooms } = useRooms();
@@ -206,60 +207,6 @@ export default function Dashboard() {
           </button>
         </div>
 
-        {/* ticker de mercado */}
-        {loading || !data ? (
-          <div style={{ flex: "none", padding: "2px 16px 6px" }}>
-            <div className="card" style={{ padding: "4px 14px" }}>
-              {[0, 1, 2].map((i) => (
-                <div key={i} style={{ height: 44, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, borderTop: i > 0 ? "1px solid var(--divider)" : undefined }}>
-                  <div className="skeleton" style={{ width: 64, height: 11 }} />
-                  <div className="skeleton" style={{ width: 132, height: 11 }} />
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : quotesData && !quotesData.paused && ticker.length > 0 ? (
-          <div style={{ flex: "none", padding: "2px 16px 6px" }} data-ticker>
-            <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-              {ticker.map((q, i) => {
-                const up = q.changePct >= 0;
-                return (
-                  <button
-                    key={q.symbol}
-                    type="button"
-                    onClick={() => navigate("/cotacoes")}
-                    className={flashClass(q.symbol) || undefined}
-                    style={{ width: "100%", height: 46, display: "flex", alignItems: "center", gap: 12, padding: "0 14px", textAlign: "left", borderTop: i > 0 ? "1px solid var(--divider)" : undefined }}
-                  >
-                    <span className="ticker-strip__code" style={{ flex: 1, minWidth: 0 }}>{q.symbol}</span>
-                    <span style={{ font: "600 14px/1 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-1)" }}>
-                      {formatQuotePrice(q)}
-                    </span>
-                    <span
-                      style={{
-                        flex: "none",
-                        minWidth: 74,
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: 4,
-                        height: 26,
-                        padding: "0 9px",
-                        borderRadius: 8,
-                        background: `color-mix(in srgb, ${up ? "var(--market-up)" : "var(--market-down)"} 12%, transparent)`,
-                        color: up ? "var(--market-up)" : "var(--market-down)",
-                        font: "600 12px/1 var(--font-sans)",
-                        fontVariantNumeric: "tabular-nums",
-                      }}
-                    >
-                      {formatQuoteChange(q)}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ) : null}
 
         <div style={{ flex: 1, padding: "16px 16px 22px", display: "flex", flexDirection: "column", gap: 22 }}>
           {/* atalhos rápidos: Alertas e Sala (o resto vive no menu principal) */}
@@ -290,6 +237,73 @@ export default function Dashboard() {
           {toast && (
             <div style={{ position: "fixed", left: 16, right: 16, bottom: 86, zIndex: 60 }}>
               <Toast>{toast}</Toast>
+            </div>
+          )}
+
+          {/* fixados: IBOV + até 4 ativos fixados em Cotações */}
+          {online && (
+            <div data-ticker>
+              <SectionTitle
+                action={
+                  <button type="button" onClick={() => navigate("/cotacoes")} style={{ display: "flex", alignItems: "center", gap: 2, font: "500 12.5px/1 var(--font-sans)", color: "var(--ghost-text)" }}>
+                    Ver todos
+                    <i className="icon-chevron-right" style={{ fontSize: 13 }} aria-hidden />
+                  </button>
+                }
+              >
+                Fixados
+              </SectionTitle>
+              {loading || !data ? (
+                <div className="card" style={{ padding: "4px 14px" }}>
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} style={{ height: 44, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, borderTop: i > 0 ? "1px solid var(--divider)" : undefined }}>
+                      <div className="skeleton" style={{ width: 64, height: 11 }} />
+                      <div className="skeleton" style={{ width: 132, height: 11 }} />
+                    </div>
+                  ))}
+                </div>
+              ) : quotesData && !quotesData.paused && ticker.length > 0 ? (
+                <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+                  {ticker.map((q, i) => {
+                    const up = q.changePct >= 0;
+                    return (
+                      <button
+                        key={q.symbol}
+                        type="button"
+                        onClick={() => navigate("/cotacoes")}
+                        className={flashClass(q.symbol) || undefined}
+                        style={{ width: "100%", height: 46, display: "flex", alignItems: "center", gap: 12, padding: "0 14px", textAlign: "left", borderTop: i > 0 ? "1px solid var(--divider)" : undefined }}
+                      >
+                        <span className="ticker-strip__code" style={{ flex: 1, minWidth: 0 }}>{q.symbol}</span>
+                        <span style={{ font: "600 14px/1 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-1)" }}>
+                          {formatQuotePrice(q)}
+                        </span>
+                        <span
+                          style={{
+                            flex: "none",
+                            minWidth: 74,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 4,
+                            height: 26,
+                            padding: "0 9px",
+                            borderRadius: 8,
+                            background: `color-mix(in srgb, ${up ? "var(--market-up)" : "var(--market-down)"} 12%, transparent)`,
+                            color: up ? "var(--market-up)" : "var(--market-down)",
+                            font: "600 12px/1 var(--font-sans)",
+                            fontVariantNumeric: "tabular-nums",
+                          }}
+                        >
+                          {formatQuoteChange(q)}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <EmptyBlock icon="icon-pin" title="Nada fixado ainda" desc="Fixe ativos em Cotações para acompanhá-los aqui." onAdd={() => navigate("/cotacoes")} />
+              )}
             </div>
           )}
 

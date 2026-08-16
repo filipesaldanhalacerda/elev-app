@@ -249,6 +249,9 @@ export default function Quotes() {
                   {isPinned(detail.quote.symbol) ? "Desafixar" : "Fixar"}
                 </Button>
               </div>
+              <div style={{ marginTop: 8, font: "400 11px/1.5 var(--font-sans)", color: "var(--text-2)" }}>
+                Ativos fixados ficam na sua lista de Cotações e aparecem no bloco Fixados da home (os 4 primeiros).
+              </div>
 
               <Holders ticker={detail.quote.symbol} />
             </>
