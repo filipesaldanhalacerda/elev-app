@@ -2,7 +2,7 @@
  * Tela 04 · Dashboard/home — quadros #1b/#1c (claro/escuro × com dados/vazio/carregando).
  * A busca de cliente é o centro e NUNCA entra em skeleton.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
 import { AlertCard } from "../components/cards";
@@ -142,7 +142,17 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const data = useHomeData(profile?.id);
-  const { data: quotesData, flashes } = useQuotes(["IBOV", "WDOU26", "PETR4", "VALE3"]);
+  // o mercado da home espelha os FAVORITOS do assessor (tela de Cotações);
+  // sem favoritos salvos, vale a seleção padrão — e com a API real ligada, tudo vem dela
+  const [favSymbols, setFavSymbols] = useState<string[]>(["WDOU26", "PETR4", "VALE3"]);
+  useEffect(() => {
+    if (!profile?.id) return;
+    supabase.from("quote_favorites").select("ticker").order("sort_order").then(({ data: favs }) => {
+      if (favs && favs.length > 0) setFavSymbols(favs.map((r) => r.ticker));
+    });
+  }, [profile?.id]);
+  const symbols = useMemo(() => ["IBOV", ...favSymbols.filter((s) => s !== "IBOV")].slice(0, 7), [favSymbols.join(",")]);
+  const { data: quotesData, flashes } = useQuotes(symbols);
   // atalhos criam NO LUGAR (sheet + toast) — a home nunca fica para trás
   const { rooms } = useRooms();
   const [quick, setQuick] = useState<"alerta" | "sala" | null>(null);
