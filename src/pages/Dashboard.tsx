@@ -215,18 +215,18 @@ export default function Dashboard() {
             <div style={{ font: "600 19px/1.2 var(--font-sans)", letterSpacing: "-0.015em", color: "var(--text-1)" }}>
               {greeting()}, {profile?.name.split(" ")[0]}
             </div>
-            {loading ? (
+            {loading || !data ? (
               <div className="skeleton" style={{ marginTop: 6, width: 150, height: 10 }} />
             ) : (
               <div style={{ marginTop: 3, font: "400 12px/1.35 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-2)" }}>
-                {weekday}, {formatDate(today)} · {empty ? "nenhum cliente vinculado" : `${formatInt(data!.clientCount)} clientes`}
+                {weekday}, {formatDate(today)} · {empty ? "nenhum cliente vinculado" : data ? `${formatInt(data.clientCount)} clientes` : "sem conexão"}
               </div>
             )}
           </div>
           <div style={{ display: "flex", gap: 4 }}>
             <button type="button" aria-label="Notificações" onClick={() => navigate("/notificacoes")} style={{ width: 44, height: 44, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-1)", position: "relative" }}>
               <i className="ph ph-bell" style={{ fontSize: 21 }} aria-hidden />
-              {!loading && data!.unread > 0 && (
+              {data !== null && data.unread > 0 && (
                 <span data-badge style={{ position: "absolute", top: 9, right: 10, width: 7, height: 7, borderRadius: 999, background: "var(--market-down)", border: "1.5px solid var(--bg)" }} />
               )}
             </button>
@@ -239,7 +239,7 @@ export default function Dashboard() {
         </div>
 
         {/* ticker de mercado */}
-        {loading ? (
+        {loading || !data ? (
           <div style={{ flex: "none", height: 38, background: "var(--surface)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 16, padding: "0 16px", overflow: "hidden" }}>
             <div className="skeleton" style={{ width: 92, height: 11 }} />
             <div className="skeleton" style={{ width: 108, height: 11 }} />
@@ -347,9 +347,9 @@ export default function Dashboard() {
           <div>
             <SectionTitle
               action={
-                !loading && data!.activeAlerts > 0 ? (
+                data !== null && data.activeAlerts > 0 ? (
                   <button type="button" onClick={() => navigate("/alertas")} style={{ display: "flex", alignItems: "center", gap: 2, font: "500 12.5px/1 var(--font-sans)", color: "var(--ghost-text)" }}>
-                    {data!.activeAlerts} ativo{data!.activeAlerts > 1 ? "s" : ""}
+                    {data.activeAlerts} ativo{data.activeAlerts > 1 ? "s" : ""}
                     <i className="ph ph-caret-right" style={{ fontSize: 13 }} aria-hidden />
                   </button>
                 ) : undefined
@@ -357,7 +357,7 @@ export default function Dashboard() {
             >
               Radar de alertas
             </SectionTitle>
-            {loading ? (
+            {loading || !data ? (
               <div className="card" style={{ padding: "13px 14px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
                   <div className="skeleton" style={{ width: 150, height: 13 }} />
@@ -369,11 +369,11 @@ export default function Dashboard() {
                   <div className="skeleton" style={{ width: 76, height: 10 }} />
                 </div>
               </div>
-            ) : data!.alerts.length === 0 ? (
+            ) : data.alerts.length === 0 ? (
               <EmptyBlock icon="ph-target" title="Nenhum alerta ativo" desc="Monitore um preço-alvo e receba push." onAdd={() => navigate("/alertas?novo")} />
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {data!.alerts.map((a) => {
+                {data.alerts.map((a) => {
                   const price = a.created_price ?? a.target_price ?? 0;
                   const target = a.target_price ?? 0;
                   const remaining = price > 0 ? Math.abs(((target - price) / price) * 100) : 0;
@@ -398,14 +398,14 @@ export default function Dashboard() {
           <div>
             <SectionTitle
               action={
-                !loading && data!.pendingCount > 0 ? (
+                data !== null && data.pendingCount > 0 ? (
                   <span style={{ display: "flex", alignItems: "center", gap: 8, fontVariantNumeric: "tabular-nums" }}>
                     <span style={{ font: "500 11px/1 var(--font-sans)", color: "var(--field-label)", background: "var(--chip-pill-bg)", border: "1px solid var(--border)", borderRadius: 999, padding: "4px 8px" }}>
-                      {data!.pendingCount} pendente{data!.pendingCount > 1 ? "s" : ""}
+                      {data.pendingCount} pendente{data.pendingCount > 1 ? "s" : ""}
                     </span>
-                    {data!.overdueCount > 0 && (
+                    {data.overdueCount > 0 && (
                       <span style={{ font: "500 11px/1 var(--font-sans)", color: "var(--warning)", background: "var(--warning-tint)", border: "1px solid var(--warning-border)", borderRadius: 999, padding: "4px 8px" }}>
-                        {data!.overdueCount} atrasada{data!.overdueCount > 1 ? "s" : ""}
+                        {data.overdueCount} atrasada{data.overdueCount > 1 ? "s" : ""}
                       </span>
                     )}
                   </span>
@@ -414,7 +414,7 @@ export default function Dashboard() {
             >
               Tarefas de hoje
             </SectionTitle>
-            {loading ? (
+            {loading || !data ? (
               <div className="card" style={{ padding: 0, overflow: "hidden" }}>
                 {[74, 58].map((w, i) => (
                   <div key={i} style={{ height: 56, display: "flex", alignItems: "center", padding: "0 14px", borderTop: i > 0 ? "1px solid var(--divider)" : undefined }}>
@@ -425,11 +425,11 @@ export default function Dashboard() {
                   </div>
                 ))}
               </div>
-            ) : data!.tasksToday.length === 0 ? (
+            ) : data.tasksToday.length === 0 ? (
               <EmptyBlock icon="ph-check-square-offset" title="Nada para hoje" desc="Crie um card para não perder um retorno." onAdd={() => navigate("/cards")} />
             ) : (
               <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-                {data!.tasksToday.map((t, i) => (
+                {data.tasksToday.map((t, i) => (
                   <button key={t.id} type="button" onClick={() => navigate("/cards")} style={{ width: "100%", minHeight: 56, display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", textAlign: "left", borderTop: i > 0 ? "1px solid var(--divider)" : undefined }}>
                     <span style={{ flex: 1, minWidth: 0 }}>
                       <span style={{ display: "block", font: "500 13.5px/1.35 var(--font-sans)", color: "var(--text-1)" }}>{t.title}</span>
@@ -443,10 +443,10 @@ export default function Dashboard() {
           </div>
 
           {/* aniversariantes (só quando há) */}
-          {!loading && data!.birthdays.length > 0 && (
+          {data !== null && data.birthdays.length > 0 && (
             <div>
               <SectionTitle>Aniversariantes</SectionTitle>
-              {data!.birthdays.map((b) => (
+              {data.birthdays.map((b) => (
                 <div key={b.account_code} className="card" style={{ minHeight: 60, display: "flex", alignItems: "center", gap: 12, padding: "10px 10px 10px 14px" }}>
                   <span style={{ width: 36, height: 36, borderRadius: 999, background: "var(--brand-tint)", color: "var(--ghost-text)", display: "flex", alignItems: "center", justifyContent: "center", font: "600 12px/1 var(--font-sans)", flex: "none" }}>
                     {initials(b.name)}
@@ -471,7 +471,7 @@ export default function Dashboard() {
           {/* avisos recentes */}
           <div>
             <SectionTitle>Avisos recentes</SectionTitle>
-            {loading ? (
+            {loading || !data ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 {[82, 68].map((w, i) => (
                   <div key={i} style={{ display: "flex", gap: 11, alignItems: "center" }}>
@@ -480,13 +480,13 @@ export default function Dashboard() {
                   </div>
                 ))}
               </div>
-            ) : data!.notices.length === 0 ? (
+            ) : data.notices.length === 0 ? (
               <div style={{ font: "400 12.5px/1.5 var(--font-sans)", color: "var(--text-2)", padding: "2px 2px 0" }}>
                 Sem avisos nas últimas 24 horas.
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                {data!.notices.map((n) => {
+                {data.notices.map((n) => {
                   const meta = NOTICE_ICON[n.kind] ?? { icon: "ph-bell", tone: "neutral" as const };
                   return (
                     <div key={n.id} style={{ minHeight: 52, display: "flex", alignItems: "flex-start", gap: 11, padding: "10px 2px" }}>

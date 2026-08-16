@@ -125,11 +125,13 @@ test("normalize_advisor_code: A31342 = 31342 no banco", async () => {
 
 test("assessor A enxerga SÓ os próprios clientes — em todas as tabelas de fato", async () => {
   for (const table of ["clients", "positivador_snapshots", "positions", "movements", "balances"]) {
-    const { data, error } = await asA.from(table).select("account_code");
+    // consultas pontuais: a listagem sem filtro é paginada pelo PostgREST (1000 linhas)
+    // e a linha desta execução poderia cair fora da página — o que importa é o RLS.
+    const { data: mine, error } = await asA.from(table).select("account_code").eq("account_code", CLI_A);
     expect(error).toBeNull();
-    const accounts = (data ?? []).map((r: { account_code: string }) => r.account_code);
-    expect(accounts).toContain(CLI_A);
-    expect(accounts, `${table} vazou dado do assessor B`).not.toContain(CLI_B);
+    expect(mine!.length, `${table} não devolveu o próprio cliente`).toBeGreaterThan(0);
+    const { data: theirs } = await asA.from(table).select("account_code").eq("account_code", CLI_B);
+    expect(theirs, `${table} vazou dado do assessor B`).toHaveLength(0);
   }
 });
 
@@ -169,19 +171,28 @@ test("alerta vinculado a cliente de outro assessor é recusado", async () => {
 test("card vinculado a cliente só é visível para quem acessa o cliente", async () => {
   const { data: meA } = await asA.auth.getUser();
   const { data: meB } = await asB.auth.getUser();
-  // A delega ao B um card do cliente do A → B é responsável mas NÃO enxerga o cliente
-  const { data: card, error } = await asA
+  const { data: meAdm } = await asAdmin.auth.getUser();
+
+  // F2-09: assessor NÃO delega card a outro assessor — o banco barra
+  const cross = await asA
     .from("cards")
-    .insert({ title: "Ligar sobre COE", creator: meA.user!.id, assignee: meB.user!.id, account_code: CLI_A })
+    .insert({ title: "Ligar sobre COE", creator: meA.user!.id, assignee: meB.user!.id, account_code: CLI_A });
+  expect(cross.error, "assessor delegando a outro assessor deveria ser barrado").not.toBeNull();
+
+  // delegar é papel do ADMIN; ainda assim, card de cliente do A não abre o cliente para B
+  const { data: card, error } = await asAdmin
+    .from("cards")
+    .insert({ title: "Ligar sobre COE", creator: meAdm.user!.id, assignee: meB.user!.id, account_code: CLI_A })
     .select("id")
     .single();
   expect(error).toBeNull();
   const { data: vistoPorB } = await asB.from("cards").select("id").eq("id", card!.id);
   expect(vistoPorB, "card de cliente do A visível para B").toHaveLength(0);
-  // sem cliente vinculado, o delegado enxerga
-  const { data: livre } = await asA
+
+  // sem cliente vinculado, o delegado enxerga o card
+  const { data: livre } = await asAdmin
     .from("cards")
-    .insert({ title: "Tarefa geral", creator: meA.user!.id, assignee: meB.user!.id })
+    .insert({ title: "Tarefa geral", creator: meAdm.user!.id, assignee: meB.user!.id })
     .select("id")
     .single();
   const { data: visto } = await asB.from("cards").select("id").eq("id", livre!.id);

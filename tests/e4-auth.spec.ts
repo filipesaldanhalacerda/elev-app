@@ -7,10 +7,13 @@ import { serviceClient, createUser } from "./helpers/seed";
 
 const RUN = `${Date.now()}${process.pid}${Math.floor(Math.random() * 1e4)}`;
 const ADMIN = { email: `marina.${RUN}@elev.test`, password: "Admin@2026!x", name: "Marina Costa" };
+const BASE_CODE = `88${RUN.slice(-4)}`; // código único por execução, presente na base
 
 test.beforeAll(async () => {
   const svc = serviceClient();
   await createUser(svc, { ...ADMIN, role: "admin" });
+  // F2-02: novo acesso exige código de assessor QUE EXISTE na base importada
+  await svc.from("clients").upsert({ account_code: `40${RUN.slice(-5)}1`, advisor_code: BASE_CODE, name: "Cliente da Base", status: "ATIVO" });
 });
 
 emAmbosTemas("tela 01 · Login", () => {
@@ -157,14 +160,15 @@ test.describe("fluxo (a) · admin cria código → primeiro acesso → home", ()
     await expect(criar).toBeDisabled();
     await form.getByLabel("Nome completo").fill("Helena Prado");
     await form.getByLabel("E-mail").fill(`helena.${RUN}@elev.test`);
-    await form.getByLabel("Código de assessor").fill("A-2088");
+    // F2-02: o código agora é escolhido da base importada (select com contagem de clientes)
+    await form.getByLabel("Código de assessor").selectOption(BASE_CODE);
     await expect(criar).toBeEnabled();
     await criar.click();
 
     // emenda no fluxo do código: modal exibido uma vez, com o código normalizado
     const codeModal = page.getByRole("dialog");
     await expect(codeModal.locator(".modal__title")).toHaveText("Código de acesso gerado");
-    await expect(codeModal.locator(".modal__id")).toContainText("Helena Prado · assessor A-2088");
+    await expect(codeModal.locator(".modal__id")).toContainText(`Helena Prado · assessor A-${BASE_CODE}`);
     expect((await codeModal.locator(".code-modal__code").innerText()).trim()).toHaveLength(6);
     await codeModal.getByRole("button", { name: "Concluir" }).click();
 

@@ -23,7 +23,7 @@ export default defineConfig({
   projects: [
     {
       name: "assessor",
-      testIgnore: [/e3-rls/, /e7-cotacoes/, /e17-qa/],
+      testIgnore: [/e3-rls/, /e5-importacao/, /e7-cotacoes/, /e16-fluxos/, /e17-qa/],
       use: {
         ...devices["iPhone 12"],
         viewport: { width: 390, height: 844 },
@@ -32,11 +32,24 @@ export default defineConfig({
     },
     {
       name: "admin",
-      testIgnore: [/e3-rls/, /e7-cotacoes/, /e17-qa/],
+      testIgnore: [/e3-rls/, /e5-importacao/, /e7-cotacoes/, /e16-fluxos/, /e17-qa/],
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width: 1440, height: 900 },
       },
+    },
+    {
+      // e5 e e16 importam/apagam os MESMOS arquivos reais: nunca em paralelo.
+      // e16 depende de e5 (roda depois), e ambos fora dos projetos gerais.
+      name: "real-imports",
+      testMatch: /e5-importacao/,
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
+    },
+    {
+      name: "real-fluxos",
+      testMatch: /e16-fluxos/,
+      dependencies: ["real-imports"],
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
     },
     {
       // testes de banco/RLS: só API, sem navegador; um único worker para não competir

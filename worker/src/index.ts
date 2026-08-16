@@ -146,11 +146,14 @@ app.use("/api/admin/*", async (c, next) => {
 
 app.get("/api/admin/users", async (c) => {
   const svc = c.get("svc");
-  const { data: users, error } = await svc
-    .from("profiles")
-    .select("id, name, email, advisor_code, role, is_active, created_at")
-    .order("created_at");
-  if (error) return c.json({ error: error.message }, 500);
+  // varredura paginada: o PostgREST corta em 1000 linhas e o usuário mais novo sumiria
+  const users = await fetchAll<{ id: string; name: string; email: string; advisor_code: string | null; role: string; is_active: boolean; created_at: string }>((from, to) =>
+    svc
+      .from("profiles")
+      .select("id, name, email, advisor_code, role, is_active, created_at")
+      .order("created_at")
+      .range(from, to)
+  );
   const { data: codes } = await svc
     .from("access_codes")
     .select("user_id, expires_at")
@@ -170,8 +173,10 @@ app.get("/api/admin/advisor-codes", async (c) => {
   );
   const counts = new Map<string, number>();
   for (const r of rows) counts.set(r.advisor_code, (counts.get(r.advisor_code) ?? 0) + 1);
-  const { data: used } = await svc.from("profiles").select("advisor_code").not("advisor_code", "is", null);
-  const taken = new Set((used ?? []).map((u) => String(u.advisor_code)));
+  const used = await fetchAll<{ advisor_code: string }>((from, to) =>
+    svc.from("profiles").select("advisor_code").not("advisor_code", "is", null).order("advisor_code").range(from, to)
+  );
+  const taken = new Set(used.map((u) => String(u.advisor_code)));
   return c.json({
     codes: [...counts.entries()].map(([code, clients]) => ({ code, clients, taken: taken.has(code) })),
   });
@@ -526,8 +531,10 @@ async function notifyUser(svc: SupabaseClient, userId: string, kind: string, tit
 }
 
 async function advisorUsers(svc: SupabaseClient): Promise<Map<string, string>> {
-  const { data } = await svc.from("profiles").select("id, advisor_code").not("advisor_code", "is", null).eq("is_active", true);
-  return new Map((data ?? []).map((p) => [String(p.advisor_code), p.id]));
+  const rows = await fetchAll<{ id: string; advisor_code: string }>((from, to) =>
+    svc.from("profiles").select("id, advisor_code").not("advisor_code", "is", null).eq("is_active", true).order("id").range(from, to)
+  );
+  return new Map(rows.map((p) => [String(p.advisor_code), p.id]));
 }
 
 // Varre a tabela inteira em blocos: um limite fixo silencioso deixaria
@@ -679,9 +686,11 @@ app.post("/api/push/subscribe", async (c) => {
 // Lembrete diário 08:00 (tela 25 modelo 2): resumo dos cards do dia
 app.post("/api/cron/daily-reminder", async (c) => {
   const svc = svcOf(c.env);
-  const { data: users } = await svc.from("profiles").select("id, push_prefs").eq("is_active", true);
+  const users = await fetchAll<{ id: string; push_prefs: Record<string, boolean> }>((from, to) =>
+    svc.from("profiles").select("id, push_prefs").eq("is_active", true).order("id").range(from, to)
+  );
   let sent = 0;
-  for (const u of users ?? []) {
+  for (const u of users) {
     if ((u.push_prefs as Record<string, boolean>).lembrete_diario === false) continue;
     const { data: cards } = await svc
       .from("cards")

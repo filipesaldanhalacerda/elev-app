@@ -52,12 +52,17 @@ async function importar(page: import("@playwright/test").Page, file: string) {
   await page.locator('[data-testid="import-file"]').setInputFiles(file);
   await expect(page.locator(".import-file__chip")).toBeVisible();
   await page.getByRole("button", { name: "Confirmar e processar" }).click();
-  await expect(page.locator(".toast")).toContainText("Importação concluída", { timeout: 60_000 });
+  // o toast se auto-dispensa; o sinal estável de conclusão é o histórico
+  await expect(page.locator(".import-history__row").first()).toContainText("concluída", { timeout: 90_000 });
 }
 
 test("positivador mensal: detecção, contagens e NADA gravado antes da confirmação", async ({ page }) => {
   const svc = serviceClient();
   await loginAdmin(page);
+
+  // contagem ANTES de escolher o arquivo — o fluxo e16 (outro projeto) pode importar
+  // os mesmos arquivos reais em paralelo, então a prova é o DELTA, não o zero absoluto
+  const { count: antes } = await svc.from("positivador_snapshots").select("*", { count: "exact", head: true }).eq("ref_date", "2026-03-17");
 
   await page.locator('[data-testid="import-file"]').setInputFiles(FILES.positivadorMensal);
   await expect(page.locator(".import-file__chip")).toContainText("Positivador mensal detectado");
@@ -68,12 +73,12 @@ test("positivador mensal: detecção, contagens e NADA gravado antes da confirma
   await expect(page.locator(".import-footer__note")).toHaveText("Nada é gravado antes desta confirmação.");
   await expect(page.locator(".import-sample__count")).toContainText("mostrando 3 de 802");
 
-  // ainda não gravou nada
-  const { count: before } = await svc.from("positivador_snapshots").select("*", { count: "exact", head: true }).eq("ref_date", "2026-03-17");
-  expect(before).toBe(0);
+  // a conferência é só leitura: nada novo foi gravado antes da confirmação
+  const { count: durante } = await svc.from("positivador_snapshots").select("*", { count: "exact", head: true }).eq("ref_date", "2026-03-17");
+  expect(durante).toBe(antes);
 
   await page.getByRole("button", { name: "Confirmar e processar" }).click();
-  await expect(page.locator(".toast")).toContainText("Importação concluída — 802 registros", { timeout: 60_000 });
+  await expect(page.locator(".import-history__row").first()).toContainText("802 registros", { timeout: 90_000 });
 
   const { count: after } = await svc.from("positivador_snapshots").select("*", { count: "exact", head: true }).eq("ref_date", "2026-03-17");
   expect(after).toBe(802);
@@ -106,7 +111,7 @@ test("positivador semanal (cabeçalho em português) é reconhecido e convive co
   await expect(page.locator(".import-file__chip")).toContainText("Positivador semanal detectado");
   await expect(page.locator(".import-counts__cell").first()).toContainText("803");
   await page.getByRole("button", { name: "Confirmar e processar" }).click();
-  await expect(page.locator(".toast")).toContainText("803 registros", { timeout: 60_000 });
+  await expect(page.locator(".import-history__row").first()).toContainText("803 registros", { timeout: 90_000 });
   const { count } = await svc.from("positivador_snapshots").select("*", { count: "exact", head: true }).eq("variant", "semanal");
   expect(count).toBe(803);
 });

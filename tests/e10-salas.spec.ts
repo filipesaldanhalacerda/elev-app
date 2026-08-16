@@ -16,6 +16,7 @@ let rafaId: string;
 let brunoId: string;
 let ipeId: string;
 const today = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+const tomorrow = new Date(Date.now() + 86400000).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
 
 test.beforeAll(async () => {
   const svc = serviceClient();
@@ -26,13 +27,12 @@ test.beforeAll(async () => {
   const { data: ipe } = await svc.from("rooms").insert({ name: IPE, capacity: 6, resources: ["TV", "Videoconferência", "Quadro"] }).select("id").single();
   ipeId = ipe!.id;
   await svc.from("rooms").insert({ name: JACA, capacity: 4, resources: ["TV"] });
-  // Bruno ocupa 10:00–11:00 hoje na Ipê (o conflito do quadro)
-  await svc.from("reservations").insert({
-    room_id: ipeId,
-    owner: brunoId,
-    title: "Onboarding",
-    period: `[${today}T10:00:00-03:00,${today}T11:00:00-03:00)`,
-  });
+  // Bruno ocupa 10:00–11:00 hoje na Ipê (agenda do dia) e amanhã (o conflito do quadro —
+  // F2-10 bloqueia reservar no passado, então o conflito é tentado amanhã)
+  await svc.from("reservations").insert([
+    { room_id: ipeId, owner: brunoId, title: "Onboarding", period: `[${today}T10:00:00-03:00,${today}T11:00:00-03:00)` },
+    { room_id: ipeId, owner: brunoId, title: "Onboarding", period: `[${tomorrow}T10:00:00-03:00,${tomorrow}T11:00:00-03:00)` },
+  ]);
 });
 
 async function login(page: import("@playwright/test").Page, email: string, password: string) {
@@ -98,6 +98,7 @@ test.describe("tela 14 · fluxo (f)", () => {
 
     // formulário 10:00–11:00 na Ipê (colide com o Onboarding do Bruno)
     await expect(page.getByText("Nova reserva")).toBeVisible();
+    await page.locator("#res-data").fill(tomorrow);
     await page.getByLabel("Título").fill("Revisão trimestral");
     const confirmar = page.getByRole("button", { name: "Confirmar reserva" });
     await confirmar.click();

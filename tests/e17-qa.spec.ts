@@ -150,6 +150,7 @@ const MOBILE_ROUTES: { path: string; label: string; ready: string }[] = [
   { path: "/salas", label: "14-salas", ready: ".agenda__row" },
   { path: "/notificacoes", label: "15-notificacoes", ready: ".notif" },
   { path: "/perfil", label: "16-perfil", ready: '[data-avatar]' },
+  { path: "/agenda", label: "27-agenda", ready: ".empty-state, .reservation-row" },
 ];
 
 const ADMIN_ROUTES: { path: string; label: string; ready: string }[] = [
