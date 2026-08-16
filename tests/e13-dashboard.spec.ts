@@ -45,8 +45,10 @@ emAmbosTemas("tela 04 · com dados", () => {
   test("saudação, ticker, atalhos, radar, tarefas e aniversariantes", async ({ page }) => {
     await login(page, ADV.email, ADV.password);
 
-    // saudação + contagem de clientes + sino com badge + avatar
-    await expect(page.getByText(new RegExp(`^(Bom dia|Boa tarde|Boa noite), Rafa${RUN.slice(-3)}$`))).toBeVisible();
+    // cabeçalho estilo app: avatar à esquerda, saudação empilhada, sino à direita
+    await expect(page.getByText(/^(Bom dia|Boa tarde|Boa noite),$/)).toBeVisible();
+    await expect(page.getByText(`Rafa${RUN.slice(-3)}`, { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Perfil" })).toBeVisible();
     await expect(page.getByText("2 clientes")).toBeVisible();
     await expect(page.locator("[data-badge]")).toBeVisible();
 

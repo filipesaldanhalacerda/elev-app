@@ -168,57 +168,63 @@ export default function Dashboard() {
   return (
     <MobileShell active="inicio">
       <div data-home style={{ display: "contents" }}>
-        {/* saudação */}
-        <div style={{ flex: "none", padding: "6px 16px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-          <div>
-            <div style={{ font: "600 19px/1.2 var(--font-sans)", letterSpacing: "-0.015em", color: "var(--text-1)" }}>
-              {greeting()}, {profile?.name.split(" ")[0]}
+        {/* cabeçalho estilo app: avatar à esquerda, saudação empilhada, sino à direita */}
+        <div style={{ flex: "none", padding: "10px 16px 12px", display: "flex", alignItems: "center", gap: 12 }}>
+          <button type="button" aria-label="Perfil" onClick={() => navigate("/perfil")} style={{ width: 44, height: 44, flex: "none", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ width: 42, height: 42, borderRadius: 999, background: "var(--brand-800)", color: "var(--brand-100)", display: "flex", alignItems: "center", justifyContent: "center", font: "600 14px/1 var(--font-sans)" }}>
+              {profile ? initials(profile.name) : ""}
+            </span>
+          </button>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ font: "400 12px/1 var(--font-sans)", color: "var(--text-2)" }}>{greeting()},</div>
+            <div style={{ marginTop: 3, font: "700 18px/1.15 var(--font-sans)", letterSpacing: "-0.015em", color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {profile?.name.split(" ")[0]}
             </div>
             {loading || !data ? (
-              <div className="skeleton" style={{ marginTop: 6, width: 150, height: 10 }} />
+              <div className="skeleton" style={{ marginTop: 5, width: 130, height: 9 }} />
             ) : (
-              <div style={{ marginTop: 3, font: "400 12px/1.35 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-2)" }}>
-                {weekday}, {formatDate(today)} · {empty ? "nenhum cliente vinculado" : data ? `${formatInt(data.clientCount)} clientes` : "sem conexão"}
+              <div style={{ marginTop: 4, font: "400 11px/1.3 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-3)" }}>
+                {weekday}, {formatDate(today).slice(0, 5)} · {empty ? "nenhum cliente vinculado" : `${formatInt(data.clientCount)} clientes`}
               </div>
             )}
           </div>
-          <div style={{ display: "flex", gap: 4 }}>
-            <button type="button" aria-label="Notificações" onClick={() => navigate("/notificacoes")} style={{ width: 44, height: 44, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-1)", position: "relative" }}>
-              <i className="icon-bell" style={{ fontSize: 21 }} aria-hidden />
-              {data !== null && data.unread > 0 && (
-                <span data-badge style={{ position: "absolute", top: 9, right: 10, width: 7, height: 7, borderRadius: 999, background: "var(--market-down)", border: "1.5px solid var(--bg)" }} />
-              )}
-            </button>
-            <button type="button" aria-label="Perfil" onClick={() => navigate("/perfil")} style={{ width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ width: 34, height: 34, borderRadius: 999, background: "var(--brand-800)", color: "var(--brand-100)", display: "flex", alignItems: "center", justifyContent: "center", font: "600 12px/1 var(--font-sans)" }}>
-                {profile ? initials(profile.name) : ""}
-              </span>
-            </button>
-          </div>
+          <button type="button" aria-label="Notificações" onClick={() => navigate("/notificacoes")} style={{ width: 44, height: 44, flex: "none", borderRadius: 999, background: "var(--surface)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-1)", position: "relative" }}>
+            <i className="icon-bell" style={{ fontSize: 20 }} aria-hidden />
+            {data !== null && data.unread > 0 && (
+              <span data-badge style={{ position: "absolute", top: 10, right: 11, width: 7, height: 7, borderRadius: 999, background: "var(--market-down)", border: "1.5px solid var(--surface)" }} />
+            )}
+          </button>
         </div>
 
         {/* ticker de mercado */}
         {loading || !data ? (
-          <div style={{ flex: "none", height: 38, background: "var(--surface)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 16, padding: "0 16px", overflow: "hidden" }}>
-            <div className="skeleton" style={{ width: 92, height: 11 }} />
-            <div className="skeleton" style={{ width: 108, height: 11 }} />
-            <div className="skeleton" style={{ width: 86, height: 11 }} />
+          <div style={{ flex: "none", display: "flex", gap: 10, padding: "2px 16px 6px", overflow: "hidden" }}>
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="skeleton" style={{ width: 122, height: 68, borderRadius: 14, flex: "none" }} />
+            ))}
           </div>
         ) : quotesData && !quotesData.paused && ticker.length > 0 ? (
-          <div style={{ flex: "none", height: 38, background: "var(--surface)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", overflow: "hidden", position: "relative" }}>
-            <span style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 44, background: "linear-gradient(90deg, transparent 0%, var(--surface) 72%)", pointerEvents: "none", zIndex: 1 }} aria-hidden />
-            <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "0 16px", whiteSpace: "nowrap", overflowX: "auto", scrollbarWidth: "none" }}>
-              {ticker.map((q, i) => (
-                <span key={q.symbol} style={{ display: "contents" }}>
-                  {i > 0 && <span style={{ width: 1, height: 14, background: "var(--border)", flex: "none" }} aria-hidden />}
-                  <span className={`ticker-strip__item${flashClass(q.symbol)}`} style={{ borderRadius: 4, padding: "3px 4px" }}>
-                    <span className="ticker-strip__code">{q.symbol}</span>
-                    <span className="ticker-strip__price">{formatQuotePrice(q)}</span>
-                    <span className={`ticker-strip__pct ${q.changePct >= 0 ? "market-up" : "market-down"}`}>{formatQuoteChange(q)}</span>
-                  </span>
+          <div style={{ flex: "none", display: "flex", gap: 10, padding: "2px 16px 6px", overflowX: "auto", scrollbarWidth: "none" }} data-ticker>
+            {ticker.map((q) => (
+              <button
+                key={q.symbol}
+                type="button"
+                onClick={() => navigate("/cotacoes")}
+                className={`card${flashClass(q.symbol)}`}
+                style={{ flex: "none", minWidth: 122, padding: "10px 12px", textAlign: "left", display: "flex", flexDirection: "column", gap: 6 }}
+              >
+                <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                  <span className="ticker-strip__code">{q.symbol}</span>
+                  <i className={q.changePct >= 0 ? "icon-trending-up" : "icon-trending-down"} style={{ fontSize: 14, color: q.changePct >= 0 ? "var(--market-up)" : "var(--market-down)" }} aria-hidden />
                 </span>
-              ))}
-            </div>
+                <span style={{ font: "600 15.5px/1 var(--font-sans)", fontVariantNumeric: "tabular-nums", letterSpacing: "-0.01em", color: "var(--text-1)" }}>
+                  {formatQuotePrice(q)}
+                </span>
+                <span className={q.changePct >= 0 ? "market-up" : "market-down"} style={{ font: "600 11.5px/1 var(--font-sans)", fontVariantNumeric: "tabular-nums" }}>
+                  {formatQuoteChange(q)}
+                </span>
+              </button>
+            ))}
           </div>
         ) : null}
 
