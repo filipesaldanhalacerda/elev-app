@@ -142,7 +142,7 @@ const MOBILE_ROUTES: { path: string; label: string; ready: string }[] = [
   { path: `/clientes/__ANA__`, label: "06-visao-geral", ready: ".patrimony-value__amount" },
   { path: `/clientes/__ANA__?aba=Carteira`, label: "07-carteira", ready: ".class-group" },
   { path: `/clientes/__ANA__?aba=Movimenta%C3%A7%C3%B5es`, label: "08-movimentacoes", ready: ".mov-group" },
-  { path: `/clientes/__ANA__?aba=Cadastro`, label: "09-cadastro", ready: ".extras-card" },
+  { path: `/clientes/__ANA__?aba=Cadastro`, label: "09-cadastro", ready: ".extras-row__label" },
   { path: `/clientes/__ANA__?aba=Notas`, label: "10-notas", ready: "[data-notes]" },
   { path: "/cotacoes", label: "11-cotacoes", ready: ".fav-row" },
   { path: "/alertas", label: "12-alertas", ready: ".alert-card__track" },
@@ -183,7 +183,8 @@ for (const theme of ["claro", "escuro"] as const) {
       await page.waitForSelector(route.ready, { timeout: 15000 });
       await page.waitForTimeout(300);
       await structuralChecks(page, `${route.label} ${theme}`);
-      await page.screenshot({ path: `${SHOTS}/${route.label}-${theme}.png`, fullPage: true });
+      const pageHeight = await page.evaluate(() => document.documentElement.scrollHeight);
+      await page.screenshot({ path: `${SHOTS}/${route.label}-${theme}.png`, fullPage: pageHeight < 15000 });
     }
 
     await login(page, ADV.email, ADV.password);
@@ -193,7 +194,8 @@ for (const theme of ["claro", "escuro"] as const) {
       await page.waitForSelector(route.ready, { timeout: 20000 });
       await page.waitForTimeout(400);
       await structuralChecks(page, `${route.label} ${theme}`);
-      await page.screenshot({ path: `${SHOTS}/${route.label}-${theme}.png`, fullPage: true });
+      const pageHeight = await page.evaluate(() => document.documentElement.scrollHeight);
+      await page.screenshot({ path: `${SHOTS}/${route.label}-${theme}.png`, fullPage: pageHeight < 15000 });
     }
 
     // interações: sheets/abas/segmentados abrem e fecham sem erro
@@ -242,7 +244,8 @@ for (const theme of ["claro", "escuro"] as const) {
       await page.waitForSelector(route.ready, { timeout: 20000 });
       await page.waitForTimeout(400);
       await structuralChecks(page, `${route.label} ${theme}`);
-      await page.screenshot({ path: `${SHOTS}/${route.label}-${theme}.png`, fullPage: true });
+      const pageHeight = await page.evaluate(() => document.documentElement.scrollHeight);
+      await page.screenshot({ path: `${SHOTS}/${route.label}-${theme}.png`, fullPage: pageHeight < 15000 });
     }
 
     // interações admin: modais abrem/fecham sem erro

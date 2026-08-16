@@ -2,7 +2,7 @@
  * Tela 13 · Cards — quadros "13 Cards lista claro" e "13 Novo card escuro" (#3f).
  * No celular NÃO há kanban: lista por status, botão de próxima ação e swipe como atalho.
  */
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
 import { Sheet } from "../components/Sheet";
@@ -14,7 +14,6 @@ import { supabase } from "../lib/supabase";
 import { useCards, createCard, updateCard, deleteCard, advanceCard, isOverdue, type CardRow, type CardStatus } from "../lib/cards";
 import { formatDate, formatTime } from "../lib/format";
 
-const HINT_KEY = "elev.cards.dica-dispensada";
 
 function cardMeta(card: CardRow, myId: string): string {
   const parts: string[] = [];
@@ -163,6 +162,79 @@ export function NewCardSheet({ initialClient = "", editing, onClose, onCreated }
   );
 }
 
+/**
+ * Swipe nativo de celular: o card acompanha o dedo, a ação vai se revelando
+ * atrás ("Empurre para…" → "Solte para…") e ao passar do limiar avança o status.
+ */
+function SwipeableRow({ card, onAdvance, children }: { card: CardRow; onAdvance: () => void; children: ReactNode }) {
+  const [dx, setDx] = useState(0);
+  const [settling, setSettling] = useState(false);
+  const start = useRef<{ x: number; y: number; active: boolean } | null>(null);
+  const THRESHOLD = 96;
+  const MAX = 132;
+  const enabled = card.status !== "concluido";
+  const progress = Math.min(dx / THRESHOLD, 1);
+  const verb = card.status === "pendente" ? "iniciar" : "concluir";
+
+  if (!enabled) return <>{children}</>;
+  return (
+    <div
+      style={{ position: "relative" }}
+      onTouchStart={(e) => {
+        start.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, active: false };
+        setSettling(false);
+      }}
+      onTouchMove={(e) => {
+        const s = start.current;
+        if (!s) return;
+        const d = e.touches[0].clientX - s.x;
+        const dy = e.touches[0].clientY - s.y;
+        if (!s.active) {
+          if (Math.abs(d) < 8 && Math.abs(dy) < 8) return;
+          if (Math.abs(dy) > Math.abs(d)) { start.current = null; return; } // rolagem vertical vence
+          s.active = true;
+        }
+        setDx(d > 0 ? Math.min(d, MAX) : 0);
+      }}
+      onTouchEnd={() => {
+        const passed = dx >= THRESHOLD;
+        setSettling(true);
+        setDx(0);
+        start.current = null;
+        if (passed) onAdvance();
+      }}
+    >
+      <div
+        aria-hidden
+        style={{
+          position: "absolute", inset: 0, borderRadius: 12,
+          display: "flex", alignItems: "center", gap: 9, paddingLeft: 16,
+          background: "var(--success-tint)", color: "var(--success)",
+          opacity: dx > 0 ? 1 : 0, transition: settling ? "opacity 200ms ease" : "none",
+        }}
+      >
+        <span
+          aria-hidden
+          style={{
+            width: 36, height: 36, borderRadius: 999, flex: "none",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            background: progress >= 1 ? "var(--success)" : "transparent",
+            color: progress >= 1 ? "var(--surface)" : "var(--success)",
+            transform: `scale(${0.7 + progress * 0.5})`,
+            transition: "background 120ms ease, color 120ms ease, transform 60ms linear",
+          }}
+          title={verb}
+        >
+          <i className={card.status === "pendente" ? "icon-play" : "icon-check"} style={{ fontSize: 19 }} />
+        </span>
+      </div>
+      <div style={{ transform: `translateX(${dx}px)`, transition: settling ? "transform 220ms ease" : "none" }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export default function Cards() {
   const { profile } = useAuth();
   const [params] = useSearchParams();
@@ -172,9 +244,7 @@ export default function Cards() {
   const [viewing, setViewing] = useState<CardRow | null>(null);
   const [removing, setRemoving] = useState<CardRow | null>(null);
   const [removeBusy, setRemoveBusy] = useState(false);
-  const [hintDismissed, setHintDismissed] = useState(() => localStorage.getItem(HINT_KEY) === "1");
   const { rows, reload } = useCards("meus", profile?.id);
-  const touchStart = useRef<number | null>(null);
 
   const groups = useMemo(() => {
     const todayISO = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
@@ -260,19 +330,11 @@ export default function Cards() {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {group.items.map((card) => (
+            <SwipeableRow key={card.id} card={card} onAdvance={() => void advance(card)}>
             <div
-              key={card.id}
               className="card-row"
               style={card.priority === "alta" && card.status !== "concluido" ? { boxShadow: "var(--elev-2)", borderColor: "var(--border-strong)" } : undefined}
               data-priority={card.priority}
-              onTouchStart={(e) => (touchStart.current = e.touches[0].clientX)}
-              onTouchEnd={(e) => {
-                // deslizar para a direita = atalho para avançar status
-                if (touchStart.current !== null && e.changedTouches[0].clientX - touchStart.current > 80 && card.status !== "concluido") {
-                  void advance(card);
-                }
-                touchStart.current = null;
-              }}
             >
               <button
                 type="button"
@@ -297,32 +359,17 @@ export default function Cards() {
                 </button>
               )}
             </div>
+            </SwipeableRow>
             ))}
             </div>
           </div>
           ))}
         </div>
 
-        {!hintDismissed && rows !== null && byStatus[status].length > 0 && (
+        {rows !== null && byStatus[status].length > 0 && status !== "concluido" && (
           <div className="swipe-hint">
             <i className="icon-chevrons-right" aria-hidden />
-            <span className="swipe-hint__text">Dica: deslizar uma tarefa para a direita também avança o status.</span>
-            <button
-              type="button"
-              className="swipe-hint__close"
-              aria-label="Dispensar dica"
-              onClick={() => {
-                localStorage.setItem(HINT_KEY, "1");
-                setHintDismissed(true);
-              }}
-            >
-              <i className="icon-x" aria-hidden />
-            </button>
-          </div>
-        )}
-        {rows !== null && byStatus[status].length > 0 && (
-          <div style={{ font: "400 11px/1.5 var(--font-sans)", color: "var(--text-3)", padding: "0 2px 14px" }}>
-            O botão de cada card executa a próxima ação (iniciar, concluir). O gesto de deslizar é atalho, apresentado pela dica acima — dispensada, não volta.
+            <span className="swipe-hint__text">Empurre uma tarefa para a direita e solte para avançar o status.</span>
           </div>
         )}
       </div>

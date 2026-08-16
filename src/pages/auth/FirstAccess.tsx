@@ -11,6 +11,7 @@ import { PasswordField } from "../../components/Field";
 import { Button } from "../../components/Button";
 import { Banner } from "../../components/feedback";
 import { formatTime } from "../../lib/format";
+import { OrganicLines } from "../../components/OrganicLines";
 
 function Requirement({ ok, children }: { ok: boolean; children: string }) {
   return (
@@ -90,6 +91,7 @@ export default function FirstAccess() {
 
   return (
     <div className="auth-screen" data-screen="02" data-step={step}>
+      <OrganicLines height={230} />
       <header className="auth-header">
         <button type="button" className="auth-header__back" aria-label="Voltar" onClick={() => (step === 2 ? setStep(1) : navigate("/login"))}>
           <i className="icon-arrow-left" aria-hidden />

@@ -77,10 +77,12 @@
   --chart-3: #40906F;
   --chart-4: #5F6E68;
 
-  /* elevação (claro) */
-  --elev-1: 0 1px 2px rgba(15, 22, 20, 0.04);
-  --elev-2: 0 6px 20px rgba(15, 22, 20, 0.10);
+  /* elevação (claro) — camadas suaves para dar profundidade sem perder sobriedade */
+  --elev-1: 0 1px 2px rgba(15, 22, 20, 0.05), 0 6px 16px rgba(15, 22, 20, 0.05);
+  --elev-2: 0 2px 6px rgba(15, 22, 20, 0.06), 0 12px 28px rgba(15, 22, 20, 0.12);
   --elev-modal: 0 18px 44px rgba(15, 22, 20, 0.22);
+  /* aura orgânica no topo das telas (respiro de marca) */
+  --page-aura: radial-gradient(130% 42% at 50% -8%, color-mix(in srgb, var(--brand-800) 7%, transparent), transparent 72%);
   --focus-ring: 0 0 0 3px rgba(31, 115, 85, 0.28);
   --button-inset: inset 0 -1px 0 rgba(6, 32, 22, 0.30);
 
@@ -199,10 +201,11 @@
   --chart-3: #6DAF91;
   --chart-4: #40906F;
 
-  /* escuro: sem sombra — elevação é borda mais clara */
-  --elev-1: none;
-  --elev-2: none;
-  --elev-modal: none;
+  /* escuro: sombras profundas e suaves — dão camada sem sujar a superfície */
+  --elev-1: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 20px rgba(0, 0, 0, 0.22);
+  --elev-2: 0 2px 8px rgba(0, 0, 0, 0.42), 0 14px 32px rgba(0, 0, 0, 0.32);
+  --elev-modal: 0 20px 48px rgba(0, 0, 0, 0.55);
+  --page-aura: radial-gradient(130% 42% at 50% -8%, color-mix(in srgb, var(--brand-tint) 55%, transparent), transparent 72%);
   --focus-ring: 0 0 0 3px rgba(109, 175, 145, 0.34);
   --button-inset: inset 0 -1px 0 rgba(6, 32, 22, 0.22);
 

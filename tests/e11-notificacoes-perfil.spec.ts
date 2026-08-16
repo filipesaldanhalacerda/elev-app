@@ -91,9 +91,10 @@ test("tela 16: perfil completo — tema muda na hora, toggles persistem, trocar 
   await page.getByRole("button", { name: "Claro" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
 
-  // toggles de push: os 4 tipos do quadro; persistência no perfil
+  // toggles de push: 3 tipos (delegação saiu — tarefa é só do próprio assessor); persistência no perfil
   await expect(page.getByText("Push por tipo de evento")).toBeVisible();
-  await expect(page.getByText("aportes e resgates relevantes")).toBeVisible();
+  await expect(page.getByText("aportes e resgates acima de R$ 100 mil na importação")).toBeVisible();
+  await expect(page.getByText("Tarefa delegada a mim")).toHaveCount(0);
   const mov = page.getByRole("switch", { name: "Movimentações de clientes" });
   await expect(mov).toHaveAttribute("aria-checked", "false");
   await mov.click();

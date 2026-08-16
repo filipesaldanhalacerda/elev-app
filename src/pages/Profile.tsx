@@ -13,12 +13,12 @@ import { subscribeDevice } from "../lib/push";
 import { initials, displayAdvisorCode } from "../lib/format";
 import { useGoogleStatus, connectGoogle, disconnectGoogle } from "../lib/google";
 import { GoogleLogo } from "../components/GoogleLogo";
+import { isStandalone, isIOS, canPromptInstall, promptInstall, onInstallAvailability } from "../lib/pwa";
 
 const PUSH_ITEMS: { key: string; label: string; description?: string }[] = [
   { key: "alerta_preco", label: "Alerta de preço atingido" },
   { key: "lembrete_diario", label: "Lembrete diário de tarefas" },
-  { key: "card_delegado", label: "Tarefa delegada a mim" },
-  { key: "movimentacoes", label: "Movimentações de clientes", description: "aportes e resgates relevantes" },
+  { key: "movimentacoes", label: "Movimentações de clientes", description: "aportes e resgates acima de R$ 100 mil na importação" },
 ];
 
 /** F2-11: no mobile o padrão do sistema é o sheet que desliza de baixo — não modal central. */
@@ -62,12 +62,20 @@ function ChangePasswordSheet({ onClose }: { onClose: () => void }) {
   );
 }
 
+const sectionTitle = (text: string) => (
+  <div style={{ font: "600 11px/1 var(--font-mono)", letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--text-2)", padding: "2px 2px 0" }}>{text}</div>
+);
+
 export default function Profile() {
   const navigate = useNavigate();
   const { profile, signOut } = useAuth();
   const [theme, setTheme] = useState<ThemePreference>(getThemePreference());
   const [prefs, setPrefs] = useState<Record<string, boolean>>(profile?.push_prefs ?? {});
   const [changingPw, setChangingPw] = useState(false);
+  const standalone = isStandalone();
+  const [showIOSInstall, setShowIOSInstall] = useState(false);
+  const [, forceInstallCheck] = useState(0);
+  useEffect(() => onInstallAvailability(() => forceInstallCheck((n) => n + 1)), []);
   const [reminderTime, setReminderTime] = useState("08:00");
   useEffect(() => {
     if (!profile) return;
@@ -122,6 +130,7 @@ export default function Profile() {
       </header>
 
       <div style={{ flex: 1, padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 12 }}>
+        {sectionTitle("Conta")}
         <div className="card" style={{ padding: 14, display: "flex", alignItems: "center", gap: 13 }}>
           <span
             style={{
@@ -144,6 +153,25 @@ export default function Profile() {
           </span>
         </div>
 
+        {!standalone && (
+          <button
+            type="button"
+            data-install-card
+            onClick={() => (canPromptInstall() ? void promptInstall() : setShowIOSInstall(true))}
+            style={{ minHeight: 62, display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", textAlign: "left", borderRadius: 14, border: "1.5px dashed var(--action)", background: "color-mix(in srgb, var(--action) 5%, transparent)" }}
+          >
+            <span style={{ width: 38, height: 38, borderRadius: 11, background: "var(--brand-800)", color: "var(--brand-100)", display: "flex", alignItems: "center", justifyContent: "center", font: "600 16px/1 var(--font-mono)", flex: "none" }}>e</span>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ display: "block", font: "600 13.5px/1.3 var(--font-sans)", color: "var(--text-1)" }}>Instalar o aplicativo</span>
+              <span style={{ display: "block", marginTop: 2, font: "400 11px/1.4 var(--font-sans)", color: "var(--text-2)" }}>
+                Abre direto da tela inicial, em tela cheia e com notificações.
+              </span>
+            </span>
+            <i className="icon-arrow-down-to-line" style={{ fontSize: 18, color: "var(--ghost-text)", flex: "none" }} aria-hidden />
+          </button>
+        )}
+
+        {sectionTitle("Aparência")}
         <div className="card" style={{ padding: 14 }}>
           <div style={{ font: "600 12.5px/1 var(--font-sans)", color: "var(--text-1)" }}>Tema</div>
           <div className="segmented" style={{ height: 44, marginTop: 10, background: "var(--chip-pill-bg)", border: "1px solid var(--border)" }}>
@@ -162,6 +190,7 @@ export default function Profile() {
           </div>
         </div>
 
+        {sectionTitle("Notificações")}
         <div className="card" style={{ padding: 0, overflow: "hidden" }}>
           <div style={{ padding: "14px 14px 6px", font: "600 12.5px/1 var(--font-sans)", color: "var(--text-1)" }}>Push por tipo de evento</div>
           {PUSH_ITEMS.map((item, i) => (
@@ -198,6 +227,7 @@ export default function Profile() {
           ))}
         </div>
 
+        {sectionTitle("Conexões e segurança")}
         <div className="card" style={{ padding: 0, overflow: "hidden" }}>
           <div style={{ minHeight: 56, display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderBottom: "1px solid var(--divider)" }}>
             <span style={{ width: 30, height: 30, borderRadius: 9, background: "var(--chip-pill-bg)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
@@ -240,11 +270,32 @@ export default function Profile() {
         </div>
 
         <div style={{ font: "400 10.5px/1.5 var(--font-mono)", color: "var(--text-3)", textAlign: "center", padding: "2px 0 14px" }}>
-          Elev 1.0.0 · PWA {window.matchMedia("(display-mode: standalone)").matches ? "instalado" : "no navegador"}
+          Elev 1.0.0 · PWA {standalone ? "instalado" : "no navegador"}
         </div>
       </div>
 
       {changingPw && <ChangePasswordSheet onClose={() => setChangingPw(false)} />}
+
+      {showIOSInstall && (
+        <Sheet label="Instalar o aplicativo" onClose={() => setShowIOSInstall(false)}>
+          <div className="sheet__title">Instalar o aplicativo</div>
+          <div className="howto" style={{ marginTop: 12 }}>
+            {[
+              isIOS() ? <>Toque em <strong>Compartilhar</strong> na barra do Safari (o quadrado com a seta para cima).</> : <>Abra o menu do navegador (três pontos, no canto superior).</>,
+              isIOS() ? <>Role e toque em <strong>Adicionar à Tela de Início</strong>.</> : <>Toque em <strong>Instalar aplicativo</strong> (ou "Adicionar à tela inicial").</>,
+              <>Confirme — a Elev abre em tela cheia, com ícone próprio e notificações.</>,
+            ].map((text, i) => (
+              <div key={i} className="howto__step">
+                <span className="howto__num">{i + 1}</span>
+                <span className="howto__text">{text}</span>
+              </div>
+            ))}
+          </div>
+          <div className="sheet__footer" style={{ marginTop: 16 }}>
+            <Button variant="secondary" block onClick={() => setShowIOSInstall(false)}>Entendi</Button>
+          </div>
+        </Sheet>
+      )}
     </MobileShell>
   );
 }

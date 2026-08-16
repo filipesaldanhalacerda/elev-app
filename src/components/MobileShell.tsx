@@ -5,6 +5,8 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { Banner } from "./feedback";
+import { OrganicLines } from "./OrganicLines";
+import { canPromptInstall, promptInstall, onInstallAvailability } from "../lib/pwa";
 import { Button } from "./Button";
 import { useOnline, useQueueCount, flushQueue, lastDataAt } from "../lib/offline";
 import { useAuth } from "../lib/auth";
@@ -22,22 +24,11 @@ export type MobileNavKey = (typeof ITEMS)[number]["key"];
 
 const INSTALL_DISMISSED_KEY = "elev.instalacao-dispensada";
 
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-}
-
 function InstallPrompt() {
-  const [event, setEvent] = useState<BeforeInstallPromptEvent | null>(null);
-  useEffect(() => {
-    const handler = (e: Event) => {
-      if (localStorage.getItem(INSTALL_DISMISSED_KEY) === "1") return;
-      e.preventDefault();
-      setEvent(e as BeforeInstallPromptEvent);
-    };
-    window.addEventListener("beforeinstallprompt", handler);
-    return () => window.removeEventListener("beforeinstallprompt", handler);
-  }, []);
-  if (!event) return null;
+  const [available, setAvailable] = useState(canPromptInstall());
+  const [dismissed, setDismissed] = useState(localStorage.getItem(INSTALL_DISMISSED_KEY) === "1");
+  useEffect(() => onInstallAvailability(() => setAvailable(canPromptInstall())), []);
+  if (!available || dismissed) return null;
   return (
     <div style={{ position: "fixed", left: 12, right: 12, bottom: 98, zIndex: 60, maxWidth: 496, margin: "0 auto", background: "var(--surface)", borderRadius: 18, boxShadow: "var(--elev-modal)", border: "1px solid var(--border)", overflow: "hidden" }} data-install-prompt>
       <div style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, borderBottom: "1px solid var(--border)" }}>
@@ -53,7 +44,7 @@ function InstallPrompt() {
           style={{ fontSize: 13 }}
           onClick={() => {
             localStorage.setItem(INSTALL_DISMISSED_KEY, "1");
-            setEvent(null);
+            setDismissed(true);
           }}
         >
           Agora não
@@ -61,10 +52,7 @@ function InstallPrompt() {
         <Button
           icon="icon-plus"
           style={{ fontSize: 13 }}
-          onClick={async () => {
-            await event.prompt();
-            setEvent(null);
-          }}
+          onClick={() => void promptInstall()}
         >
           Adicionar à tela inicial
         </Button>
@@ -88,6 +76,7 @@ export function MobileShell({ active, children }: { active?: MobileNavKey; child
 
   return (
     <div className="mobile-shell">
+      <OrganicLines />
       {!online && (
         <div style={{ flex: "none", margin: "8px 16px 0" }} data-offline-banner>
           <Banner kind="warning">

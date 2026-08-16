@@ -339,57 +339,6 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* radar de alertas */}
-          <div>
-            <SectionTitle
-              action={
-                data !== null && data.activeAlerts > 0 ? (
-                  <button type="button" onClick={() => navigate("/alertas")} style={{ display: "flex", alignItems: "center", gap: 2, font: "500 12.5px/1 var(--font-sans)", color: "var(--ghost-text)" }}>
-                    {data.activeAlerts} ativo{data.activeAlerts > 1 ? "s" : ""}
-                    <i className="icon-chevron-right" style={{ fontSize: 13 }} aria-hidden />
-                  </button>
-                ) : undefined
-              }
-            >
-              Radar de alertas
-            </SectionTitle>
-            {loading || !data ? (
-              <div className="card" style={{ padding: "13px 14px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-                  <div className="skeleton" style={{ width: 150, height: 13 }} />
-                  <div className="skeleton" style={{ width: 96, height: 13 }} />
-                </div>
-                <div style={{ marginTop: 14, height: 6, borderRadius: 999, background: "var(--border)" }} />
-                <div style={{ marginTop: 9, display: "flex", justifyContent: "space-between", gap: 12 }}>
-                  <div className="skeleton" style={{ width: 112, height: 10 }} />
-                  <div className="skeleton" style={{ width: 76, height: 10 }} />
-                </div>
-              </div>
-            ) : data.alerts.length === 0 ? (
-              <EmptyBlock icon="icon-target" title="Nenhum alerta ativo" desc="Monitore um preço-alvo e receba push." onAdd={() => navigate("/alertas?novo")} />
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {data.alerts.map((a) => {
-                  const price = a.created_price ?? a.target_price ?? 0;
-                  const target = a.target_price ?? 0;
-                  const remaining = price > 0 ? Math.abs(((target - price) / price) * 100) : 0;
-                  return (
-                    <AlertCard
-                      key={a.id}
-                      ticker={a.ticker}
-                      direction={a.direction}
-                      currentPrice={price}
-                      dayChangePct={0}
-                      targetPrice={target}
-                      progress={0.5}
-                      remainingPct={Number(remaining.toFixed(1))}
-                    />
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
           {/* tarefas de hoje */}
           <div>
             <SectionTitle
@@ -437,6 +386,57 @@ export default function Dashboard() {
                     <i className="icon-chevron-right" style={{ fontSize: 16, color: "var(--text-3)" }} aria-hidden />
                   </button>
                 ))}
+              </div>
+            )}
+          </div>
+
+          {/* radar de alertas */}
+          <div>
+            <SectionTitle
+              action={
+                data !== null && data.activeAlerts > 0 ? (
+                  <button type="button" onClick={() => navigate("/alertas")} style={{ display: "flex", alignItems: "center", gap: 2, font: "500 12.5px/1 var(--font-sans)", color: "var(--ghost-text)" }}>
+                    {data.activeAlerts} ativo{data.activeAlerts > 1 ? "s" : ""}
+                    <i className="icon-chevron-right" style={{ fontSize: 13 }} aria-hidden />
+                  </button>
+                ) : undefined
+              }
+            >
+              Radar de alertas
+            </SectionTitle>
+            {loading || !data ? (
+              <div className="card" style={{ padding: "13px 14px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                  <div className="skeleton" style={{ width: 150, height: 13 }} />
+                  <div className="skeleton" style={{ width: 96, height: 13 }} />
+                </div>
+                <div style={{ marginTop: 14, height: 6, borderRadius: 999, background: "var(--border)" }} />
+                <div style={{ marginTop: 9, display: "flex", justifyContent: "space-between", gap: 12 }}>
+                  <div className="skeleton" style={{ width: 112, height: 10 }} />
+                  <div className="skeleton" style={{ width: 76, height: 10 }} />
+                </div>
+              </div>
+            ) : data.alerts.length === 0 ? (
+              <EmptyBlock icon="icon-target" title="Nenhum alerta ativo" desc="Monitore um preço-alvo e receba push." onAdd={() => navigate("/alertas?novo")} />
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {data.alerts.map((a) => {
+                  const price = a.created_price ?? a.target_price ?? 0;
+                  const target = a.target_price ?? 0;
+                  const remaining = price > 0 ? Math.abs(((target - price) / price) * 100) : 0;
+                  return (
+                    <AlertCard
+                      key={a.id}
+                      ticker={a.ticker}
+                      direction={a.direction}
+                      currentPrice={price}
+                      dayChangePct={0}
+                      targetPrice={target}
+                      progress={0.5}
+                      remainingPct={Number(remaining.toFixed(1))}
+                    />
+                  );
+                })}
               </div>
             )}
           </div>

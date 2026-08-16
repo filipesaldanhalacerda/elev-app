@@ -19,7 +19,7 @@
 .btn:active:not(:disabled) { transform: scale(0.98); }
 .btn i { font-size: 17px; }
 
-.btn--primary { background: var(--action); color: var(--on-action); box-shadow: var(--button-inset); }
+.btn--primary { background: var(--action); color: var(--on-action); box-shadow: var(--button-inset), 0 6px 14px color-mix(in srgb, var(--action) 22%, transparent); }
 .btn--primary:hover:not(:disabled) { background: var(--action-hover); }
 .btn--primary:active:not(:disabled) { background: var(--action-pressed); }
 .btn--primary:focus-visible { box-shadow: var(--button-inset), var(--focus-ring); }

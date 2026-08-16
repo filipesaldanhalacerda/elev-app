@@ -73,7 +73,7 @@ test("fluxo (e): importação real → ficha do cliente atualizada com fonte Pos
 
   // aba movimentações (dados da Captação real, se houver para este cliente)
   await mpage.getByRole("tab", { name: "Movimentações" }).click();
-  await expect(mpage.locator(".filter-chip--active")).toHaveText("Tudo");
+  await expect(mpage.locator("[data-open-filters]")).toContainText("Tudo");
   await mobile.close();
 });
 

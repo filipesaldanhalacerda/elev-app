@@ -3,7 +3,7 @@
  */
 
 /* ---------- Autenticação (telas 01–03) ---------- */
-.auth-screen { min-height: 100dvh; background: var(--bg); display: flex; flex-direction: column; }
+.auth-screen { position: relative; isolation: isolate; min-height: 100dvh; background: var(--page-aura), var(--bg); background-size: 100% 340px, auto; background-repeat: no-repeat; display: flex; flex-direction: column; }
 .auth-screen__center { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 0 24px 40px; max-width: 430px; width: 100%; margin: 0 auto; }
 .auth-screen__top { flex: 1; padding: 8px 24px 40px; max-width: 430px; width: 100%; margin: 0 auto; }
 .auth-screen__footer { flex: none; padding: 0 24px 28px; font: 400 11px/1.5 var(--font-sans); color: var(--text-3); text-align: center; }
@@ -89,7 +89,7 @@
 .auth-fineprint { margin-top: 20px; font: 400 11.5px/1.6 var(--font-sans); color: var(--text-3); }
 
 /* ---------- Shell admin (quadro #4d) ---------- */
-.admin-shell { min-height: 100dvh; background: var(--bg); display: flex; }
+.admin-shell { position: relative; isolation: isolate; min-height: 100dvh; background: var(--page-aura), var(--bg); background-size: 100% 340px, auto; background-repeat: no-repeat; display: flex; }
 .admin-sidebar { width: 212px; flex: none; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 18px 12px 14px; min-height: 100dvh; }
 .admin-sidebar__logo { display: flex; align-items: center; gap: 9px; padding: 0 6px 18px; }
 .admin-sidebar__mark { width: 26px; height: 26px; border-radius: 7px; background: var(--brand-800); color: var(--brand-100); display: flex; align-items: center; justify-content: center; font: 600 11px/1 var(--font-mono); }
@@ -159,14 +159,15 @@
 .users-legend { margin-top: 10px; font: 400 11px/1.5 var(--font-sans); color: var(--text-3); }
 
 /* ---------- Shell mobile do assessor (telas 04–16) ---------- */
-.mobile-shell { min-height: 100dvh; background: var(--bg); display: flex; flex-direction: column; max-width: 520px; margin: 0 auto; }
+.mobile-shell { position: relative; isolation: isolate; min-height: 100dvh; background: var(--page-aura), var(--bg); background-size: 100% 340px, auto; background-repeat: no-repeat; display: flex; flex-direction: column; max-width: 520px; margin: 0 auto; }
 .mobile-shell__content { flex: 1; display: flex; flex-direction: column; padding-bottom: 8px; }
 
 /* bottom nav das TELAS: 86px, itens 56, ícone 22, rótulo 10 */
 .mnav { flex: none; height: 86px; background: var(--surface); border-top: 1px solid var(--border); display: flex; align-items: flex-start; padding: 8px 8px 0; position: sticky; bottom: 0; z-index: 20; }
 .mnav__indicator { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); width: 124px; height: 5px; border-radius: 999px; background: var(--nav-indicator); }
 .mnav__item { flex: 1; height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--text-2); }
-.mnav__item i { font-size: 22px; }
+.mnav__item i { font-size: 22px; padding: 5px 18px; border-radius: 999px; transition: background 160ms ease; }
+.mnav__item--active i { background: var(--brand-tint); }
 .mnav__label { font: 400 10px/1 var(--font-sans); }
 .mnav__item--active { color: var(--ghost-text); }
 [data-theme="dark"] .mnav__item--active { color: var(--action); }
@@ -391,7 +392,7 @@
 
 /* ---------- Sheet mobile (#2h): sobe do rodapé, alça 44×4, raio 20 no topo ---------- */
 .sheet-scrim { position: fixed; inset: 0; background: var(--scrim); z-index: 90; }
-.sheet { position: fixed; left: 0; right: 0; bottom: 0; max-width: 520px; margin: 0 auto; background: var(--surface); border-top: 1px solid var(--border-strong); border-radius: 20px 20px 0 0; padding: 8px 20px 24px; z-index: 100; max-height: 88dvh; overflow-y: auto; animation: sheet-in var(--motion-card); }
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; max-width: 520px; margin: 0 auto; background: var(--surface); border-top: 1px solid var(--border-strong); border-radius: 20px 20px 0 0; padding: 8px 20px calc(24px + env(safe-area-inset-bottom, 0px)); z-index: 100; max-height: calc(94dvh - env(safe-area-inset-top, 0px)); overflow-y: auto; overscroll-behavior: contain; animation: sheet-in var(--motion-card); }
 @keyframes sheet-in { from { transform: translateY(24px); opacity: 0.6; } to { transform: none; opacity: 1; } }
 .sheet__handle { display: flex; justify-content: center; padding: 6px 0 14px; }
 .sheet__handle span { width: 44px; height: 4px; border-radius: 999px; background: var(--border-strong); }

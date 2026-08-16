@@ -371,7 +371,10 @@ test.describe("fase 2 · mobile", () => {
     // criar um compromisso local, sem Google nenhum
     await page.getByRole("button", { name: "Novo", exact: true }).click();
     await page.getByLabel("Título").fill(`Local ${RUN.slice(-5)}`);
+    // à noite a sugestão rola para amanhã — o evento nasce no dia sugerido pelo sheet
+    const eventDay = await page.locator("#ag-data").inputValue();
     await page.getByRole("button", { name: "Agendar", exact: true }).click();
+    await page.locator(`[data-agenda-day="${eventDay}"]`).click();
     await expect(page.locator(".cal-event", { hasText: `Local ${RUN.slice(-5)}` })).toBeVisible();
   });
 

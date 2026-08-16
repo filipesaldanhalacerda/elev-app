@@ -5,6 +5,7 @@ import { supabase } from "../../lib/supabase";
 import { PasswordField, TextField } from "../../components/Field";
 import { Banner } from "../../components/feedback";
 import { Button } from "../../components/Button";
+import { OrganicLines } from "../../components/OrganicLines";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -27,6 +28,7 @@ export default function Login() {
 
   return (
     <div className="auth-screen" data-screen="01">
+      <OrganicLines height={230} />
       <form className="auth-screen__center" onSubmit={submit}>
         <div className="auth-logo">
           <span className="auth-logo__mark">e</span>

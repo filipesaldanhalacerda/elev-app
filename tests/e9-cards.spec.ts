@@ -35,7 +35,7 @@ test.describe("tela 13 · lista por status (mobile)", () => {
   test.describe.configure({ mode: "serial" });
   test.skip(({ isMobile }) => !isMobile, "tela 13 é mobile");
 
-  test("criar no sheet → pendente → iniciar → concluir; dica dispensada não volta", async ({ page }) => {
+  test("criar no sheet → pendente → iniciar → concluir; dica fixa do swipe", async ({ page }) => {
     await login(page, RAFA.email, RAFA.password);
     await page.goto("/cards");
 
@@ -54,12 +54,9 @@ test.describe("tela 13 · lista por status (mobile)", () => {
     const row = page.locator(".card-row", { hasText: "Ligar sobre vencimento do CDB" });
     await expect(row.locator(".card-row__meta")).toContainText("Ana Bertoldi");
 
-    // dica do swipe visível; dispensa e não volta
-    await expect(page.locator(".swipe-hint__text")).toHaveText("Dica: deslizar uma tarefa para a direita também avança o status.");
-    await page.getByRole("button", { name: "Dispensar dica" }).click();
-    await expect(page.locator(".swipe-hint")).toHaveCount(0);
-    await page.reload();
-    await expect(page.locator(".swipe-hint")).toHaveCount(0);
+    // dica do swipe é fixa — sem botão de dispensar
+    await expect(page.locator(".swipe-hint__text")).toHaveText("Empurre uma tarefa para a direita e solte para avançar o status.");
+    await expect(page.getByRole("button", { name: "Dispensar dica" })).toHaveCount(0);
 
     // iniciar → aba Andamento com botão de concluir
     await row.getByRole("button", { name: "Iniciar Ligar sobre vencimento do CDB" }).click();

@@ -477,6 +477,28 @@ app.post("/api/admin/imports/commit", async (c) => {
         );
         if (error) throw new Error(`movimentações: ${error.message}`);
       }
+      // push "Movimentações de clientes" (tela 16): aportes/resgates ≥ R$ 100 mil desta importação
+      const relevant = p.rows.filter((r) => Math.abs(Number(r.amount)) >= 100_000);
+      if (relevant.length > 0) {
+        const byAdvisor = new Map<string, { aportes: number; resgates: number }>();
+        for (const r of relevant) {
+          const key = String((r.advisor_code as string) ?? "0");
+          const cur = byAdvisor.get(key) ?? { aportes: 0, resgates: 0 };
+          if (Number(r.amount) >= 0) cur.aportes++;
+          else cur.resgates++;
+          byAdvisor.set(key, cur);
+        }
+        const users = await advisorUsers(svc);
+        for (const [code, n] of byAdvisor) {
+          const userId = users.get(code);
+          if (!userId) continue;
+          const parts: string[] = [];
+          if (n.aportes > 0) parts.push(`${n.aportes} aporte${n.aportes > 1 ? "s" : ""}`);
+          if (n.resgates > 0) parts.push(`${n.resgates} resgate${n.resgates > 1 ? "s" : ""}`);
+          await notifyUser(svc, userId, "movimentacao", "Movimentações relevantes na sua carteira",
+            `${parts.join(" e ")} acima de R$ 100 mil chegaram na importação de Captação.`, {}, c.env);
+        }
+      }
     } else {
       // saldo consolidado: preenche os NOMES de toda a base + saldos por data
       for (const part of chunk(p.rows, 300)) {
@@ -515,6 +537,7 @@ const PREF_BY_KIND: Record<string, string> = {
   alerta_atingido: "alerta_preco",
   lembrete_diario: "lembrete_diario",
   card_delegado: "card_delegado",
+  movimentacao: "movimentacoes",
 };
 
 /** Cria a notificação no sino e tenta o push (tela 25) respeitando as preferências da tela 16. */

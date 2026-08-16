@@ -3,6 +3,7 @@ import { type ReactNode } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../lib/auth";
 import { initials } from "../../lib/format";
+import { OrganicLines } from "../../components/OrganicLines";
 
 const ITEMS = [
   { path: "/admin", label: "Visão geral", icon: "icon-layout-grid" },
@@ -21,6 +22,7 @@ export function AdminShell({ title, actions, children }: { title: string; action
 
   return (
     <div className="admin-shell">
+      <OrganicLines height={230} />
       <aside className="admin-sidebar">
         <div className="admin-sidebar__logo">
           <span className="admin-sidebar__mark">e</span>

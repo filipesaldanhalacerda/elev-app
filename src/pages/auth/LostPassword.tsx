@@ -5,6 +5,7 @@ import { CodeBoxes } from "../../components/CodeBoxes";
 import { Button } from "../../components/Button";
 import { Banner } from "../../components/feedback";
 import { Avatar } from "../../components/Avatar";
+import { OrganicLines } from "../../components/OrganicLines";
 
 export default function LostPassword() {
   const navigate = useNavigate();
@@ -12,6 +13,7 @@ export default function LostPassword() {
 
   return (
     <div className="auth-screen" data-screen="03">
+      <OrganicLines height={230} />
       <header className="auth-header">
         <button type="button" className="auth-header__back" aria-label="Voltar" onClick={() => navigate("/login")}>
           <i className="icon-arrow-left" aria-hidden />
