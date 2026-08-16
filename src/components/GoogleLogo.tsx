@@ -1,3 +1,16 @@
+/** Selo do Google Agenda (ícone do produto; `muted` = sincronização desligada). */
+export function GoogleCalendarLogo({ size = 16, muted = false }: { size?: number; muted?: boolean }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden focusable="false" style={muted ? { filter: "grayscale(1)", opacity: 0.55 } : undefined}>
+      <rect x="7" y="7" width="34" height="34" rx="3" fill="#fff" stroke="#4285F4" strokeWidth="4" />
+      <rect x="7" y="7" width="34" height="8" fill="#4285F4" />
+      <rect x="7" y="33" width="8" height="8" fill="#34A853" />
+      <rect x="33" y="33" width="8" height="8" fill="#FBBC05" />
+      <text x="24" y="31" textAnchor="middle" fontFamily="Arial, sans-serif" fontWeight="700" fontSize="15" fill="#4285F4">31</text>
+    </svg>
+  );
+}
+
 /** Logo oficial do Google (marca registrada — exceção aprovada pelo PO à regra Phosphor). */
 export function GoogleLogo({ size = 16 }: { size?: number }) {
   return (

@@ -14,7 +14,6 @@ export interface GoogleEvent {
   starts_at: string;
   ends_at: string;
   account_code: string | null;
-  reservation_id: string | null;
   origin: "elev" | "google";
   status: "confirmado" | "cancelado";
   clients?: { name?: string } | { name?: string }[] | null;
@@ -54,7 +53,7 @@ export async function listEvents(): Promise<GoogleEvent[]> {
   return body.events;
 }
 
-export async function createEvent(ev: { title: string; starts_at: string; ends_at: string; account_code?: string | null; reservation_id?: string | null }): Promise<void> {
+export async function createEvent(ev: { title: string; starts_at: string; ends_at: string; account_code?: string | null }): Promise<void> {
   await workerFetch("/api/google/events", { method: "POST", body: JSON.stringify(ev) });
 }
 
@@ -66,25 +65,3 @@ export async function cancelEvent(id: string): Promise<void> {
   await workerFetch(`/api/google/events/${id}`, { method: "DELETE" });
 }
 
-/** Reserva de sala → evento na agenda conectada (silencioso se não conectada). */
-export async function syncReservationToAgenda(info: { reservationId: string; title: string; roomName: string; day: string; start: string; end: string; account: string | null }): Promise<void> {
-  try {
-    await createEvent({
-      title: `Reserva · ${info.title} — ${info.roomName}`,
-      starts_at: `${info.day}T${info.start}:00-03:00`,
-      ends_at: `${info.day}T${info.end}:00-03:00`,
-      account_code: info.account,
-      reservation_id: info.reservationId,
-    });
-  } catch {
-    // sem conta conectada ou sem rede: a reserva em si já está garantida no banco
-  }
-}
-
-export async function unsyncReservation(reservationId: string): Promise<void> {
-  try {
-    await workerFetch(`/api/google/events/by-reservation/${reservationId}`, { method: "DELETE" });
-  } catch {
-    // idem
-  }
-}

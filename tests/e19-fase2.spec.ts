@@ -289,7 +289,7 @@ test.describe("fase 2 · mobile", () => {
     await expect(page.locator(".client-row").first()).toContainText("Ana Bertoldi");
   });
 
-  test("F2-03: conecta a conta Google, agenda cria/edita/cancela e reserva sincroniza", async ({ page }) => {
+  test("F2-03: conta Google conectada — agenda cria/edita/cancela sincronizando", async ({ page }) => {
     await login(page);
     // com credenciais reais no ambiente o Conectar redireciona ao Google (não dá para
     // automatizar o consentimento); o teste planta a conexão de demonstração e valida o estado
@@ -314,7 +314,7 @@ test.describe("fase 2 · mobile", () => {
     // o compromisso é amanhã: selecionar o dia na faixa mostra o bloco na linha do tempo
     await page.locator(`[data-agenda-day="${amanha}"]`).click();
     await expect(page.locator(".cal-event", { hasText: `Reunião ${RUN}` })).toBeVisible();
-    await expect(page.getByText(/Compromissos sincronizados com agenda\./)).toBeVisible();
+    await expect(page.locator("[data-google-sync]")).toContainText("Sincronizado com o Google Agenda");
 
     // passado bloqueado
     await page.getByRole("button", { name: "Novo", exact: true }).click();
@@ -332,22 +332,6 @@ test.describe("fase 2 · mobile", () => {
     await page.getByRole("button", { name: "Salvar alterações" }).click();
     await expect(page.locator(".cal-event", { hasText: `Reunião editada ${RUN}` })).toBeVisible();
 
-    // reserva de sala entra na agenda (sala exclusiva deste teste para não colidir com outras execuções)
-    const svc = serviceClient();
-    await svc.from("rooms").upsert({ name: `Sync ${RUN.slice(-6)}`, capacity: 4, resources: [] }, { onConflict: "name" });
-    await page.goto("/salas?novo=1");
-    await page.waitForSelector("#res-titulo");
-    await page.locator("#res-sala").selectOption({ label: `Sync ${RUN.slice(-6)}` });
-    await page.locator("#res-data").fill(amanha);
-    await page.locator("#res-inicio").fill("15:00");
-    await page.getByLabel("Título").fill(`Comitê ${RUN}`);
-    await page.getByRole("button", { name: "Confirmar reserva" }).click();
-    await page.goto("/agenda");
-    await page.locator(`[data-agenda-day="${amanha}"]`).click();
-    await expect(page.locator(".cal-event", { hasText: `Reserva · Comitê ${RUN}` })).toBeVisible();
-    await page.getByRole("button", { name: `Agendamento Reserva · Comitê ${RUN}` }).click();
-    await expect(page.getByText("reserva de sala")).toBeVisible();
-    await page.locator(".sheet").getByRole("button", { name: "Fechar" }).click();
 
     // cancelar: toque no bloco → ações → Cancelar → confirmação
     await page.getByRole("button", { name: `Agendamento Reunião editada ${RUN}` }).click();
@@ -357,18 +341,18 @@ test.describe("fase 2 · mobile", () => {
     await expect(page.locator(".cal-event", { hasText: `Reunião editada ${RUN}` })).toHaveCount(0);
   });
 
-  test("reservas marcadas ANTES de conectar entram na agenda ao conectar (backfill)", async ({ page }) => {
+  test("sincronizar é opcional: a agenda funciona sem conta Google", async ({ page }) => {
     const svc = serviceClient();
-    const { data: room } = await svc.from("rooms").upsert({ name: `Backfill ${RUN.slice(-5)}`, capacity: 2, resources: [] }, { onConflict: "name" }).select("id").single();
-    await svc.from("reservations").delete().eq("room_id", room!.id);
-    const depois = new Date(Date.now() + 2 * 86400000).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
-    // reserva criada "no passado da conexão" — sem evento correspondente
-    await svc.from("reservations").insert({ room_id: room!.id, owner: advId, title: `Antiga ${RUN.slice(-4)}`, period: `[${depois}T09:00:00-03:00,${depois}T10:00:00-03:00)` });
-
+    await svc.from("google_accounts").delete().eq("user_id", advId); // assessor que NÃO quer sincronizar
     await login(page);
-    await page.goto("/agenda"); // o GET de eventos faz o backfill
-    await page.locator(`[data-agenda-day="${depois}"]`).click();
-    await expect(page.locator(".cal-event", { hasText: `Reserva · Antiga ${RUN.slice(-4)}` })).toBeVisible();
+    await page.goto("/agenda");
+    await page.waitForSelector(".cal-grid"); // a grade abre normalmente
+    await expect(page.locator("[data-google-sync]")).toContainText("Sincronização com o Google Agenda desligada");
+    // criar um compromisso local, sem Google nenhum
+    await page.getByRole("button", { name: "Novo", exact: true }).click();
+    await page.getByLabel("Título").fill(`Local ${RUN.slice(-5)}`);
+    await page.getByRole("button", { name: "Agendar", exact: true }).click();
+    await expect(page.locator(".cal-event", { hasText: `Local ${RUN.slice(-5)}` })).toBeVisible();
   });
 
   test("novo agendamento abre já num horário à frente — nunca com erro de passado", async ({ page }) => {

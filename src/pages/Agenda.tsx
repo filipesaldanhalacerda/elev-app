@@ -8,7 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
 import { Sheet } from "../components/Sheet";
 import { Button } from "../components/Button";
-import { GoogleLogo } from "../components/GoogleLogo";
+import { GoogleCalendarLogo } from "../components/GoogleLogo";
 import { addMinutes, durationLabel, nextSlotSP } from "../lib/format";
 import { supabase } from "../lib/supabase";
 import { formatDate } from "../lib/format";
@@ -285,26 +285,15 @@ export default function Agenda() {
     <MobileShell active="inicio">
       <header className="page-header" style={{ background: "var(--surface)" }}>
         <span className="page-header__title">Agenda</span>
-        <Button icon="ph-plus" style={{ height: 40, fontSize: 12.5 }} disabled={!status?.connected} onClick={() => { setEditing(undefined); setSheet(true); }}>
+        <Button icon="ph-plus" style={{ height: 40, fontSize: 12.5 }} onClick={() => { setEditing(undefined); setSheet(true); }}>
           Novo
         </Button>
       </header>
 
       <div style={{ flex: 1, padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 14 }}>
-        {status && !status.connected && (
-          <div className="empty-state" style={{ borderRadius: 14 }}>
-            <span className="empty-state__icon"><GoogleLogo size={20} /></span>
-            <span className="empty-state__title">Conta Google desconectada</span>
-            <span className="empty-state__desc">Conecte a sua conta no Perfil para agendar e sincronizar compromissos.</span>
-            <span className="empty-state__action">
-              <Button onClick={() => navigate("/perfil")}>Ir ao Perfil</Button>
-            </span>
-          </div>
-        )}
+        {events === null && <div className="skeleton" style={{ height: 140, borderRadius: 14 }} />}
 
-        {status?.connected && events === null && <div className="skeleton" style={{ height: 140, borderRadius: 14 }} />}
-
-        {status?.connected && events !== null && (
+        {events !== null && (
           <>
             {/* mês + faixa de dias */}
             <div>
@@ -403,10 +392,7 @@ export default function Agenda() {
                       aria-label={`Agendamento ${e.title}`}
                       onClick={() => setActions(e)}
                     >
-                      <span className="cal-event__title">
-                        {e.reservation_id && <i className="ph ph-door-open" style={{ fontSize: 11, marginRight: 4 }} aria-hidden />}
-                        {e.title}
-                      </span>
+                      <span className="cal-event__title">{e.title}</span>
                       <span className="cal-event__meta">
                         {hm(e.starts_at)}–{hm(e.ends_at)}
                         {!compact && eventClientName(e) ? ` · ${eventClientName(e)}` : ""}
@@ -420,12 +406,24 @@ export default function Agenda() {
 
             {dayEvents.length === 0 && (
               <div style={{ font: "400 11.5px/1.5 var(--font-sans)", color: "var(--text-2)", textAlign: "center", padding: "0 2px" }}>
-                Dia livre. Toque em um horário para agendar — vai direto para a sua agenda Google.
+                Dia livre. Toque em um horário para agendar.
               </div>
             )}
 
-            <div style={{ font: "400 11px/1.5 var(--font-sans)", color: "var(--text-3)", padding: "0 2px 14px" }}>
-              Compromissos sincronizados com {status.email}.
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "2px 2px 14px" }} data-google-sync>
+              <GoogleCalendarLogo size={16} muted={!status?.connected} />
+              {status?.connected ? (
+                <span style={{ font: "400 11px/1.5 var(--font-sans)", color: "var(--text-3)" }}>
+                  Sincronizado com o Google Agenda · {status.email}
+                </span>
+              ) : (
+                <span style={{ flex: 1, font: "400 11px/1.5 var(--font-sans)", color: "var(--text-3)" }}>
+                  Sincronização com o Google Agenda desligada — sua agenda funciona normalmente só no Elev.{" "}
+                  <button type="button" onClick={() => navigate("/perfil")} style={{ font: "500 11px/1.5 var(--font-sans)", color: "var(--ghost-text)", textDecoration: "underline" }}>
+                    Conectar no Perfil
+                  </button>
+                </span>
+              )}
             </div>
           </>
         )}
@@ -448,7 +446,6 @@ export default function Agenda() {
           <div style={{ marginTop: 6, font: "400 12px/1.5 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-2)" }}>
             {formatDate(actions.starts_at)} · {hm(actions.starts_at)}–{hm(actions.ends_at)}
             {eventClientName(actions) ? ` · ${eventClientName(actions)}` : ""}
-            {actions.reservation_id ? " · reserva de sala" : ""}
             {actions.origin === "google" ? " · criado no Google" : ""}
           </div>
           <div className="card" style={{ padding: 0, overflow: "hidden", marginTop: 14 }}>

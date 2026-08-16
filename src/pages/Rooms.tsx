@@ -15,7 +15,6 @@ import {
   parsePeriod, type ConflictInfo, type Alternative, type Room, type Reservation,
 } from "../lib/rooms";
 import { formatDate, addMinutes, durationLabel, nextSlotSP } from "../lib/format";
-import { syncReservationToAgenda, unsyncReservation } from "../lib/google";
 
 
 const todayISO = () => new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
@@ -71,14 +70,6 @@ function NewReservation({ rooms, defaults, onClose, onCreated }: {
     const result = await createReservation(profile!.id, rid, d, s, e, title.trim(), account || null);
     setSaving(false);
     if (result.ok) {
-      // F2-03: reserva vira evento na agenda Google conectada (silencioso sem conexão)
-      void syncReservationToAgenda({
-        reservationId: result.id,
-        title: title.trim(),
-        roomName: rooms.find((r) => r.id === rid)?.name ?? roomName,
-        day: d, start: s, end: e,
-        account: account || null,
-      });
       onCreated();
       onClose();
       return;
@@ -535,7 +526,6 @@ export default function Rooms() {
                 onClick={async () => {
                   setCancelBusy(true);
                   await cancelReservation(cancelling.id);
-                  void unsyncReservation(cancelling.id);
                   setCancelBusy(false);
                   setCancelling(null);
                   reloadAll();

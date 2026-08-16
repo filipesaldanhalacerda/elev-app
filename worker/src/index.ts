@@ -775,79 +775,11 @@ app.post("/api/google/disconnect", async (c) => {
   return c.json({ ok: true });
 });
 
-async function requireGoogle(c: Parameters<typeof requireUser>[0]) {
-  const auth = await requireUser(c);
-  if (!auth) return null;
-  const { data } = await auth.svc.from("google_accounts").select("user_id").eq("user_id", auth.userId).maybeSingle();
-  return data ? auth : null;
-}
-
-/** Reservas futuras do usuário que ainda não viraram evento — cobre quem conecta DEPOIS de já ter marcado. */
-async function backfillReservations(env: Env, svc: SupabaseClient, userId: string) {
-  const { data: acc } = await svc.from("google_accounts").select("user_id").eq("user_id", userId).maybeSingle();
-  if (!acc) return;
-  const { data: resv } = await svc
-    .from("reservations")
-    .select("id, title, period, account_code, rooms(name)")
-    .eq("owner", userId)
-    .is("cancelled_at", null);
-  const { data: existing } = await svc.from("google_events").select("reservation_id").eq("user_id", userId).not("reservation_id", "is", null);
-  const synced = new Set((existing ?? []).map((e) => String(e.reservation_id)));
-  for (const r of resv ?? []) {
-    if (synced.has(String(r.id))) continue;
-    const m = String(r.period).match(/[\[\(]"?([^",]+)"?\s*,\s*"?([^"\)\]]+)"?[\)\]]/);
-    if (!m) continue;
-    const startsAt = new Date(m[1]).toISOString();
-    const endsAt = new Date(m[2]).toISOString();
-    if (new Date(endsAt).getTime() < Date.now()) continue; // só o futuro interessa
-    const roomName = ((Array.isArray(r.rooms) ? r.rooms[0] : r.rooms) as { name?: string } | null)?.name ?? "sala";
-    const title = `Reserva · ${r.title} — ${roomName}`;
-    const googleId = await pushToGoogle(env, svc, userId, { kind: "create", title, startsAt, endsAt });
-    await svc.from("google_events").insert({
-      user_id: userId, google_id: googleId, title, starts_at: startsAt, ends_at: endsAt,
-      account_code: r.account_code ?? null, reservation_id: r.id,
-    });
-  }
-}
-/** Espelha a agenda REAL do Google para dentro do Elev (importação de mão dupla). */
-async function importFromGoogle(env: Env, svc: SupabaseClient, userId: string) {
-  const timeMin = new Date(Date.now() - 86400000).toISOString();
-  const timeMax = new Date(Date.now() + 60 * 86400000).toISOString();
-  const remote = await listFromGoogle(env, svc, userId, timeMin, timeMax);
-  if (remote === null) return; // simulado ou sem token: nada a importar
-  const { data: locals } = await svc
-    .from("google_events")
-    .select("id, google_id, title, starts_at, ends_at, status")
-    .eq("user_id", userId)
-    .gte("starts_at", timeMin)
-    .lte("starts_at", timeMax);
-  const byGoogleId = new Map((locals ?? []).filter((l) => l.google_id).map((l) => [String(l.google_id), l]));
-  const remoteIds = new Set(remote.map((r) => r.googleId));
-  for (const r of remote) {
-    const local = byGoogleId.get(r.googleId);
-    if (!local) {
-      await svc.from("google_events").insert({
-        user_id: userId, google_id: r.googleId, title: r.title,
-        starts_at: r.startsAt, ends_at: r.endsAt, origin: "google",
-      });
-    } else if (local.title !== r.title || new Date(local.starts_at).getTime() !== new Date(r.startsAt).getTime() || new Date(local.ends_at).getTime() !== new Date(r.endsAt).getTime() || local.status !== "confirmado") {
-      await svc.from("google_events").update({ title: r.title, starts_at: r.startsAt, ends_at: r.endsAt, status: "confirmado" }).eq("id", local.id);
-    }
-  }
-  // sumiu do Google dentro da janela → cancelado também aqui
-  for (const l of locals ?? []) {
-    if (l.google_id && l.status === "confirmado" && !remoteIds.has(String(l.google_id))) {
-      await svc.from("google_events").update({ status: "cancelado" }).eq("id", l.id);
-    }
-  }
-}
-
 app.get("/api/google/events", async (c) => {
   const auth = await requireUser(c);
   if (!auth) return c.json({ error: "Não autenticado." }, 401);
-  // melhor esforço: reservas antigas viram eventos e a agenda real do Google é espelhada
+  // melhor esforço: espelha a agenda real do Google (quando conectada)
   try {
-    await backfillReservations(c.env, auth.svc, auth.userId);
     await importFromGoogle(c.env, auth.svc, auth.userId);
   } catch {
     // sem rede/token: a lista local continua respondendo
@@ -863,12 +795,12 @@ app.get("/api/google/events", async (c) => {
 });
 
 app.post("/api/google/events", async (c) => {
-  const auth = await requireGoogle(c);
-  if (!auth) return c.json({ error: "Conecte a conta Google primeiro." }, 400);
-  const b = await c.req.json<{ title: string; starts_at: string; ends_at: string; account_code?: string | null; reservation_id?: string | null }>();
+  const auth = await requireUser(c);
+  if (!auth) return c.json({ error: "Não autenticado." }, 401);
+  const b = await c.req.json<{ title: string; starts_at: string; ends_at: string; account_code?: string | null }>();
   if (!b.title?.trim() || !b.starts_at || !b.ends_at) return c.json({ error: "Título, início e fim são obrigatórios." }, 400);
   if (new Date(b.ends_at) <= new Date(b.starts_at)) return c.json({ error: "O fim precisa ser depois do início." }, 400);
-  if (!b.reservation_id && new Date(b.starts_at).getTime() < Date.now() - 60000) {
+  if (new Date(b.starts_at).getTime() < Date.now() - 60000) {
     return c.json({ error: "Não é possível agendar no passado." }, 400);
   }
   const googleId = await pushToGoogle(c.env, auth.svc, auth.userId, { kind: "create", title: b.title.trim(), startsAt: b.starts_at, endsAt: b.ends_at });
@@ -881,7 +813,6 @@ app.post("/api/google/events", async (c) => {
       starts_at: b.starts_at,
       ends_at: b.ends_at,
       account_code: b.account_code ?? null,
-      reservation_id: b.reservation_id ?? null,
     })
     .select("id")
     .single();
@@ -890,8 +821,8 @@ app.post("/api/google/events", async (c) => {
 });
 
 app.patch("/api/google/events/:id", async (c) => {
-  const auth = await requireGoogle(c);
-  if (!auth) return c.json({ error: "Conecte a conta Google primeiro." }, 400);
+  const auth = await requireUser(c);
+  if (!auth) return c.json({ error: "Não autenticado." }, 401);
   const id = c.req.param("id");
   const b = await c.req.json<{ title?: string; starts_at?: string; ends_at?: string; account_code?: string | null }>();
   const { data: ev } = await auth.svc.from("google_events").select("*").eq("id", id).eq("user_id", auth.userId).maybeSingle();
@@ -913,8 +844,8 @@ app.patch("/api/google/events/:id", async (c) => {
 });
 
 app.delete("/api/google/events/:id", async (c) => {
-  const auth = await requireGoogle(c);
-  if (!auth) return c.json({ error: "Conecte a conta Google primeiro." }, 400);
+  const auth = await requireUser(c);
+  if (!auth) return c.json({ error: "Não autenticado." }, 401);
   const id = c.req.param("id");
   const { data: ev } = await auth.svc.from("google_events").select("*").eq("id", id).eq("user_id", auth.userId).maybeSingle();
   if (!ev) return c.json({ error: "Agendamento não encontrado." }, 404);
@@ -924,16 +855,5 @@ app.delete("/api/google/events/:id", async (c) => {
   return c.json({ ok: true });
 });
 
-// Reserva de sala sincroniza com a agenda conectada (criação e cancelamento).
-app.delete("/api/google/events/by-reservation/:rid", async (c) => {
-  const auth = await requireUser(c);
-  if (!auth) return c.json({ error: "Não autenticado." }, 401);
-  const rid = c.req.param("rid");
-  const { data: ev } = await auth.svc.from("google_events").select("*").eq("reservation_id", rid).eq("user_id", auth.userId).eq("status", "confirmado").maybeSingle();
-  if (!ev) return c.json({ ok: true });
-  if (ev.google_id) await pushToGoogle(c.env, auth.svc, auth.userId, { kind: "delete", googleId: ev.google_id });
-  await auth.svc.from("google_events").update({ status: "cancelado" }).eq("id", ev.id);
-  return c.json({ ok: true });
-});
 
 export default app;
