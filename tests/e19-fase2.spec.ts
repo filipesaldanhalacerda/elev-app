@@ -310,7 +310,7 @@ test.describe("fase 2 · mobile", () => {
     await page.getByLabel("Título").fill(`Reunião ${RUN}`);
     await page.locator("#ag-data").fill(amanha);
     await page.locator("#ag-inicio").fill("10:00");
-    await expect(page.locator("[data-ends-at]")).toHaveText("termina às 11:00"); // duração padrão 1h
+    await expect(page.locator("[data-ends-at]")).toContainText("termina às 11:00"); // duração padrão 1h
     await page.getByRole("button", { name: "Agendar", exact: true }).click();
     // o compromisso é amanhã: selecionar o dia na faixa mostra o bloco na linha do tempo
     await page.locator(`[data-agenda-day="${amanha}"]`).click();
@@ -356,6 +356,29 @@ test.describe("fase 2 · mobile", () => {
     await expect(page.locator(".sheet__title")).toHaveText("Cancelar este agendamento?");
     await page.locator(".sheet").getByRole("button", { name: "Cancelar agendamento" }).click();
     await expect(page.locator(".cal-event", { hasText: `Reunião editada ${RUN}` })).toHaveCount(0);
+  });
+
+  test("duração: atalhos + Mais (Manhã/Tarde/Dia todo e término personalizado)", async ({ page }) => {
+    await login(page);
+    await page.goto("/agenda");
+    await page.getByRole("button", { name: "Novo", exact: true }).click();
+    await page.waitForSelector(".sheet__title");
+
+    // atalho rápido
+    await page.getByRole("button", { name: "2h", exact: true }).click();
+    await expect(page.locator("[data-ends-at]")).toContainText("2h");
+
+    // Mais → Dia todo define início e fim de uma vez
+    await page.getByRole("button", { name: "Mais", exact: true }).click();
+    await page.getByRole("button", { name: "Dia todo" }).click();
+    await expect(page.locator("#ag-inicio")).toHaveValue("08:00");
+    await expect(page.locator("[data-ends-at]")).toContainText("termina às 18:00");
+
+    // término personalizado
+    await page.locator("#ag-termina").fill("16:30");
+    await expect(page.locator("[data-ends-at]")).toContainText("termina às 16:30");
+
+    await page.locator(".sheet").getByRole("button", { name: "Cancelar", exact: true }).click();
   });
 });
 
