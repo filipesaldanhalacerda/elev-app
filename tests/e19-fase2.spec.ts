@@ -311,8 +311,10 @@ test.describe("fase 2 · mobile", () => {
     await page.locator("#ag-data").fill(amanha);
     await page.locator("#ag-inicio").fill("10:00");
     await expect(page.locator("[data-ends-at]")).toHaveText("termina às 11:00"); // duração padrão 1h
-    await page.getByRole("button", { name: "Agendar" }).click();
-    await expect(page.locator(".reservation-row", { hasText: `Reunião ${RUN}` })).toBeVisible();
+    await page.getByRole("button", { name: "Agendar", exact: true }).click();
+    // o compromisso é amanhã: selecionar o dia na faixa mostra o bloco na linha do tempo
+    await page.locator(`[data-agenda-day="${amanha}"]`).click();
+    await expect(page.locator(".agenda__block", { hasText: `Reunião ${RUN}` })).toBeVisible();
     await expect(page.getByText(/Compromissos sincronizados com agenda\./)).toBeVisible();
 
     // passado bloqueado
@@ -321,14 +323,15 @@ test.describe("fase 2 · mobile", () => {
     const ontem = new Date(Date.now() - 86400000).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
     await page.locator("#ag-data").fill(ontem);
     await expect(page.getByText("Não é possível agendar no passado.")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Agendar" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Agendar", exact: true })).toBeDisabled();
     await page.locator(".sheet").getByRole("button", { name: "Cancelar", exact: true }).click();
 
-    // editar
-    await page.getByRole("button", { name: `Editar Reunião ${RUN}` }).click();
+    // editar: toque no bloco → ações → Editar
+    await page.getByRole("button", { name: `Agendamento Reunião ${RUN}` }).click();
+    await page.getByText("Editar agendamento").click();
     await page.getByLabel("Título").fill(`Reunião editada ${RUN}`);
     await page.getByRole("button", { name: "Salvar alterações" }).click();
-    await expect(page.locator(".reservation-row", { hasText: `Reunião editada ${RUN}` })).toBeVisible();
+    await expect(page.locator(".agenda__block", { hasText: `Reunião editada ${RUN}` })).toBeVisible();
 
     // reserva de sala entra na agenda (sala exclusiva deste teste para não colidir com outras execuções)
     const svc = serviceClient();
@@ -341,14 +344,18 @@ test.describe("fase 2 · mobile", () => {
     await page.getByLabel("Título").fill(`Comitê ${RUN}`);
     await page.getByRole("button", { name: "Confirmar reserva" }).click();
     await page.goto("/agenda");
-    await expect(page.locator(".reservation-row", { hasText: `Reserva · Comitê ${RUN}` })).toBeVisible();
+    await page.locator(`[data-agenda-day="${amanha}"]`).click();
+    await expect(page.locator(".agenda__block", { hasText: `Reserva · Comitê ${RUN}` })).toBeVisible();
+    await page.getByRole("button", { name: `Agendamento Reserva · Comitê ${RUN}` }).click();
     await expect(page.getByText("reserva de sala")).toBeVisible();
+    await page.locator(".sheet").getByRole("button", { name: "Fechar" }).click();
 
-    // cancelar agendamento pede confirmação antes de sumir da lista
-    await page.getByRole("button", { name: `Cancelar Reunião editada ${RUN}` }).click();
+    // cancelar: toque no bloco → ações → Cancelar → confirmação
+    await page.getByRole("button", { name: `Agendamento Reunião editada ${RUN}` }).click();
+    await page.getByText("Cancelar agendamento").click();
     await expect(page.locator(".sheet__title")).toHaveText("Cancelar este agendamento?");
     await page.locator(".sheet").getByRole("button", { name: "Cancelar agendamento" }).click();
-    await expect(page.locator(".reservation-row", { hasText: `Reunião editada ${RUN}` })).toHaveCount(0);
+    await expect(page.locator(".agenda__block", { hasText: `Reunião editada ${RUN}` })).toHaveCount(0);
   });
 });
 

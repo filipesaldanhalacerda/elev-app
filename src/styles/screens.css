@@ -489,6 +489,21 @@
 .reservation-row__meta { display: block; margin-top: 3px; font: 400 11px/1.3 var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text-2); }
 .reservation-row .btn { height: 44px; font-size: 12px; }
 
+/* Agenda (F2-03) · faixa de dias no padrão dos calendários de mercado */
+.cal-strip { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px; margin: -2px; }
+.cal-strip::-webkit-scrollbar { display: none; }
+.cal-day { flex: none; width: 48px; min-height: 62px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); }
+.cal-day__dow { font: 500 9.5px/1 var(--font-sans); text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-2); }
+.cal-day__num { font: 600 15px/1 var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text-1); }
+.cal-day__dot { width: 5px; height: 5px; border-radius: 999px; background: var(--icon-decor); }
+.cal-day--has .cal-day__dot { background: var(--action); }
+.cal-day--today { border-color: var(--border-strong); }
+.cal-day--active { background: var(--brand-800); border-color: var(--brand-800); }
+.cal-day--active .cal-day__dow, .cal-day--active .cal-day__num { color: var(--brand-50); }
+.cal-day--active .cal-day__dot { background: var(--brand-100); }
+[data-theme="dark"] .cal-day--active { background: var(--action); border-color: var(--action); }
+[data-theme="dark"] .cal-day--active .cal-day__dow, [data-theme="dark"] .cal-day--active .cal-day__num { color: var(--on-action); }
+
 .alt-chip { height: 40px; display: inline-flex; align-items: center; gap: 6px; padding: 0 13px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border-field); color: var(--text-body); font: 600 12px/1 var(--font-sans); font-variant-numeric: tabular-nums; }
 /* Variante em linha (sheet de reserva): alternativa ocupa a largura toda, com contexto e marcador */
 .alt-chip--row { width: 100%; height: auto; min-height: 52px; padding: 10px 13px; border-radius: 12px; gap: 10px; justify-content: flex-start; }

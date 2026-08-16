@@ -42,6 +42,10 @@ test.beforeAll(async () => {
     import_id: importId, account_code: account, advisor_code: advisor, ref_date: ref, variant: "mensal",
     net_em_m: net, net_em_m1: net1, captacao_liquida_m: capt,
   });
+  // idempotente: retries re-executam o beforeAll — nunca duplicar fatos do mesmo import
+  await svc.from("positivador_snapshots").delete().eq("import_id", importId);
+  await svc.from("positions").delete().eq("import_id", importId);
+  await svc.from("movements").delete().eq("import_id", importId);
   await svc.from("positivador_snapshots").insert([
     snap(ANA, ADV_A.code, "2026-07-15", 4745887, 4600000),
     snap(ANA, ADV_A.code, "2026-08-15", 4812330, 4745887, 250000),

@@ -23,10 +23,10 @@ const spDay = (iso: string) => new Date(iso).toLocaleDateString("sv-SE", { timeZ
 
 const DURATIONS = [30, 60, 90, 120];
 
-function EventSheet({ editing, onClose, onSaved }: { editing?: GoogleEvent; onClose: () => void; onSaved: () => void }) {
+function EventSheet({ editing, initialDay, initialStart, onClose, onSaved }: { editing?: GoogleEvent; initialDay?: string; initialStart?: string; onClose: () => void; onSaved: () => void }) {
   const [title, setTitle] = useState(editing?.title ?? "");
-  const [day, setDay] = useState(editing ? spDay(editing.starts_at) : todaySP());
-  const [start, setStart] = useState(editing ? hm(editing.starts_at) : "10:00");
+  const [day, setDay] = useState(editing ? spDay(editing.starts_at) : initialDay ?? todaySP());
+  const [start, setStart] = useState(editing ? hm(editing.starts_at) : initialStart ?? "10:00");
   // início + DURAÇÃO no lugar de fim separado — o fim é calculado, nunca inverte
   const [duration, setDuration] = useState(() =>
     editing ? Math.max(5, Math.round((new Date(editing.ends_at).getTime() - new Date(editing.starts_at).getTime()) / 60000)) : 60
@@ -136,6 +136,9 @@ export default function Agenda() {
   const [editing, setEditing] = useState<GoogleEvent | undefined>(undefined);
   const [cancelling, setCancelling] = useState<GoogleEvent | null>(null);
   const [cancelBusy, setCancelBusy] = useState(false);
+  const [actions, setActions] = useState<GoogleEvent | null>(null);
+  const [selected, setSelected] = useState(todaySP());
+  const [newDefaults, setNewDefaults] = useState<{ day: string; start: string } | null>(null);
 
   const load = async () => {
     try {
@@ -148,19 +151,45 @@ export default function Agenda() {
     void load();
   }, []);
 
-  const days = (() => {
+  // faixa de 14 dias (padrão dos calendários de mercado), com marcador nos dias com compromisso
+  const eventsByDay = (() => {
     const map = new Map<string, GoogleEvent[]>();
     for (const e of events ?? []) {
       const d = spDay(e.starts_at);
       map.set(d, [...(map.get(d) ?? []), e]);
     }
-    const today = todaySP();
-    return [...map.entries()].map(([day, items]) => ({
-      day,
-      label: day === today ? `Hoje · ${formatDate(day).slice(0, 5)}` : formatDate(day),
-      items,
-    }));
+    return map;
   })();
+  const strip = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(Date.now() + i * 86400000);
+    const iso = d.toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+    return {
+      iso,
+      dow: d.toLocaleDateString("pt-BR", { weekday: "short", timeZone: "America/Sao_Paulo" }).replace(".", ""),
+      num: Number(iso.slice(8)),
+      has: (eventsByDay.get(iso) ?? []).length > 0,
+    };
+  });
+  const monthRaw = new Date(`${selected}T12:00:00-03:00`).toLocaleDateString("pt-BR", { month: "long", year: "numeric", timeZone: "America/Sao_Paulo" });
+  const monthLabel = monthRaw.charAt(0).toUpperCase() + monthRaw.slice(1); // "Agosto de 2026"
+  const dayEvents = (eventsByDay.get(selected) ?? []).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+
+  // linha do tempo do dia: mesmo componente da agenda de salas (horas 08–19)
+  const HOURS = Array.from({ length: 12 }, (_, i) => `${String(8 + i).padStart(2, "0")}:00`);
+  const slots = HOURS.map((hour) => {
+    const hourStart = new Date(`${selected}T${hour}:00-03:00`).getTime();
+    const hourEnd = hourStart + 3600000;
+    const overlapping = dayEvents
+      .map((e) => ({ e, s: new Date(e.starts_at).getTime(), f: new Date(e.ends_at).getTime() }))
+      .filter(({ s, f }) => s < hourEnd && f > hourStart);
+    const startsHere = overlapping.filter(({ s }) => s >= hourStart || hour === HOURS[0]);
+    const continuing = overlapping.filter((x) => !startsHere.includes(x));
+    return {
+      hour,
+      contUntil: continuing.length > 0 ? hm(new Date(Math.max(...continuing.map(({ f }) => f))).toISOString()) : null,
+      blocks: startsHere.map(({ e }) => e),
+    };
+  });
 
   return (
     <MobileShell active="inicio">
@@ -185,61 +214,138 @@ export default function Agenda() {
 
         {status?.connected && events === null && <div className="skeleton" style={{ height: 140, borderRadius: 14 }} />}
 
-        {status?.connected && events !== null && events.length === 0 && (
-          <div className="empty-state" style={{ borderRadius: 14 }}>
-            <span className="empty-state__icon"><i className="ph ph-calendar-blank" aria-hidden /></span>
-            <span className="empty-state__title">Nenhum compromisso</span>
-            <span className="empty-state__desc">Agende reuniões e compromissos — eles vão direto para a sua agenda Google.</span>
-            <span className="empty-state__action">
-              <Button icon="ph-plus" onClick={() => { setEditing(undefined); setSheet(true); }}>Novo agendamento</Button>
-            </span>
-          </div>
-        )}
-
-        {days.map((g) => (
-          <div key={g.day}>
-            <div style={{ font: "600 11px/1 var(--font-mono)", letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--text-2)", padding: "0 2px 8px" }}>
-              {g.label}
+        {status?.connected && events !== null && (
+          <>
+            {/* mês + faixa de dias */}
+            <div>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "0 2px 10px" }}>
+                <span style={{ font: "600 15px/1.2 var(--font-sans)", letterSpacing: "-0.01em", color: "var(--text-1)" }}>{monthLabel}</span>
+                <span style={{ font: "400 11px/1 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-2)" }}>
+                  {dayEvents.length === 0 ? "dia livre" : `${dayEvents.length} compromisso${dayEvents.length > 1 ? "s" : ""}`}
+                </span>
+              </div>
+              <div className="cal-strip">
+                {strip.map((d) => (
+                  <button
+                    key={d.iso}
+                    type="button"
+                    data-agenda-day={d.iso}
+                    className={`cal-day${d.iso === selected ? " cal-day--active" : ""}${d.iso === todaySP() ? " cal-day--today" : ""}${d.has ? " cal-day--has" : ""}`}
+                    aria-label={`Dia ${formatDate(d.iso)}`}
+                    onClick={() => setSelected(d.iso)}
+                  >
+                    <span className="cal-day__dow">{d.dow}</span>
+                    <span className="cal-day__num">{d.num}</span>
+                    <span className="cal-day__dot" style={{ opacity: d.has ? 1 : 0 }} aria-hidden />
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="client-list">
-              {g.items.map((e) => (
-                <div key={e.id} className="reservation-row">
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span className="reservation-row__title">{e.title}</span>
-                    <span className="reservation-row__meta">
-                      {hm(e.starts_at)}–{hm(e.ends_at)}
-                      {eventClientName(e) ? ` · ${eventClientName(e)}` : ""}
-                      {e.reservation_id ? " · reserva de sala" : ""}
-                    </span>
-                  </span>
-                  <span style={{ display: "flex", gap: 6 }}>
-                    <button type="button" className="alert-foot__btn" aria-label={`Editar ${e.title}`} onClick={() => { setEditing(e); setSheet(true); }}>
-                      <i className="ph ph-pencil-simple" aria-hidden />
-                    </button>
-                    <button
-                      type="button"
-                      className="alert-foot__btn alert-foot__btn--danger"
-                      aria-label={`Cancelar ${e.title}`}
-                      onClick={() => setCancelling(e)}
-                    >
-                      <i className="ph ph-prohibit" aria-hidden />
-                    </button>
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
 
-        {status?.connected && (events ?? []).length > 0 && (
-          <div style={{ font: "400 11px/1.5 var(--font-sans)", color: "var(--text-3)", padding: "0 2px 14px" }}>
-            Compromissos sincronizados com {status.email}.
-          </div>
+            {/* linha do tempo do dia — toque no horário livre agenda na hora */}
+            <div className="card" style={{ padding: 14 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                {slots.map((slot) => (
+                  <div key={slot.hour} className="agenda__row">
+                    <span className="agenda__hour">{slot.hour}</span>
+                    {slot.contUntil === null && slot.blocks.length === 0 ? (
+                      <button
+                        type="button"
+                        className="agenda__free agenda__free--action"
+                        aria-label={`Agendar às ${slot.hour}`}
+                        onClick={() => { setNewDefaults({ day: selected, start: slot.hour }); setEditing(undefined); setSheet(true); }}
+                      >
+                        livre
+                      </button>
+                    ) : (
+                      <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>
+                        {slot.contUntil && <span className="agenda__cont">compromisso até {slot.contUntil}</span>}
+                        {slot.blocks.map((e) => (
+                          <button
+                            key={e.id}
+                            type="button"
+                            className="agenda__block"
+                            style={{ minHeight: 46, textAlign: "left", width: "100%" }}
+                            aria-label={`Agendamento ${e.title}`}
+                            onClick={() => setActions(e)}
+                          >
+                            <span className="agenda__block-title">
+                              {e.reservation_id && <i className="ph ph-door-open" style={{ fontSize: 12, marginRight: 5 }} aria-hidden />}
+                              {e.title}
+                            </span>
+                            <span className="agenda__block-meta">
+                              {hm(e.starts_at)}–{hm(e.ends_at)}
+                              {eventClientName(e) ? ` · ${eventClientName(e)}` : ""}
+                            </span>
+                          </button>
+                        ))}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {dayEvents.length === 0 && (
+              <div style={{ font: "400 11.5px/1.5 var(--font-sans)", color: "var(--text-2)", textAlign: "center", padding: "0 2px" }}>
+                Dia livre. Toque em um horário para agendar — vai direto para a sua agenda Google.
+              </div>
+            )}
+
+            <div style={{ font: "400 11px/1.5 var(--font-sans)", color: "var(--text-3)", padding: "0 2px 14px" }}>
+              Compromissos sincronizados com {status.email}.
+            </div>
+          </>
         )}
         <div style={{ height: 8 }} />
       </div>
 
-      {sheet && <EventSheet editing={editing} onClose={() => { setSheet(false); setEditing(undefined); }} onSaved={load} />}
+      {sheet && (
+        <EventSheet
+          editing={editing}
+          initialDay={newDefaults?.day ?? selected}
+          initialStart={newDefaults?.start}
+          onClose={() => { setSheet(false); setEditing(undefined); setNewDefaults(null); }}
+          onSaved={load}
+        />
+      )}
+
+      {actions && (
+        <Sheet label="Ações do agendamento" onClose={() => setActions(null)}>
+          <div className="sheet__title">{actions.title}</div>
+          <div style={{ marginTop: 6, font: "400 12px/1.5 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-2)" }}>
+            {formatDate(actions.starts_at)} · {hm(actions.starts_at)}–{hm(actions.ends_at)}
+            {eventClientName(actions) ? ` · ${eventClientName(actions)}` : ""}
+            {actions.reservation_id ? " · reserva de sala" : ""}
+          </div>
+          <div className="card" style={{ padding: 0, overflow: "hidden", marginTop: 14 }}>
+            <button
+              type="button"
+              style={{ width: "100%", minHeight: 52, display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", textAlign: "left" }}
+              onClick={() => { setEditing(actions); setActions(null); setSheet(true); }}
+            >
+              <span style={{ width: 30, height: 30, borderRadius: 9, background: "var(--chip-pill-bg)", color: "var(--field-label)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+                <i className="ph ph-pencil-simple" style={{ fontSize: 15 }} aria-hidden />
+              </span>
+              <span style={{ flex: 1, font: "400 13px/1.35 var(--font-sans)", color: "var(--text-1)" }}>Editar agendamento</span>
+              <i className="ph ph-caret-right" style={{ fontSize: 16, color: "var(--icon-decor)" }} aria-hidden />
+            </button>
+            <button
+              type="button"
+              style={{ width: "100%", minHeight: 52, display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", textAlign: "left", borderTop: "1px solid var(--divider)" }}
+              onClick={() => { setCancelling(actions); setActions(null); }}
+            >
+              <span style={{ width: 30, height: 30, borderRadius: 9, background: "var(--danger-action-hover-bg)", color: "var(--danger-action-text)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+                <i className="ph ph-prohibit" style={{ fontSize: 15 }} aria-hidden />
+              </span>
+              <span style={{ flex: 1, font: "600 13px/1.35 var(--font-sans)", color: "var(--danger-action-text)" }}>Cancelar agendamento</span>
+            </button>
+          </div>
+          <div className="sheet__footer" style={{ marginTop: 14 }}>
+            <Button variant="secondary" block onClick={() => setActions(null)}>Fechar</Button>
+          </div>
+        </Sheet>
+      )}
 
       {cancelling && (
         <Sheet label="Cancelar agendamento" onClose={() => setCancelling(null)}>
