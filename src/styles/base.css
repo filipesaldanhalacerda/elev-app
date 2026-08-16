@@ -68,6 +68,17 @@ svg {
   box-shadow: none;
 }
 
+/* Tabs: o indicador desenhado é o sublinhado, e o container corta o anel em cima/embaixo,
+   deixando só bordas laterais — então o anel global não se aplica a elas. */
+.tab:focus-visible,
+.tab-42:focus-visible {
+  box-shadow: none;
+}
+.tab--active:focus-visible,
+.tab-42--active:focus-visible {
+  box-shadow: inset 0 -2px 0 var(--action);
+}
+
 /* Escala tipográfica (01-fundacoes.md) */
 .type-display { font-size: 28px; line-height: 32px; font-weight: 600; letter-spacing: -0.02em; color: var(--text-1); }
 .type-title   { font-size: 20px; line-height: 26px; font-weight: 600; letter-spacing: -0.01em; color: var(--text-1); }
