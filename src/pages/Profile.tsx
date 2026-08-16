@@ -1,5 +1,5 @@
 /** Tela 16 · Perfil e configurações — quadros "16 Perfil claro/escuro" (#3g). */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
 import { Sheet } from "../components/Sheet";
@@ -68,6 +68,17 @@ export default function Profile() {
   const [theme, setTheme] = useState<ThemePreference>(getThemePreference());
   const [prefs, setPrefs] = useState<Record<string, boolean>>(profile?.push_prefs ?? {});
   const [changingPw, setChangingPw] = useState(false);
+  const [reminderTime, setReminderTime] = useState("08:00");
+  useEffect(() => {
+    if (!profile) return;
+    supabase.from("profiles").select("reminder_time").eq("id", profile.id).single().then(({ data }) => {
+      if (data?.reminder_time) setReminderTime(String(data.reminder_time).slice(0, 5));
+    });
+  }, [profile]);
+  async function pickReminderTime(v: string) {
+    setReminderTime(v);
+    if (profile && v) await supabase.from("profiles").update({ reminder_time: v }).eq("id", profile.id);
+  }
   const { status: google, reload: reloadGoogle } = useGoogleStatus();
   const [googleBusy, setGoogleBusy] = useState(false);
 
@@ -161,10 +172,25 @@ export default function Profile() {
                 borderTop: i > 0 ? "1px solid var(--divider)" : undefined,
               }}
             >
-              <span style={{ flex: 1 }}>
+              <span style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ display: "block", font: "400 13px/1.35 var(--font-sans)", color: "var(--text-1)" }}>{item.label}</span>
                 {item.description && (
                   <span style={{ display: "block", marginTop: 2, font: "400 10.5px/1.4 var(--font-sans)", color: "var(--text-3)" }}>{item.description}</span>
+                )}
+                {item.key === "lembrete_diario" && prefs.lembrete_diario !== false && (
+                  <span className="field" style={{ display: "block", marginTop: 8, maxWidth: 180 }}>
+                    <span className="field__label" style={{ display: "block" }}>Todo dia às</span>
+                    <span className="field__box field__box--tabular" style={{ height: 44 }}>
+                      <input
+                        type="time"
+                        aria-label="Hora do lembrete diário"
+                        className="field__input"
+                        value={reminderTime}
+                        onChange={(e) => void pickReminderTime(e.target.value)}
+                        style={{ fontVariantNumeric: "tabular-nums", fontSize: 15 }}
+                      />
+                    </span>
+                  </span>
                 )}
               </span>
               <Toggle checked={prefs[item.key] ?? false} onChange={(v) => togglePref(item.key, v)} label={item.label} />

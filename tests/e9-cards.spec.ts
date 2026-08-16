@@ -38,14 +38,13 @@ test.describe("tela 13 · lista por status (mobile)", () => {
   test("criar no sheet → pendente → iniciar → concluir; dica dispensada não volta", async ({ page }) => {
     await login(page, RAFA.email, RAFA.password);
     await page.goto("/cards");
-    await expect(page.locator(".tab-42--active")).toHaveText("Minhas tarefas");
 
     // sheet com todos os campos do quadro
     await page.getByRole("button", { name: "Novo", exact: true }).click();
     const sheet = page.getByRole("dialog", { name: "Nova tarefa" });
     await sheet.getByLabel("Título").fill("Ligar sobre vencimento do CDB");
-    await sheet.getByLabel("Cliente").selectOption({ label: "Ana Bertoldi" });
-    await expect(sheet.getByText("resumo dos cards do dia às 08:00")).toBeVisible();
+    await sheet.getByLabel("Cliente · opcional").selectOption({ label: "Ana Bertoldi" });
+    await expect(sheet.getByText("resumo das tarefas do dia às 08:00")).toBeVisible();
     await expect(sheet.getByRole("switch", { name: "Lembrete diário" })).toHaveAttribute("aria-checked", "true");
     await sheet.getByRole("button", { name: "Criar tarefa" }).click();
 
@@ -70,6 +69,23 @@ test.describe("tela 13 · lista por status (mobile)", () => {
     await inProgress.getByRole("button", { name: "Concluir Ligar sobre vencimento do CDB" }).click();
     await page.getByRole("tab", { name: "Concluído" }).click();
     await expect(page.locator(".card-row", { hasText: "Ligar sobre vencimento do CDB" })).toBeVisible();
+  });
+
+  test("tocar na tarefa abre para ver e editar", async ({ page }) => {
+    const svc = serviceClient();
+    await svc.from("cards").insert({ title: `Revisar contrato ${RUN}`, description: "Conferir cláusula de rescisão", creator: rafaId, assignee: rafaId, priority: "media", status: "pendente" });
+    await login(page, RAFA.email, RAFA.password);
+    await page.goto("/cards");
+    // a descrição aparece na lista
+    await expect(page.getByText("Conferir cláusula de rescisão")).toBeVisible();
+    // toque abre o sheet pré-preenchido
+    await page.getByRole("button", { name: `Abrir tarefa Revisar contrato ${RUN}` }).click();
+    const sheet = page.getByRole("dialog", { name: "Editar tarefa" });
+    await expect(sheet.getByLabel("Título")).toHaveValue(`Revisar contrato ${RUN}`);
+    await expect(sheet.getByLabel("Descrição · opcional")).toHaveValue("Conferir cláusula de rescisão");
+    await sheet.getByLabel("Descrição · opcional").fill("Conferir cláusula de rescisão e multa");
+    await sheet.getByRole("button", { name: "Salvar alterações" }).click();
+    await expect(page.getByText("Conferir cláusula de rescisão e multa")).toBeVisible();
   });
 
   test("delegação: aparece em 'Minhas tarefas' do delegado com origem e notifica", async ({ page }) => {

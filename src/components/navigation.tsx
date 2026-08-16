@@ -57,8 +57,8 @@ export const BOTTOM_NAV_ITEMS = [
   { key: "inicio", label: "Início", icon: "icon-house" },
   { key: "clientes", label: "Clientes", icon: "icon-users-round" },
   { key: "cotacoes", label: "Cotações", icon: "icon-chart-line" },
-  { key: "cards", label: "Cards", icon: "icon-kanban" },
-  { key: "perfil", label: "Perfil", icon: "icon-circle-user-round" },
+  { key: "tarefas", label: "Tarefas", icon: "icon-square-check" },
+  { key: "agenda", label: "Agenda", icon: "icon-calendar" },
 ] as const;
 
 export type BottomNavKey = (typeof BOTTOM_NAV_ITEMS)[number]["key"];

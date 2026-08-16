@@ -10,7 +10,7 @@ import { Button } from "../components/Button";
 import { Toggle } from "../components/Field";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabase";
-import { useCards, useColleagues, createCard, advanceCard, isOverdue, type CardRow, type CardStatus } from "../lib/cards";
+import { useCards, createCard, updateCard, advanceCard, isOverdue, type CardRow, type CardStatus } from "../lib/cards";
 import { formatDate, formatTime } from "../lib/format";
 
 const HINT_KEY = "elev.cards.dica-dispensada";
@@ -28,85 +28,87 @@ function cardMeta(card: CardRow, myId: string): string {
   return parts.join(" · ");
 }
 
-function NewCardSheet({ initialClient = "", onClose, onCreated }: { initialClient?: string; onClose: () => void; onCreated: () => void }) {
+const spDayOf = (iso: string) => new Date(iso).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+const spTimeOf = (iso: string) => new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/Sao_Paulo" });
+
+function NewCardSheet({ initialClient = "", editing, onClose, onCreated }: { initialClient?: string; editing?: CardRow | null; onClose: () => void; onCreated: () => void }) {
   const { profile } = useAuth();
-  // F2-09: delegar card é papel do admin; assessor cria só para si mesmo.
-  const isAdmin = profile?.role === "admin";
-  const colleagues = useColleagues(isAdmin);
-  const [title, setTitle] = useState("");
-  const [client, setClient] = useState(initialClient);
-  const [assignee, setAssignee] = useState("");
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState("");
-  const [priority, setPriority] = useState<"baixa" | "media" | "alta">("media");
-  const [reminder, setReminder] = useState(true);
+  const [title, setTitle] = useState(editing?.title ?? "");
+  const [description, setDescription] = useState(editing?.description ?? "");
+  const [client, setClient] = useState(editing?.account_code ?? initialClient);
+  const [date, setDate] = useState(editing?.due_at ? spDayOf(editing.due_at) : "");
+  const [time, setTime] = useState(editing?.due_at ? spTimeOf(editing.due_at) : "");
+  const [priority, setPriority] = useState<"baixa" | "media" | "alta">(editing?.priority ?? "media");
+  const [reminder, setReminder] = useState(editing?.daily_reminder ?? true);
+  // hora do lembrete é preferência do usuário (vale para todos os lembretes dele)
+  const [reminderTime, setReminderTime] = useState("08:00");
   const [saving, setSaving] = useState(false);
   const [clients, setClients] = useState<{ account_code: string; name: string | null }[]>([]);
 
   useMemo(() => {
     supabase.from("client_overview").select("account_code, name").order("patrimony", { ascending: false, nullsFirst: false }).limit(50).then(({ data }) => setClients(data ?? []));
+    if (profile) {
+      supabase.from("profiles").select("reminder_time").eq("id", profile.id).single().then(({ data }) => {
+        if (data?.reminder_time) setReminderTime(String(data.reminder_time).slice(0, 5));
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // F2-10: prazo não pode ficar no passado.
+  // F2-10: prazo não pode ficar no passado — mas editar SEM mexer no prazo de uma
+  // tarefa já atrasada continua permitido.
   const todaySP = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
-  const pastDue = !!date && new Date(`${date}T${time || "23:59"}:00-03:00`).getTime() < Date.now();
+  const dueUnchanged = !!editing && date === (editing.due_at ? spDayOf(editing.due_at) : "") && time === (editing.due_at ? spTimeOf(editing.due_at) : "");
+  const pastDue = !dueUnchanged && !!date && new Date(`${date}T${time || "23:59"}:00-03:00`).getTime() < Date.now();
 
   async function save() {
     setSaving(true);
     const due = date ? new Date(`${date}T${time || "09:00"}:00-03:00`).toISOString() : null;
-    await createCard(profile!.id, {
+    const values = {
       title: title.trim(),
+      description: description.trim() || null,
       account_code: client || null,
-      assignee: assignee || profile!.id,
       due_at: due,
       priority,
       daily_reminder: reminder,
-    });
+    };
+    if (editing) await updateCard(editing.id, values);
+    else await createCard(profile!.id, { ...values, assignee: profile!.id }); // tarefa é sempre sua
     setSaving(false);
     onCreated();
     onClose();
   }
 
   return (
-    <Sheet label="Nova tarefa" onClose={onClose}>
-        <div className="sheet__title">Nova tarefa</div>
+    <Sheet label={editing ? "Editar tarefa" : "Nova tarefa"} onClose={onClose}>
+        <div className="sheet__title">{editing ? "Editar tarefa" : "Nova tarefa"}</div>
         <div className="sheet__fields" style={{ gap: 13 }}>
           <div className="field">
             <label className="field__label" htmlFor="card-titulo" style={{ display: "block" }}>Título</label>
             <div className="field__box" style={{ height: 46 }}>
-              <input id="card-titulo" className="field__input" autoFocus value={title} onChange={(e) => setTitle(e.target.value)} />
+              <input id="card-titulo" className="field__input" autoFocus={!editing} value={title} onChange={(e) => setTitle(e.target.value)} />
             </div>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
-            <div className="field">
-              <label className="field__label" htmlFor="card-cliente" style={{ display: "block" }}>Cliente</label>
-              <div className="field__box" style={{ height: 46 }}>
-                <select id="card-cliente" className="field__input" style={{ appearance: "none", width: "100%" }} value={client} onChange={(e) => setClient(e.target.value)}>
-                  <option value="">Sem cliente</option>
-                  {clients.map((c) => (
-                    <option key={c.account_code} value={c.account_code}>{c.name ?? `Conta ${c.account_code}`}</option>
-                  ))}
-                </select>
-                <i className="icon-chevron-down field__caret" aria-hidden />
-              </div>
-            </div>
-            <div className="field">
-              <label className="field__label" htmlFor="card-resp" style={{ display: "block" }}>Responsável</label>
-              {isAdmin ? (
-                <div className="field__box" style={{ height: 46 }}>
-                  <select id="card-resp" className="field__input" style={{ appearance: "none", width: "100%" }} value={assignee} onChange={(e) => setAssignee(e.target.value)}>
-                    <option value="">Você</option>
-                    {colleagues.filter((c) => c.id !== profile?.id).map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                  <i className="icon-chevron-down field__caret" aria-hidden />
-                </div>
-              ) : (
-                <div className="field__box field__box--tabular" style={{ height: 46 }} aria-describedby="card-resp-hint">
-                  <input id="card-resp" className="field__input" value="Você" disabled readOnly />
-                </div>
-              )}
+          <div className="field">
+            <label className="field__label" htmlFor="card-descricao" style={{ display: "block" }}>Descrição · opcional</label>
+            <textarea
+              id="card-descricao"
+              className="field__textarea"
+              placeholder="O que precisa ser feito nesta tarefa?"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+          <div className="field">
+            <label className="field__label" htmlFor="card-cliente" style={{ display: "block" }}>Cliente · opcional</label>
+            <div className="field__box" style={{ height: 46 }}>
+              <select id="card-cliente" className="field__input" style={{ appearance: "none", width: "100%" }} value={client} onChange={(e) => setClient(e.target.value)}>
+                <option value="">Sem cliente</option>
+                {clients.map((c) => (
+                  <option key={c.account_code} value={c.account_code}>{c.name ?? `Conta ${c.account_code}`}</option>
+                ))}
+              </select>
+              <i className="icon-chevron-down field__caret" aria-hidden />
             </div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
@@ -142,10 +144,10 @@ function NewCardSheet({ initialClient = "", onClose, onCreated }: { initialClien
             </div>
           </div>
           <div className="card" style={{ borderRadius: 12, display: "flex", alignItems: "center", gap: 12, padding: "12px 14px" }}>
-            <span style={{ flex: 1 }}>
+            <span style={{ flex: 1, minWidth: 0 }}>
               <span style={{ display: "block", font: "500 12.5px/1.35 var(--font-sans)", color: "var(--text-1)" }}>Lembrete diário</span>
               <span style={{ display: "block", marginTop: 3, font: "400 11px/1.4 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-2)" }}>
-                resumo dos cards do dia às 08:00
+                resumo das tarefas do dia às {reminderTime} · horário no Perfil
               </span>
             </span>
             <Toggle checked={reminder} onChange={setReminder} label="Lembrete diário" />
@@ -153,7 +155,7 @@ function NewCardSheet({ initialClient = "", onClose, onCreated }: { initialClien
         </div>
         <div className="sheet__footer" style={{ marginTop: 16 }}>
           <Button variant="secondary" onClick={onClose}>Cancelar</Button>
-          <Button disabled={!title.trim() || pastDue} loading={saving} onClick={save}>Criar tarefa</Button>
+          <Button disabled={!title.trim() || pastDue} loading={saving} onClick={save}>{editing ? "Salvar alterações" : "Criar tarefa"}</Button>
         </div>
     </Sheet>
   );
@@ -162,11 +164,11 @@ function NewCardSheet({ initialClient = "", onClose, onCreated }: { initialClien
 export default function Cards() {
   const { profile } = useAuth();
   const [params] = useSearchParams();
-  const [tab, setTab] = useState<"meus" | "criados">("meus");
   const [status, setStatus] = useState<CardStatus>("pendente");
   const [sheet, setSheet] = useState(params.get("novo") !== null);
+  const [editing, setEditing] = useState<CardRow | null>(null);
   const [hintDismissed, setHintDismissed] = useState(() => localStorage.getItem(HINT_KEY) === "1");
-  const { rows, reload } = useCards(tab, profile?.id);
+  const { rows, reload } = useCards("meus", profile?.id);
   const touchStart = useRef<number | null>(null);
 
   const byStatus = useMemo(() => {
@@ -186,14 +188,6 @@ export default function Cards() {
         <span className="page-header__title">Tarefas</span>
         <Button icon="icon-plus" style={{ height: 40, fontSize: 12.5 }} onClick={() => setSheet(true)}>Novo</Button>
       </header>
-      <nav className="tabs-42" role="tablist">
-        <button type="button" role="tab" aria-selected={tab === "meus"} className={`tab-42${tab === "meus" ? " tab-42--active" : ""}`} onClick={() => setTab("meus")}>
-          Minhas tarefas
-        </button>
-        <button type="button" role="tab" aria-selected={tab === "criados"} className={`tab-42${tab === "criados" ? " tab-42--active" : ""}`} onClick={() => setTab("criados")}>
-          Criadas por mim
-        </button>
-      </nav>
 
       <div style={{ flex: 1, padding: "14px 16px 0", display: "flex", flexDirection: "column", gap: 12 }}>
         <div className="status-segment" role="tablist" aria-label="Status">
@@ -212,7 +206,7 @@ export default function Cards() {
             <span className="empty-state__icon"><i className="icon-kanban" aria-hidden /></span>
             <span className="empty-state__title">Nada em {status === "pendente" ? "Pendente" : status === "andamento" ? "Andamento" : "Concluído"}</span>
             <span className="empty-state__desc">
-              {status === "pendente" ? "Crie o primeiro card para organizar o dia." : "Os cards chegam aqui conforme avançam de status."}
+              {status === "pendente" ? "Crie a primeira tarefa para organizar o dia." : "As tarefas chegam aqui conforme avançam de status."}
             </span>
             {status === "pendente" && (
               <span className="empty-state__action">
@@ -236,13 +230,23 @@ export default function Cards() {
                 touchStart.current = null;
               }}
             >
-              <span style={{ flex: 1, minWidth: 0 }}>
+              <button
+                type="button"
+                style={{ flex: 1, minWidth: 0, display: "block", textAlign: "left" }}
+                aria-label={`Abrir tarefa ${card.title}`}
+                onClick={() => { setEditing(card); setSheet(true); }}
+              >
                 <span className="card-row__title" style={card.status === "concluido" ? { color: "var(--text-2)" } : undefined}>{card.title}</span>
                 <span className="card-row__meta-row">
                   {isOverdue(card) && <span className="card-row__late">atrasada</span>}
                   <span className="card-row__meta">{cardMeta(card, profile?.id ?? "")}</span>
                 </span>
-              </span>
+                {card.description && (
+                  <span style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", marginTop: 4, font: "400 11.5px/1.45 var(--font-sans)", color: "var(--text-2)" }}>
+                    {card.description}
+                  </span>
+                )}
+              </button>
               {card.status !== "concluido" && (
                 <button
                   type="button"
@@ -281,7 +285,7 @@ export default function Cards() {
         )}
       </div>
 
-      {sheet && <NewCardSheet initialClient={params.get("cliente") ?? ""} onClose={() => setSheet(false)} onCreated={reload} />}
+      {sheet && <NewCardSheet initialClient={params.get("cliente") ?? ""} editing={editing} onClose={() => { setSheet(false); setEditing(null); }} onCreated={reload} />}
     </MobileShell>
   );
 }

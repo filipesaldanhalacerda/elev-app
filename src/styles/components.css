@@ -304,7 +304,9 @@
 .tabs { display: flex; gap: 18px; padding: 0 14px; border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }
 .tabs::-webkit-scrollbar { display: none; }
 .tab { height: 42px; display: flex; align-items: center; font: 400 12.5px/1 var(--font-sans); color: var(--text-2); white-space: nowrap; flex: none; }
-.tab--active { font-weight: 600; color: var(--text-1); box-shadow: inset 0 -2px 0 var(--action); }
+.tab { position: relative; }
+.tab--active { font-weight: 600; color: var(--text-1); }
+.tab--active::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--action); }
 
 .bottom-nav { height: 76px; background: var(--surface); display: flex; align-items: flex-start; padding: 8px 8px 0; position: relative; }
 .bottom-nav__indicator { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); width: 124px; height: 5px; border-radius: 999px; background: var(--nav-indicator); }

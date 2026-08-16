@@ -216,7 +216,9 @@
 .ficha-tabs::-webkit-scrollbar { display: none; }
 .ficha-tabs__fade { position: sticky; right: 0; top: 0; bottom: 0; width: 44px; margin-left: -44px; background: linear-gradient(90deg, transparent 0%, var(--surface) 72%); pointer-events: none; flex: none; }
 .ficha-tab { height: 42px; flex: none; display: flex; align-items: center; font: 400 12.5px/1 var(--font-sans); color: var(--text-2); white-space: nowrap; }
-.ficha-tab--active { font-weight: 600; color: var(--text-1); box-shadow: inset 0 -2px 0 var(--action); }
+.ficha-tab { position: relative; }
+.ficha-tab--active { font-weight: 600; color: var(--text-1); }
+.ficha-tab--active::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--action); }
 
 .ficha-body { flex: 1; padding: 16px 16px 0; display: flex; flex-direction: column; gap: 16px; }
 
@@ -411,7 +413,9 @@
 /* ---------- Tela 12 · Alertas ---------- */
 .tabs-42 { flex: none; display: flex; gap: 18px; padding: 0 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
 .tab-42 { height: 42px; display: flex; align-items: center; gap: 6px; font: 400 12.5px/1 var(--font-sans); color: var(--text-2); }
-.tab-42--active { font-weight: 600; color: var(--text-1); box-shadow: inset 0 -2px 0 var(--action); }
+.tab-42 { position: relative; }
+.tab-42--active { font-weight: 600; color: var(--text-1); }
+.tab-42--active::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--action); }
 .tab-42__count { font: 600 10px/1 var(--font-mono); color: var(--ghost-text); background: var(--brand-tint); border-radius: 999px; padding: 3px 6px; }
 [data-theme="dark"] .tab-42__count { color: var(--brand-tint-text); }
 

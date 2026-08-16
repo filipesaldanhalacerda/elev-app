@@ -58,7 +58,7 @@ test("lembrete diário (cron): resumo dos cards com atrasado; respeita preferên
     { title: `Rebalancear carteira ${RUN}`, creator: advId, assignee: advId, priority: "alta", status: "pendente", due_at: new Date(Date.now() - 86400000).toISOString(), daily_reminder: true },
     { title: `Enviar relatório ${RUN}`, creator: advId, assignee: advId, priority: "media", status: "pendente", daily_reminder: true },
   ]);
-  const res = await request.post("http://127.0.0.1:8787/api/cron/daily-reminder");
+  const res = await request.post("http://127.0.0.1:8787/api/cron/daily-reminder?force=1");
   expect((await res.json()).ok).toBe(true);
 
   const { data: notif } = await svc.from("notifications").select("title, body").eq("user_id", advId).eq("kind", "lembrete_diario");
@@ -71,7 +71,7 @@ test("lembrete diário (cron): resumo dos cards com atrasado; respeita preferên
   // preferência desligada: não gera novo lembrete
   await svc.from("profiles").update({ push_prefs: { alerta_preco: true, lembrete_diario: false, card_delegado: true, movimentacoes: false } }).eq("id", advId);
   const before = (notif ?? []).length;
-  await request.post("http://127.0.0.1:8787/api/cron/daily-reminder");
+  await request.post("http://127.0.0.1:8787/api/cron/daily-reminder?force=1");
   const { data: after } = await svc.from("notifications").select("id").eq("user_id", advId).eq("kind", "lembrete_diario");
   expect(after!.length).toBe(before);
   await svc.from("profiles").update({ push_prefs: { alerta_preco: true, lembrete_diario: true, card_delegado: true, movimentacoes: false } }).eq("id", advId);
@@ -102,6 +102,15 @@ test("tela 16: perfil completo — tema muda na hora, toggles persistem, trocar 
   await expect(async () => {
     const { data } = await svc.from("profiles").select("push_prefs").eq("id", advId).single();
     expect((data!.push_prefs as Record<string, boolean>).movimentacoes).toBe(true);
+  }).toPass();
+
+  // hora do lembrete diário configurável no Perfil, persistida no banco
+  const hora = page.getByLabel("Hora do lembrete diário");
+  await expect(hora).toBeVisible();
+  await hora.fill("09:30");
+  await expect(async () => {
+    const { data } = await svc.from("profiles").select("reminder_time").eq("id", advId).single();
+    expect(String(data!.reminder_time).slice(0, 5)).toBe("09:30");
   }).toPass();
 
   // Google desconectada (fase 2) e rodapé

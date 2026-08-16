@@ -50,14 +50,14 @@ test.describe("fase 2 · mobile", () => {
     await login(page);
     await page.goto(`/clientes/${ANA}?aba=Cadastro`);
     await page.waitForSelector(".extras-card");
-    const shadow = await page.evaluate(() => {
+    const st = await page.evaluate(() => {
       const tab = [...document.querySelectorAll(".ficha-tab")].find((t) => t.textContent === "Cadastro") as HTMLElement;
       tab.focus();
-      return getComputedStyle(tab).boxShadow;
+      return { shadow: getComputedStyle(tab).boxShadow, underline: getComputedStyle(tab, "::after").height };
     });
-    // apenas o sublinhado inset de 2px — nunca um anel em volta
-    expect(shadow).toContain("inset");
-    expect(shadow).not.toContain("3px");
+    // NENHUM anel/sombra na aba (nem focada); o sublinhado é um elemento real de 2px
+    expect(st.shadow).toBe("none");
+    expect(st.underline).toBe("2px");
   });
 
   test("F2-04: menu ⋮ da ficha abre ações e leva à nova tarefa com o cliente vinculado", async ({ page }) => {
@@ -97,11 +97,10 @@ test.describe("fase 2 · mobile", () => {
     await login(page);
     await page.goto("/cards?novo=1");
     await page.waitForSelector(".sheet__title");
-    // sem select de colegas: campo travado em "Você"
-    const resp = page.locator("#card-resp");
-    await expect(resp).toHaveValue("Você");
-    expect(await resp.evaluate((el) => el.tagName)).toBe("INPUT");
-    await expect(resp).toBeDisabled();
+    // tarefa é sempre sua: o campo Responsável deixou de existir; descrição entra no lugar
+    await expect(page.locator("#card-resp")).toHaveCount(0);
+    await expect(page.getByLabel("Descrição · opcional")).toBeVisible();
+    await expect(page.getByLabel("Hora do lembrete diário")).toHaveCount(0); // a hora vive no Perfil
 
     await page.getByLabel("Título").fill(`Card retro ${RUN}`);
     const ontem = new Date(Date.now() - 86400000).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });

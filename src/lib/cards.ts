@@ -84,11 +84,17 @@ export async function setCardStatus(id: string, status: CardStatus): Promise<voi
 
 export interface NewCard {
   title: string;
+  description?: string | null;
   account_code: string | null;
   assignee: string;
   due_at: string | null;
   priority: "baixa" | "media" | "alta";
   daily_reminder: boolean;
+}
+
+export async function updateCard(id: string, patch: Omit<NewCard, "assignee">): Promise<void> {
+  const { error } = await supabase.from("cards").update(patch).eq("id", id);
+  if (error) throw new Error(error.message);
 }
 
 export async function createCard(creator: string, card: NewCard): Promise<void> {

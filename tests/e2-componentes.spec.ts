@@ -117,11 +117,18 @@ emAmbosTemas("componentes", ({ theme }) => {
     const items = page.locator(".bottom-nav__item");
     await expect(items).toHaveCount(5);
     await expect(items.nth(0)).toContainText("Início");
-    await expect(items.nth(4)).toContainText("Perfil");
+    await expect(items.nth(3)).toContainText("Tarefas");
+    await expect(items.nth(4)).toContainText("Agenda");
     const active = page.locator(".tab--active");
     await expect(active).toHaveText("Visão geral");
-    const shadow = await active.evaluate((el) => getComputedStyle(el).boxShadow);
-    expect(shadow).toContain(theme === "escuro" ? "rgb(109, 175, 145)" : "rgb(31, 115, 85)");
+    // sublinhado agora é ::after de 2px na cor de ação (sem box-shadow — imune a zoom)
+    const underline = await active.evaluate((el) => {
+      const cs = getComputedStyle(el, "::after");
+      return { height: cs.height, bg: cs.backgroundColor, shadow: getComputedStyle(el).boxShadow };
+    });
+    expect(underline.shadow).toBe("none");
+    expect(underline.height).toBe("2px");
+    expect(underline.bg).toBe(theme === "escuro" ? "rgb(109, 175, 145)" : "rgb(31, 115, 85)");
     await expect(page.locator(".sidebar__name")).toHaveText("elev Admin");
     await expect(page.locator(".sidebar__item--active")).toContainText("Visão geral");
   });

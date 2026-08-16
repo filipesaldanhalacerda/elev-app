@@ -210,7 +210,6 @@ for (const theme of ["claro", "escuro"] as const) {
     await page.waitForSelector(".sheet__title");
     await page.screenshot({ path: `${SHOTS}/13-sheet-${theme}.png` });
     await page.locator(".sheet").getByRole("button", { name: "Cancelar", exact: true }).click();
-    await page.getByRole("tab", { name: "Criadas por mim" }).click();
     await page.getByRole("tab", { name: "Andamento" }).click();
     await page.getByRole("tab", { name: "Concluído" }).click();
 

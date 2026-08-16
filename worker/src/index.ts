@@ -689,8 +689,15 @@ app.post("/api/push/subscribe", async (c) => {
 // Lembrete diário 08:00 (tela 25 modelo 2): resumo dos cards do dia
 app.post("/api/cron/daily-reminder", async (c) => {
   const svc = svcOf(c.env);
-  const users = await fetchAll<{ id: string; push_prefs: Record<string, boolean> }>((from, to) =>
-    svc.from("profiles").select("id, push_prefs").eq("is_active", true).order("id").range(from, to)
+  // cada assessor escolhe a hora do próprio lembrete; o agendador roda de hora em hora
+  // e só dispara para quem escolheu a hora atual. ?force=1 (testes) ignora a hora.
+  const force = c.req.query("force") === "1";
+  const currentHourSP = Number(
+    new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", hour12: false, timeZone: "America/Sao_Paulo" })
+  );
+  const startOfDaySP = `${new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" })}T00:00:00-03:00`;
+  const users = await fetchAll<{ id: string; push_prefs: Record<string, boolean>; reminder_time: string }>((from, to) =>
+    svc.from("profiles").select("id, push_prefs, reminder_time").eq("is_active", true).order("id").range(from, to)
   );
   // UMA varredura de cards para todos (agrupada em memória) — nunca uma consulta por usuário
   const allCards = await fetchAll<{ assignee: string; title: string; due_at: string | null }>((from, to) =>
@@ -708,8 +715,18 @@ app.post("/api/cron/daily-reminder", async (c) => {
   let sent = 0;
   for (const u of users) {
     if ((u.push_prefs as Record<string, boolean>).lembrete_diario === false) continue;
+    if (!force && Number(String(u.reminder_time ?? "08:00").slice(0, 2)) !== currentHourSP) continue;
     const withReminder = byAssignee.get(u.id) ?? [];
     if (withReminder.length === 0) continue;
+    // um lembrete por dia, mesmo com o agendador rodando de hora em hora
+    const { data: already } = await svc
+      .from("notifications")
+      .select("id")
+      .eq("user_id", u.id)
+      .eq("kind", "lembrete_diario")
+      .gte("created_at", startOfDaySP)
+      .limit(1);
+    if (!force && (already ?? []).length > 0) continue;
     const overdue = withReminder.filter((k) => k.due_at && new Date(k.due_at).getTime() < Date.now());
     const first = overdue[0] ?? withReminder[0];
     const plural = withReminder.length > 1 ? "s" : "";

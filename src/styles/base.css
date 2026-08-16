@@ -85,7 +85,7 @@ svg {
 .tab-42--active:focus-visible,
 .ficha-tab--active:focus,
 .ficha-tab--active:focus-visible {
-  box-shadow: inset 0 -2px 0 var(--action);
+  box-shadow: none;
 }
 
 /* Escala tipográfica (01-fundacoes.md) */
