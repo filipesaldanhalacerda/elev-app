@@ -14,8 +14,8 @@ const ITEMS = [
   { key: "inicio", label: "Início", icon: "ph-house", path: "/" },
   { key: "clientes", label: "Clientes", icon: "ph-users-three", path: "/clientes" },
   { key: "cotacoes", label: "Cotações", icon: "ph-chart-line", path: "/cotacoes" },
-  { key: "cards", label: "Cards", icon: "ph-kanban", path: "/cards" },
-  { key: "perfil", label: "Perfil", icon: "ph-user-circle", path: "/perfil" },
+  { key: "tarefas", label: "Tarefas", icon: "ph-check-square", path: "/cards" },
+  { key: "agenda", label: "Agenda", icon: "ph-calendar-blank", path: "/agenda" },
 ] as const;
 
 export type MobileNavKey = (typeof ITEMS)[number]["key"];
@@ -73,7 +73,7 @@ function InstallPrompt() {
   );
 }
 
-export function MobileShell({ active, children }: { active: MobileNavKey; children: ReactNode }) {
+export function MobileShell({ active, children }: { active?: MobileNavKey; children: ReactNode }) {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const online = useOnline();

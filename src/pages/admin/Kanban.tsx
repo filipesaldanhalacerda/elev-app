@@ -82,7 +82,7 @@ export default function Kanban() {
           })}
         </div>
         <p className="kb-legend">
-          Visão de leitura e reatribuição: o administrador arrasta e reatribui, mas a criação de cards continua com os assessores. Avatar
+          Visão de leitura e reatribuição: o administrador arrasta e reatribui, mas a criação de tarefas continua com os assessores. Avatar
           identifica o dono; filtro por assessor no cabeçalho.
         </p>
       </div>
@@ -102,7 +102,7 @@ function KbCard({ card, dragging, onDragStart, onDragEnd }: { card: CardRow; dra
       <span className="kb-card__title">{card.title}</span>
       <span className="kb-card__foot">
         <span className="kb-card__meta">
-          {isOverdue(card) && <span className="card-row__late">atrasado</span>}
+          {isOverdue(card) && <span className="card-row__late">atrasada</span>}
           <span>
             {card.client_name ?? "Sem cliente"}
             {card.due_at ? ` · ${formatDate(card.due_at).slice(0, 5)}` : ""}

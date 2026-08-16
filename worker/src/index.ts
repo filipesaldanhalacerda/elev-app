@@ -710,7 +710,7 @@ app.post("/api/cron/daily-reminder", async (c) => {
     const overdue = withReminder.filter((k) => k.due_at && new Date(k.due_at).getTime() < Date.now());
     const first = overdue[0] ?? withReminder[0];
     const plural = withReminder.length > 1 ? "s" : "";
-    const title = `Seu dia: ${withReminder.length} card${plural} pendente${plural}${overdue.length > 0 ? `, ${overdue.length} atrasado${overdue.length > 1 ? "s" : ""}` : ""}`;
+    const title = `Seu dia: ${withReminder.length} tarefa${plural} pendente${plural}${overdue.length > 0 ? `, ${overdue.length} atrasada${overdue.length > 1 ? "s" : ""}` : ""}`;
     const body = overdue.length > 0 ? `${first.title} venceu.` : `Próximo: ${first.title}.`;
     await notifyUser(svc, u.id, "lembrete_diario", title, body, {}, c.env);
     sent++;

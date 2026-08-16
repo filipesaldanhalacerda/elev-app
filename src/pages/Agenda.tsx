@@ -282,7 +282,7 @@ export default function Agenda() {
   })();
 
   return (
-    <MobileShell active="inicio">
+    <MobileShell active="agenda">
       <header className="page-header" style={{ background: "var(--surface)" }}>
         <span className="page-header__title">Agenda</span>
         <Button icon="ph-plus" style={{ height: 40, fontSize: 12.5 }} onClick={() => { setEditing(undefined); setSheet(true); }}>

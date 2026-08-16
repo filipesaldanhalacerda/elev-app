@@ -20,7 +20,7 @@ test.beforeAll(async () => {
   const now = Date.now();
   await svc.from("notifications").insert([
     { user_id: advId, kind: "alerta_atingido", title: "PETR4 atingiu R$ 41,00", body: "alerta de alta criado em 11/08", created_at: new Date(now).toISOString() },
-    { user_id: advId, kind: "card_delegado", title: "Bruno delegou um card para você", body: "Ligar sobre COE · prazo 18/08", created_at: new Date(now - 3600000).toISOString() },
+    { user_id: advId, kind: "card_delegado", title: "Bruno delegou uma tarefa para você", body: "Ligar sobre COE · prazo 18/08", created_at: new Date(now - 3600000).toISOString() },
     { user_id: advId, kind: "reserva_confirmada", title: "Reserva confirmada — Ipê, seg 18/08 às 14:00", body: null, created_at: new Date(now - 86400000).toISOString(), read_at: new Date(now - 80000000).toISOString() },
   ]);
 });
@@ -64,8 +64,8 @@ test("lembrete diário (cron): resumo dos cards com atrasado; respeita preferên
   const { data: notif } = await svc.from("notifications").select("title, body").eq("user_id", advId).eq("kind", "lembrete_diario");
   const reminder = (notif ?? []).find((n) => n.title.startsWith("Seu dia:"));
   expect(reminder).toBeTruthy();
-  expect(reminder!.title).toContain("2 cards pendentes");
-  expect(reminder!.title).toContain("1 atrasado");
+  expect(reminder!.title).toContain("2 tarefas pendentes");
+  expect(reminder!.title).toContain("1 atrasada");
   expect(reminder!.body).toContain("venceu");
 
   // preferência desligada: não gera novo lembrete

@@ -68,8 +68,8 @@ function NewCardSheet({ initialClient = "", onClose, onCreated }: { initialClien
   }
 
   return (
-    <Sheet label="Novo card" onClose={onClose}>
-        <div className="sheet__title">Novo card</div>
+    <Sheet label="Nova tarefa" onClose={onClose}>
+        <div className="sheet__title">Nova tarefa</div>
         <div className="sheet__fields" style={{ gap: 13 }}>
           <div className="field">
             <label className="field__label" htmlFor="card-titulo" style={{ display: "block" }}>Título</label>
@@ -153,7 +153,7 @@ function NewCardSheet({ initialClient = "", onClose, onCreated }: { initialClien
         </div>
         <div className="sheet__footer" style={{ marginTop: 16 }}>
           <Button variant="secondary" onClick={onClose}>Cancelar</Button>
-          <Button disabled={!title.trim() || pastDue} loading={saving} onClick={save}>Criar card</Button>
+          <Button disabled={!title.trim() || pastDue} loading={saving} onClick={save}>Criar tarefa</Button>
         </div>
     </Sheet>
   );
@@ -181,17 +181,17 @@ export default function Cards() {
   }
 
   return (
-    <MobileShell active="cards">
+    <MobileShell active="tarefas">
       <header className="page-header" style={{ background: "var(--surface)" }}>
-        <span className="page-header__title">Cards</span>
+        <span className="page-header__title">Tarefas</span>
         <Button icon="ph-plus" style={{ height: 40, fontSize: 12.5 }} onClick={() => setSheet(true)}>Novo</Button>
       </header>
       <nav className="tabs-42" role="tablist">
         <button type="button" role="tab" aria-selected={tab === "meus"} className={`tab-42${tab === "meus" ? " tab-42--active" : ""}`} onClick={() => setTab("meus")}>
-          Meus cards
+          Minhas tarefas
         </button>
         <button type="button" role="tab" aria-selected={tab === "criados"} className={`tab-42${tab === "criados" ? " tab-42--active" : ""}`} onClick={() => setTab("criados")}>
-          Criados por mim
+          Criadas por mim
         </button>
       </nav>
 
@@ -216,7 +216,7 @@ export default function Cards() {
             </span>
             {status === "pendente" && (
               <span className="empty-state__action">
-                <Button icon="ph-plus" onClick={() => setSheet(true)}>Novo card</Button>
+                <Button icon="ph-plus" onClick={() => setSheet(true)}>Nova tarefa</Button>
               </span>
             )}
           </div>
@@ -239,7 +239,7 @@ export default function Cards() {
               <span style={{ flex: 1, minWidth: 0 }}>
                 <span className="card-row__title" style={card.status === "concluido" ? { color: "var(--text-2)" } : undefined}>{card.title}</span>
                 <span className="card-row__meta-row">
-                  {isOverdue(card) && <span className="card-row__late">atrasado</span>}
+                  {isOverdue(card) && <span className="card-row__late">atrasada</span>}
                   <span className="card-row__meta">{cardMeta(card, profile?.id ?? "")}</span>
                 </span>
               </span>
@@ -260,7 +260,7 @@ export default function Cards() {
         {!hintDismissed && rows !== null && byStatus[status].length > 0 && (
           <div className="swipe-hint">
             <i className="ph ph-caret-double-right" aria-hidden />
-            <span className="swipe-hint__text">Dica: deslizar um card para a direita também avança o status.</span>
+            <span className="swipe-hint__text">Dica: deslizar uma tarefa para a direita também avança o status.</span>
             <button
               type="button"
               className="swipe-hint__close"

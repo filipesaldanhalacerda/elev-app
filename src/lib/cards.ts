@@ -100,17 +100,26 @@ export function isOverdue(card: CardRow): boolean {
   return card.status !== "concluido" && !!card.due_at && new Date(card.due_at).getTime() < Date.now();
 }
 
-/** Lista de colegas para delegação — SÓ o admin usa (F2-09); assessor cria card para si mesmo. */
+/** Lista de colegas para delegação — SÓ o admin usa (F2-09); assessor cria tarefa para si mesmo.
+ *  Varredura paginada: o PostgREST corta em 1000 linhas e usuários novos sumiriam. */
 export function useColleagues(enabled = true) {
   const [rows, setRows] = useState<{ id: string; name: string }[]>([]);
   useEffect(() => {
     if (!enabled) return;
-    supabase
-      .from("profiles")
-      .select("id, name")
-      .eq("is_active", true)
-      .order("name")
-      .then(({ data }) => setRows((data ?? []) as { id: string; name: string }[]));
+    (async () => {
+      const all: { id: string; name: string }[] = [];
+      for (let from = 0; ; from += 1000) {
+        const { data } = await supabase
+          .from("profiles")
+          .select("id, name")
+          .eq("is_active", true)
+          .order("name")
+          .range(from, from + 999);
+        all.push(...((data ?? []) as { id: string; name: string }[]));
+        if (!data || data.length < 1000) break;
+      }
+      setRows(all);
+    })();
   }, [enabled]);
   return rows;
 }

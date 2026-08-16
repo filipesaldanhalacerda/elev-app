@@ -60,7 +60,7 @@ test.describe("fase 2 · mobile", () => {
     expect(shadow).not.toContain("3px");
   });
 
-  test("F2-04: menu ⋮ da ficha abre ações e leva ao novo card com o cliente vinculado", async ({ page }) => {
+  test("F2-04: menu ⋮ da ficha abre ações e leva à nova tarefa com o cliente vinculado", async ({ page }) => {
     await login(page);
     await page.goto(`/clientes/${ANA}`);
     await page.getByRole("button", { name: "Mais opções" }).click();
@@ -68,7 +68,7 @@ test.describe("fase 2 · mobile", () => {
     await expect(sheet.getByText("Novo alerta")).toBeVisible();
     await expect(sheet.getByText("Reservar sala")).toBeVisible();
     await expect(sheet.getByText("Copiar número da conta")).toBeVisible();
-    await sheet.getByText("Novo card", { exact: true }).click();
+    await sheet.getByText("Nova tarefa", { exact: true }).click();
     await page.waitForURL("**/cards?novo=1*");
     await page.waitForSelector(".sheet__title");
     await expect(page.getByLabel("Cliente")).toHaveValue(ANA);
@@ -107,10 +107,10 @@ test.describe("fase 2 · mobile", () => {
     const ontem = new Date(Date.now() - 86400000).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
     await page.locator("#card-prazo").fill(ontem);
     await expect(page.getByText("O prazo não pode ficar no passado.")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Criar card" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Criar tarefa" })).toBeDisabled();
     const amanha = new Date(Date.now() + 86400000).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
     await page.locator("#card-prazo").fill(amanha);
-    await expect(page.getByRole("button", { name: "Criar card" })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Criar tarefa" })).toBeEnabled();
   });
 
   test("RLS F2-09: assessor não consegue criar card para outro assessor", async () => {
@@ -259,16 +259,25 @@ test.describe("fase 2 · mobile", () => {
     await page.locator(".sheet").getByRole("button", { name: "Cancelar", exact: true }).click();
   });
 
-  test("F2-12: home tem ações rápidas de card, alerta, sala e agenda", async ({ page }) => {
+  test("F2-12: home enxuta — atalhos Alertas e Sala; nav principal com Tarefas e Agenda", async ({ page }) => {
     await login(page);
     const quick = page.locator("[data-home-quick-actions]");
-    await expect(quick.getByText("Novo card")).toBeVisible();
-    await expect(quick.getByText("Agenda")).toBeVisible();
-    await quick.getByText("Alerta").click();
-    await page.waitForURL("**/alertas?novo=1");
-    await expect(page.locator(".sheet__title")).toHaveText("Novo alerta de preço");
-    await page.locator(".sheet").getByRole("button", { name: "Cancelar", exact: true }).click();
-
+    await expect(quick.getByText("Alertas")).toBeVisible();
+    await expect(quick.getByText("Sala")).toBeVisible();
+    await expect(quick.getByText("Novo card")).toHaveCount(0);
+    // sem busca central nem avisos na home
+    await expect(page.getByPlaceholder("Buscar cliente por nome ou conta")).toHaveCount(0);
+    await expect(page.getByText("Avisos recentes")).toHaveCount(0);
+    // nav principal: Tarefas (ex-Cards) e Agenda no lugar do Perfil
+    const nav = page.locator(".mnav");
+    await expect(nav.getByText("Tarefas")).toBeVisible();
+    await expect(nav.getByText("Agenda")).toBeVisible();
+    await expect(nav.getByText("Perfil")).toHaveCount(0);
+    await nav.getByText("Agenda").click();
+    await page.waitForURL("**/agenda");
+    await page.goto("/");
+    await quick.getByText("Alertas").click();
+    await page.waitForURL("**/alertas");
     await page.goto("/");
     await quick.getByText("Sala", { exact: true }).click();
     await page.waitForURL("**/salas");
@@ -297,9 +306,9 @@ test.describe("fase 2 · mobile", () => {
     await page.goto("/perfil");
     await expect(page.getByRole("button", { name: "Desconectar" })).toBeVisible();
     await expect(page.getByText(/agenda sincronizada \(demonstração\)/)).toBeVisible();
-    // a Agenda vive nas ações rápidas da home
+    // a Agenda vive no menu principal
     await page.goto("/");
-    await page.locator("[data-home-quick-actions]").getByText("Agenda").click();
+    await page.locator(".mnav").getByText("Agenda").click();
     await page.waitForURL("**/agenda");
     await expect(page.locator(".page-header__title")).toHaveText("Agenda");
 

@@ -16,8 +16,8 @@ import { GoogleLogo } from "../components/GoogleLogo";
 
 const PUSH_ITEMS: { key: string; label: string; description?: string }[] = [
   { key: "alerta_preco", label: "Alerta de preço atingido" },
-  { key: "lembrete_diario", label: "Lembrete diário de cards" },
-  { key: "card_delegado", label: "Card delegado a mim" },
+  { key: "lembrete_diario", label: "Lembrete diário de tarefas" },
+  { key: "card_delegado", label: "Tarefa delegada a mim" },
   { key: "movimentacoes", label: "Movimentações de clientes", description: "aportes e resgates relevantes" },
 ];
 
@@ -102,10 +102,10 @@ export default function Profile() {
     if (value) void subscribeDevice();
   }
 
-  if (!profile) return <MobileShell active="perfil"><div /></MobileShell>;
+  if (!profile) return <MobileShell><div /></MobileShell>;
 
   return (
-    <MobileShell active="perfil">
+    <MobileShell>
       <header className="page-header" style={{ background: "var(--surface)" }}>
         <span className="page-header__title">Perfil</span>
       </header>

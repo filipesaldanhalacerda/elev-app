@@ -38,16 +38,16 @@ test.describe("tela 13 · lista por status (mobile)", () => {
   test("criar no sheet → pendente → iniciar → concluir; dica dispensada não volta", async ({ page }) => {
     await login(page, RAFA.email, RAFA.password);
     await page.goto("/cards");
-    await expect(page.locator(".tab-42--active")).toHaveText("Meus cards");
+    await expect(page.locator(".tab-42--active")).toHaveText("Minhas tarefas");
 
     // sheet com todos os campos do quadro
     await page.getByRole("button", { name: "Novo", exact: true }).click();
-    const sheet = page.getByRole("dialog", { name: "Novo card" });
+    const sheet = page.getByRole("dialog", { name: "Nova tarefa" });
     await sheet.getByLabel("Título").fill("Ligar sobre vencimento do CDB");
     await sheet.getByLabel("Cliente").selectOption({ label: "Ana Bertoldi" });
     await expect(sheet.getByText("resumo dos cards do dia às 08:00")).toBeVisible();
     await expect(sheet.getByRole("switch", { name: "Lembrete diário" })).toHaveAttribute("aria-checked", "true");
-    await sheet.getByRole("button", { name: "Criar card" }).click();
+    await sheet.getByRole("button", { name: "Criar tarefa" }).click();
 
     // pendente com contador e próxima ação
     await expect(page.locator(".status-segment__item--active")).toContainText("Pendente");
@@ -56,7 +56,7 @@ test.describe("tela 13 · lista por status (mobile)", () => {
     await expect(row.locator(".card-row__meta")).toContainText("Ana Bertoldi");
 
     // dica do swipe visível; dispensa e não volta
-    await expect(page.locator(".swipe-hint__text")).toHaveText("Dica: deslizar um card para a direita também avança o status.");
+    await expect(page.locator(".swipe-hint__text")).toHaveText("Dica: deslizar uma tarefa para a direita também avança o status.");
     await page.getByRole("button", { name: "Dispensar dica" }).click();
     await expect(page.locator(".swipe-hint")).toHaveCount(0);
     await page.reload();
@@ -72,7 +72,7 @@ test.describe("tela 13 · lista por status (mobile)", () => {
     await expect(page.locator(".card-row", { hasText: "Ligar sobre vencimento do CDB" })).toBeVisible();
   });
 
-  test("delegação: aparece em 'Meus cards' do delegado com origem e notifica", async ({ page }) => {
+  test("delegação: aparece em 'Minhas tarefas' do delegado com origem e notifica", async ({ page }) => {
     const svc = serviceClient();
     await svc.from("cards").insert({ title: `Ligar sobre COE ${RUN}`, creator: brunoId, assignee: rafaId, priority: "media", status: "pendente" });
 
@@ -83,7 +83,7 @@ test.describe("tela 13 · lista por status (mobile)", () => {
 
     // notificação de card delegado criada pelo trigger
     const { data: notif } = await svc.from("notifications").select("title, body").eq("user_id", rafaId).eq("kind", "card_delegado");
-    expect((notif ?? []).some((n) => n.title === `Bruno${RUN.slice(-3)} delegou um card para você` && n.body.includes("Ligar sobre COE"))).toBe(true);
+    expect((notif ?? []).some((n) => n.title === `Bruno${RUN.slice(-3)} delegou uma tarefa para você` && n.body.includes("Ligar sobre COE"))).toBe(true);
 
   });
 
@@ -115,7 +115,7 @@ test.describe("tela 23 · kanban geral (admin)", () => {
     const pendente = page.locator('[data-column="pendente"]');
     const rebalancear = pendente.locator(".kb-card", { hasText: `Rebalancear ${RUN}` });
     await expect(rebalancear).toBeVisible();
-    await expect(rebalancear.locator(".card-row__late")).toHaveText("atrasado");
+    await expect(rebalancear.locator(".card-row__late")).toHaveText("atrasada");
 
     // filtro por assessor
     await page.locator(".kb-chip", { hasText: `Bruno${RUN.slice(-3)}` }).click();

@@ -42,7 +42,7 @@ async function login(page: import("@playwright/test").Page, email: string, passw
 }
 
 emAmbosTemas("tela 04 · com dados", () => {
-  test("saudação, ticker, busca central, radar, tarefas, aniversariantes e avisos", async ({ page }) => {
+  test("saudação, ticker, atalhos, radar, tarefas e aniversariantes", async ({ page }) => {
     await login(page, ADV.email, ADV.password);
 
     // saudação + contagem de clientes + sino com badge + avatar
@@ -53,14 +53,11 @@ emAmbosTemas("tela 04 · com dados", () => {
     // ticker de mercado com IBOV
     await expect(page.locator(".ticker-strip__code", { hasText: "IBOV" })).toBeVisible();
 
-    // busca central presente e funcional
-    const busca = page.getByPlaceholder("Buscar cliente por nome ou conta");
-    await expect(busca).toBeVisible();
-    await busca.fill("Ana");
-    await expect(page.locator(".csearch__row", { hasText: "Ana Bertoldi" })).toBeVisible();
-    await page.locator(".csearch__row", { hasText: "Ana Bertoldi" }).click();
-    await expect(page.locator(".ficha-header__name")).toHaveText("Ana Bertoldi");
-    await page.goBack();
+    // home enxuta: SEM busca central (a busca vive na tela de Clientes) e atalhos diretos
+    await expect(page.getByPlaceholder("Buscar cliente por nome ou conta")).toHaveCount(0);
+    const quick = page.locator("[data-home-quick-actions]");
+    await expect(quick.getByText("Alertas")).toBeVisible();
+    await expect(quick.getByText("Sala")).toBeVisible();
 
     // radar de alertas com card e atalho
     await expect(page.getByText("Radar de alertas")).toBeVisible();
@@ -79,9 +76,8 @@ emAmbosTemas("tela 04 · com dados", () => {
     await expect(page.getByText("58 anos")).toBeVisible();
     await expect(page.getByLabel("WhatsApp de Helena Prado")).toBeVisible();
 
-    // avisos recentes
-    await expect(page.getByText("Avisos recentes")).toBeVisible();
-    await expect(page.getByText("Alerta disparado — PETR4 atingiu R$ 41,00")).toBeVisible();
+    // sem avisos na home — eles vivem no sino (Notificações)
+    await expect(page.getByText("Avisos recentes")).toHaveCount(0);
   });
 });
 
@@ -95,28 +91,16 @@ test.describe("tela 04 · vazio (assessor novo)", () => {
     await expect(page.getByText("Nenhum alerta ativo")).toBeVisible();
     await expect(page.getByText("Monitore um preço-alvo e receba push.")).toBeVisible();
     await expect(page.getByText("Nada para hoje")).toBeVisible();
-    await expect(page.getByText("Sem avisos nas últimas 24 horas.")).toBeVisible();
-    // busca continua presente (inerte, não some)
-    await expect(page.getByPlaceholder("Buscar cliente por nome ou conta")).toBeVisible();
   });
 });
 
 test.describe("tela 04 · carregando", () => {
-  test("tudo em skeleton EXCETO a busca", async ({ page }) => {
-    // atrasa as respostas do banco para congelar o estado carregando
+  test("skeletons no primeiro instante", async ({ page }) => {
     await page.route("**/rest/v1/**", async (route) => {
       await new Promise((r) => setTimeout(r, 1500));
       await route.continue();
     });
     await login(page, ADV.email, ADV.password);
-    // no primeiro instante: skeletons visíveis + busca interativa + nota do quadro
     await expect(page.locator(".skeleton").first()).toBeVisible();
-    const busca = page.getByPlaceholder("Buscar cliente por nome ou conta");
-    await expect(busca).toBeVisible();
-    await expect(busca).toBeEnabled();
-    await expect(page.getByText("A busca já responde enquanto o resto da home carrega.")).toBeVisible();
-    // a busca NÃO é um skeleton
-    const buscaBox = page.locator(".csearch__box");
-    await expect(buscaBox).not.toHaveClass(/skeleton/);
   });
 });

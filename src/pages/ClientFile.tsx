@@ -124,7 +124,7 @@ function OverviewTab({ account }: { account: string }) {
         </a>
         <button type="button" className="quick-action" onClick={() => (window.location.href = "/cards")}>
           <i className="ph ph-kanban" aria-hidden />
-          <span>Novo card</span>
+          <span>Tarefa</span>
         </button>
         <button type="button" className="quick-action" onClick={() => (window.location.href = "/alertas?novo")}>
           <i className="ph ph-target" aria-hidden />
@@ -578,7 +578,7 @@ function TimelineTab({ account, advisorCode }: { account: string; advisorCode: s
   return (
     <div className="ficha-body" style={{ gap: 18, paddingTop: 12 }}>
       <div className="filter-row" style={{ overflowX: "auto" }}>
-        {([["tudo", "Tudo"], ["alertas", "Alertas"], ["reunioes", "Reuniões"], ["cards", "Cards"], ["anotacoes", "Anotações"]] as const).map(([key, label]) => (
+        {([["tudo", "Tudo"], ["alertas", "Alertas"], ["reunioes", "Reuniões"], ["cards", "Tarefas"], ["anotacoes", "Anotações"]] as const).map(([key, label]) => (
           <button key={key} type="button" className={`filter-chip${filter === key ? " filter-chip--active" : ""}`} onClick={() => setFilter(key)}>
             {label}
           </button>
@@ -722,7 +722,7 @@ export default function ClientFile() {
             <div className="sheet__title">{client?.name ?? maskAccount(account)}</div>
             <div className="card" style={{ padding: 0, overflow: "hidden", marginTop: 4 }}>
               {[
-                { icon: "ph-kanban", label: "Novo card", go: `/cards?novo=1&cliente=${account}` },
+                { icon: "ph-check-square", label: "Nova tarefa", go: `/cards?novo=1&cliente=${account}` },
                 { icon: "ph-target", label: "Novo alerta", go: `/alertas?novo=1&cliente=${account}` },
                 { icon: "ph-door-open", label: "Reservar sala", go: `/salas?novo=1&cliente=${account}` },
               ].map((a, i) => (

@@ -2,10 +2,9 @@
  * Tela 04 · Dashboard/home — quadros #1b/#1c (claro/escuro × com dados/vazio/carregando).
  * A busca de cliente é o centro e NUNCA entra em skeleton.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
-import { ClientSearch, type ClientSearchResult } from "../components/ClientSearch";
 import { AlertCard } from "../components/cards";
 import { Button } from "../components/Button";
 import { supabase } from "../lib/supabase";
@@ -107,14 +106,6 @@ function useHomeData(userId: string | undefined) {
   return data;
 }
 
-const NOTICE_ICON: Record<string, { icon: string; tone: "brand" | "neutral" | "warning" }> = {
-  alerta_atingido: { icon: "ph-target", tone: "brand" },
-  card_delegado: { icon: "ph-kanban", tone: "neutral" },
-  lembrete_diario: { icon: "ph-bell-ringing", tone: "neutral" },
-  importacao: { icon: "ph-upload-simple", tone: "neutral" },
-  reserva_confirmada: { icon: "ph-door-open", tone: "neutral" },
-};
-
 function SectionTitle({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
@@ -148,54 +139,10 @@ export default function Dashboard() {
   const { profile } = useAuth();
   const data = useHomeData(profile?.id);
   const { data: quotesData, flashes } = useQuotes(["IBOV", "WDOU26", "PETR4", "VALE3"]);
-  const [search, setSearch] = useState("");
-  const [results, setResults] = useState<ClientSearchResult[] | null>(null);
-  const [searching, setSearching] = useState(false);
 
   const online = useOnline();
   const loading = data === null && online;
   const empty = data !== null && data.clientCount === 0;
-
-  const recents: { account: string; name: string }[] = useMemo(() => {
-    try {
-      return (JSON.parse(localStorage.getItem(RECENT_CLIENTS_KEY) ?? "[]") as { account: string; name: string }[]).slice(0, 2);
-    } catch {
-      return [];
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!search.trim()) {
-      setResults(null);
-      return;
-    }
-    let alive = true;
-    setSearching(true);
-    const t = setTimeout(async () => {
-      const term = search.trim();
-      const { data: found } = await supabase
-        .from("client_overview")
-        .select("account_code, name, patrimony, month_pct")
-        .or(`name.ilike.%${term}%,account_code.ilike.%${term.replace(/\D/g, "") || term}%`)
-        .order("patrimony", { ascending: false, nullsFirst: false })
-        .limit(6);
-      if (!alive) return;
-      setResults(
-        (found ?? []).map((r) => ({
-          account: maskAccount(r.account_code),
-          name: r.name ?? `Conta ${r.account_code}`,
-          patrimony: r.patrimony ?? 0,
-          monthPct: r.month_pct ?? 0,
-          raw: r.account_code,
-        })) as (ClientSearchResult & { raw: string })[]
-      );
-      setSearching(false);
-    }, 250);
-    return () => {
-      alive = false;
-      clearTimeout(t);
-    };
-  }, [search]);
 
   const today = new Date();
   const weekday = today.toLocaleDateString("pt-BR", { weekday: "long", timeZone: "America/Sao_Paulo" }).split("-")[0];
@@ -264,56 +211,19 @@ export default function Dashboard() {
         ) : null}
 
         <div style={{ flex: 1, padding: "16px 16px 22px", display: "flex", flexDirection: "column", gap: 22 }}>
-          {/* busca central — NUNCA skeleton */}
-          <div>
-            <ClientSearch
-              value={search}
-              onChange={setSearch}
-              onClear={() => setSearch("")}
-              loading={searching && !!search}
-              results={results ?? undefined}
-              emptyTerm={!searching && search && results && results.length === 0 ? search : undefined}
-              onSelect={(r) => navigate(`/clientes/${(r as ClientSearchResult & { raw: string }).raw}`)}
-            />
-            {loading && (
-              <div style={{ marginTop: 8, font: "400 11px/1.4 var(--font-sans)", color: "var(--text-3)" }}>
-                A busca já responde enquanto o resto da home carrega.
-              </div>
-            )}
-            {!loading && !empty && recents.length > 0 && !search && (
-              <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
-                {recents.map((r) => (
-                  <button key={r.account} type="button" onClick={() => navigate(`/clientes/${r.account}`)} style={{ height: 34, display: "flex", alignItems: "center", gap: 7, padding: "0 11px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 999 }}>
-                    <span style={{ width: 20, height: 20, borderRadius: 999, background: "var(--brand-tint)", color: "var(--ghost-text)", display: "flex", alignItems: "center", justifyContent: "center", font: "600 8.5px/1 var(--font-sans)" }}>
-                      {initials(r.name)}
-                    </span>
-                    <span style={{ font: "500 12px/1 var(--font-sans)", color: "var(--text-1)" }}>{r.name}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-            {/* F2-12: criar card/alerta/reserva direto da home — com cliente ou genérico */}
-            {online && (
-              <div className="quick-actions" style={{ marginTop: 10 }} data-home-quick-actions>
-                <button type="button" className="quick-action" onClick={() => navigate("/cards?novo=1")}>
-                  <i className="ph ph-kanban" aria-hidden />
-                  <span>Novo card</span>
-                </button>
-                <button type="button" className="quick-action" onClick={() => navigate("/alertas?novo=1")}>
-                  <i className="ph ph-target" aria-hidden />
-                  <span>Alerta</span>
-                </button>
-                <button type="button" className="quick-action" onClick={() => navigate("/salas")}>
-                  <i className="ph ph-door-open" aria-hidden />
-                  <span>Sala</span>
-                </button>
-                <button type="button" className="quick-action" onClick={() => navigate("/agenda")}>
-                  <i className="ph ph-calendar-blank" aria-hidden />
-                  <span>Agenda</span>
-                </button>
-              </div>
-            )}
-          </div>
+          {/* atalhos rápidos: Alertas e Sala (o resto vive no menu principal) */}
+          {online && (
+            <div className="quick-actions" data-home-quick-actions>
+              <button type="button" className="quick-action" onClick={() => navigate("/alertas")}>
+                <i className="ph ph-target" aria-hidden />
+                <span>Alertas</span>
+              </button>
+              <button type="button" className="quick-action" onClick={() => navigate("/salas")}>
+                <i className="ph ph-door-open" aria-hidden />
+                <span>Sala</span>
+              </button>
+            </div>
+          )}
 
           {/* offline: estado central da tela 24 */}
           {!online && (
@@ -430,7 +340,7 @@ export default function Dashboard() {
                 ))}
               </div>
             ) : data.tasksToday.length === 0 ? (
-              <EmptyBlock icon="ph-check-square-offset" title="Nada para hoje" desc="Crie um card para não perder um retorno." onAdd={() => navigate("/cards")} />
+              <EmptyBlock icon="ph-check-square-offset" title="Nada para hoje" desc="Crie uma tarefa para não perder um retorno." onAdd={() => navigate("/cards")} />
             ) : (
               <div className="card" style={{ padding: 0, overflow: "hidden" }}>
                 {data.tasksToday.map((t, i) => (
@@ -472,48 +382,6 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* avisos recentes */}
-          <div>
-            <SectionTitle>Avisos recentes</SectionTitle>
-            {loading || !data ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                {[82, 68].map((w, i) => (
-                  <div key={i} style={{ display: "flex", gap: 11, alignItems: "center" }}>
-                    <div className="skeleton" style={{ width: 28, height: 28, borderRadius: 8 }} />
-                    <div className="skeleton" style={{ width: `${w}%`, height: 11 }} />
-                  </div>
-                ))}
-              </div>
-            ) : data.notices.length === 0 ? (
-              <div style={{ font: "400 12.5px/1.5 var(--font-sans)", color: "var(--text-2)", padding: "2px 2px 0" }}>
-                Sem avisos nas últimas 24 horas.
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                {data.notices.map((n) => {
-                  const meta = NOTICE_ICON[n.kind] ?? { icon: "ph-bell", tone: "neutral" as const };
-                  return (
-                    <div key={n.id} style={{ minHeight: 52, display: "flex", alignItems: "flex-start", gap: 11, padding: "10px 2px" }}>
-                      <span style={{
-                        width: 28, height: 28, borderRadius: 8, flex: "none",
-                        background: meta.tone === "brand" ? "var(--brand-tint)" : meta.tone === "warning" ? "var(--warning-tint)" : "var(--chip-pill-bg)",
-                        color: meta.tone === "brand" ? "var(--ghost-text)" : meta.tone === "warning" ? "var(--warning)" : "var(--field-label)",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                      }}>
-                        <i className={`ph ${meta.icon}`} style={{ fontSize: 15 }} aria-hidden />
-                      </span>
-                      <span style={{ flex: 1, minWidth: 0 }}>
-                        <span style={{ display: "block", font: "400 13px/1.4 var(--font-sans)", color: "var(--text-1)" }}>{n.title}</span>
-                        <span style={{ display: "block", marginTop: 2, font: "400 11px/1.3 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-3)" }}>
-                          {new Date(n.at).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" }) === new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" }) ? "hoje" : "ontem"} {formatTime(n.at)}
-                        </span>
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
         </div>
       </div>
     </MobileShell>
