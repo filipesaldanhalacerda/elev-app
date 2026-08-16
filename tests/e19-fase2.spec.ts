@@ -358,6 +358,17 @@ test.describe("fase 2 · mobile", () => {
     await expect(page.locator(".cal-event", { hasText: `Reunião editada ${RUN}` })).toHaveCount(0);
   });
 
+  test("novo agendamento abre já num horário à frente — nunca com erro de passado", async ({ page }) => {
+    await login(page);
+    await page.goto("/agenda");
+    await page.getByRole("button", { name: "Novo", exact: true }).click();
+    await page.waitForSelector(".sheet__title");
+    await expect(page.getByText("Não é possível agendar no passado.")).toHaveCount(0);
+    await page.getByLabel("Título").fill("Futuro");
+    await expect(page.getByRole("button", { name: "Agendar", exact: true })).toBeEnabled();
+    await page.locator(".sheet").getByRole("button", { name: "Cancelar", exact: true }).click();
+  });
+
   test("duração: atalhos + Mais (Manhã/Tarde/Dia todo e término personalizado)", async ({ page }) => {
     await login(page);
     await page.goto("/agenda");

@@ -14,7 +14,7 @@ import {
   useRooms, useDayReservations, useMyReservations, createReservation, findAlternatives, cancelReservation,
   parsePeriod, type ConflictInfo, type Alternative, type Room, type Reservation,
 } from "../lib/rooms";
-import { formatDate, addMinutes, durationLabel } from "../lib/format";
+import { formatDate, addMinutes, durationLabel, nextSlotSP } from "../lib/format";
 import { syncReservationToAgenda, unsyncReservation } from "../lib/google";
 
 const HOURS = ["08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"];
@@ -22,6 +22,13 @@ const HOURS = ["08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "1
 const todayISO = () => new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
 const fmtHM = (d: Date) => d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
 const DURATIONS = [30, 60, 90, 120];
+
+/** Início sugerido para HOJE: sempre um horário à frente (limitado à janela das salas). */
+function suggestedStart(day: string): string {
+  const next = nextSlotSP();
+  if (day !== next.day) return day > next.day ? "10:00" : next.start;
+  return next.start > "17:00" ? "17:00" : next.start;
+}
 
 function NewReservation({ rooms, defaults, onClose, onCreated }: {
   rooms: Room[];
@@ -218,7 +225,7 @@ export default function Rooms() {
   const { rows: reservations, reload: reloadDay } = useDayReservations(activeRoom, day);
   const { rows: mine, reload: reloadMine } = useMyReservations(profile?.id);
   const [creating, setCreating] = useState<{ start: string; account?: string } | null>(
-    params.get("novo") !== null ? { start: "10:00", account: params.get("cliente") ?? undefined } : null
+    params.get("novo") !== null ? { start: suggestedStart(todayISO()), account: params.get("cliente") ?? undefined } : null
   );
   // cancelar exige confirmação — e só as PRÓPRIAS reservas aparecem aqui (RLS impede as dos colegas)
   const [cancelling, setCancelling] = useState<Reservation | null>(null);
@@ -263,7 +270,7 @@ export default function Rooms() {
     <MobileShell active="inicio">
       <header className="page-header" style={{ background: "var(--surface)" }}>
         <span className="page-header__title">Sala de reunião</span>
-        <Button icon="ph-plus" style={{ height: 40, fontSize: 12.5 }} onClick={() => setCreating({ start: "10:00" })}>
+        <Button icon="ph-plus" style={{ height: 40, fontSize: 12.5 }} onClick={() => setCreating({ start: suggestedStart(day) })}>
           Reservar
         </Button>
       </header>
@@ -322,7 +329,7 @@ export default function Rooms() {
                 <div key={slot.hour} className="agenda__row">
                   <span className="agenda__hour">{slot.hour}</span>
                   {slot.contUntil === null && slot.blocks.length === 0 ? (
-                    <button type="button" className="agenda__free agenda__free--action" onClick={() => setCreating({ start: slot.hour })}>
+                    <button type="button" className="agenda__free agenda__free--action" onClick={() => setCreating({ start: day === todayISO() && slot.hour < suggestedStart(day) ? suggestedStart(day) : slot.hour })}>
                       livre
                     </button>
                   ) : (

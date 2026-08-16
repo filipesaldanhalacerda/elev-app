@@ -156,3 +156,20 @@ export function durationLabel(minutes: number): string {
   const m = minutes % 60;
   return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, "0")}`;
 }
+
+/** Próximo horário "redondo" à frente (meia em meia hora), no fuso do produto.
+ *  Antes das 08:00 sugere 08:00; depois das 19:00 rola para amanhã às 08:00. */
+export function nextSlotSP(marginMin = 5): { day: string; start: string } {
+  const t = new Date(Date.now() + marginMin * 60000);
+  const day = t.toLocaleDateString("sv-SE", { timeZone: TIMEZONE });
+  const [h, m] = t
+    .toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: TIMEZONE })
+    .split(":")
+    .map(Number);
+  let mins = Math.ceil((h * 60 + m) / 30) * 30;
+  if (mins < 8 * 60) mins = 8 * 60;
+  if (mins > 19 * 60) {
+    return { day: new Date(t.getTime() + 86400000).toLocaleDateString("sv-SE", { timeZone: TIMEZONE }), start: "08:00" };
+  }
+  return { day, start: `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}` };
+}

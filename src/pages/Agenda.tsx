@@ -9,7 +9,7 @@ import { MobileShell } from "../components/MobileShell";
 import { Sheet } from "../components/Sheet";
 import { Button } from "../components/Button";
 import { GoogleLogo } from "../components/GoogleLogo";
-import { addMinutes, durationLabel } from "../lib/format";
+import { addMinutes, durationLabel, nextSlotSP } from "../lib/format";
 import { supabase } from "../lib/supabase";
 import { formatDate } from "../lib/format";
 import {
@@ -31,9 +31,12 @@ const PERIODS = [
 const minutesOf = (hmStr: string) => Number(hmStr.slice(0, 2)) * 60 + Number(hmStr.slice(3));
 
 function EventSheet({ editing, initialDay, initialStart, onClose, onSaved }: { editing?: GoogleEvent; initialDay?: string; initialStart?: string; onClose: () => void; onSaved: () => void }) {
+  // abre já num horário À FRENTE: hoje sugere a próxima meia hora; dia futuro sugere 10:00
+  const suggestion = nextSlotSP();
+  const futureDay = !!initialDay && initialDay > todaySP();
   const [title, setTitle] = useState(editing?.title ?? "");
-  const [day, setDay] = useState(editing ? spDay(editing.starts_at) : initialDay ?? todaySP());
-  const [start, setStart] = useState(editing ? hm(editing.starts_at) : initialStart ?? "10:00");
+  const [day, setDay] = useState(editing ? spDay(editing.starts_at) : initialStart ? initialDay ?? todaySP() : futureDay ? initialDay! : suggestion.day);
+  const [start, setStart] = useState(editing ? hm(editing.starts_at) : initialStart ?? (futureDay ? "10:00" : suggestion.start));
   // início + DURAÇÃO no lugar de fim separado — o fim é calculado, nunca inverte
   const [duration, setDuration] = useState(() =>
     editing ? Math.max(5, Math.round((new Date(editing.ends_at).getTime() - new Date(editing.starts_at).getTime()) / 60000)) : 60
@@ -323,7 +326,15 @@ export default function Agenda() {
                       type="button"
                       className="cal-grid__cell"
                       aria-label={`Agendar às ${String(h).padStart(2, "0")}:00`}
-                      onClick={() => { setNewDefaults({ day: selected, start: `${String(h).padStart(2, "0")}:00` }); setEditing(undefined); setSheet(true); }}
+                      onClick={() => {
+                        // hora já passada hoje? sugere o próximo horário à frente
+                        const wanted = `${String(h).padStart(2, "0")}:00`;
+                        const next = nextSlotSP();
+                        const start = selected === todaySP() && next.day === selected && wanted < next.start ? next.start : wanted;
+                        setNewDefaults({ day: selected, start });
+                        setEditing(undefined);
+                        setSheet(true);
+                      }}
                     />
                   </div>
                 ))}
