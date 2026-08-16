@@ -184,7 +184,7 @@ test.describe("fase 2 · mobile", () => {
     await page.locator("#res-data").fill(amanha);
     await page.locator("#res-inicio").fill("14:00");
     await page.getByRole("button", { name: "1h30" }).click();
-    await expect(page.getByLabel("Fim calculado")).toHaveValue("15:30");
+    await expect(page.locator("[data-ends-at]").last()).toContainText("termina às 15:30");
     await expect(page.getByRole("button", { name: "Confirmar reserva" })).toBeEnabled();
   });
 

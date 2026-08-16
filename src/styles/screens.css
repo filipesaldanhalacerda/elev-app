@@ -204,10 +204,12 @@
 
 /* ---------- Ficha do cliente (telas 06–10) ---------- */
 .ficha-header { flex: none; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; background: var(--surface); }
-.ficha-header__lead { display: flex; align-items: center; gap: 6px; }
-.ficha-header__back { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: var(--text-1); }
+.ficha-header__lead { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+.ficha-header__lead > span:last-child { flex: 1; min-width: 0; }
+.ficha-header__back { width: 44px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center; color: var(--text-1); }
 .ficha-header__back i { font-size: 20px; }
-.ficha-header__name { display: block; font: 600 16px/1.2 var(--font-sans); letter-spacing: -0.01em; color: var(--text-1); }
+/* nome longo NUNCA quebra em duas linhas: uma linha com reticências, conta embaixo */
+.ficha-header__name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 16px/1.2 var(--font-sans); letter-spacing: -0.01em; color: var(--text-1); }
 .ficha-header__account { display: block; margin-top: 2px; font: 400 10.5px/1 var(--font-mono); color: var(--text-3); }
 .ficha-header__menu { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: var(--text-1); }
 .ficha-header__menu i { font-size: 20px; }

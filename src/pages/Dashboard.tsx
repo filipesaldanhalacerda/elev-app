@@ -11,13 +11,11 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 import { useQuotes, formatQuotePrice, formatQuoteChange, type Quote } from "../lib/quotes";
 import { useOnline, lastDataAt } from "../lib/offline";
-import { initials, formatInt, formatTime, formatDate } from "../lib/format";
+import { initials, formatInt, formatTime, formatDate, nextSlotSP } from "../lib/format";
 import { Toast } from "../components/feedback";
 import { AlertSheet } from "./Alerts";
-import { NewReservation, suggestedStart } from "./Rooms";
+import { NewReservation } from "./Rooms";
 import { useRooms } from "../lib/rooms";
-
-const todaySP = () => new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
 
 const RECENT_CLIENTS_KEY = "elev.clientes.visitados";
 
@@ -245,7 +243,7 @@ export default function Dashboard() {
           {quick === "sala" && rooms && rooms.length > 0 && (
             <NewReservation
               rooms={rooms}
-              defaults={{ roomId: rooms[0].id, day: todaySP(), start: suggestedStart(todaySP()) }}
+              defaults={{ roomId: rooms[0].id, day: nextSlotSP().day, start: nextSlotSP().start }}
               onClose={() => setQuick(null)}
               onCreated={() => showToast("Sala reservada.")}
             />

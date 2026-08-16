@@ -22,12 +22,19 @@ import { formatDate, addMinutes, durationLabel, nextSlotSP } from "../lib/format
 const todayISO = () => new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
 const fmtHM = (d: Date) => d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
 const DURATIONS = [30, 60, 90, 120];
+// mesmos períodos rápidos da Agenda — padrão único de duração no sistema
+const PERIODS = [
+  { label: "Manhã", start: "08:00", end: "12:00" },
+  { label: "Tarde", start: "13:00", end: "18:00" },
+  { label: "Dia todo", start: "08:00", end: "18:00" },
+];
+const minutesOf = (hmStr: string) => Number(hmStr.slice(0, 2)) * 60 + Number(hmStr.slice(3));
 
-/** Início sugerido para HOJE: sempre um horário à frente (limitado à janela das salas). */
+/** Início sugerido para HOJE: sempre um horário à frente — nunca no passado. */
 export function suggestedStart(day: string): string {
   const next = nextSlotSP();
   if (day !== next.day) return day > next.day ? "10:00" : next.start;
-  return next.start > "17:00" ? "17:00" : next.start;
+  return next.start;
 }
 
 export function NewReservation({ rooms, defaults, onClose, onCreated }: {
@@ -38,10 +45,18 @@ export function NewReservation({ rooms, defaults, onClose, onCreated }: {
 }) {
   const { profile } = useAuth();
   const [roomId, setRoomId] = useState(defaults.roomId);
-  const [day, setDay] = useState(defaults.day);
-  const [start, setStart] = useState(defaults.start);
+  // garantia: o sheet NUNCA abre num horário que já passou — cai para o próximo slot à frente
+  const safeDefaults = (() => {
+    const isPast = new Date(`${defaults.day}T${defaults.start}:00-03:00`).getTime() < Date.now() - 60000;
+    if (!isPast) return { day: defaults.day, start: defaults.start };
+    const next = nextSlotSP();
+    return { day: next.day, start: next.start };
+  })();
+  const [day, setDay] = useState(safeDefaults.day);
+  const [start, setStart] = useState(safeDefaults.start);
   // início + DURAÇÃO no lugar de fim separado — o fim é calculado, nunca inverte
   const [duration, setDuration] = useState(60);
+  const [more, setMore] = useState(false);
   const end = addMinutes(start, duration);
   const [title, setTitle] = useState("");
   const [account, setAccount] = useState(defaults.account ?? "");
@@ -104,35 +119,69 @@ export function NewReservation({ rooms, defaults, onClose, onCreated }: {
             </div>
           </div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
-          <div className="field">
-            <label className="field__label" htmlFor="res-inicio" style={{ display: "block" }}>Início</label>
-            <div className="field__box" style={{ height: 46 }}>
-              <input
-                id="res-inicio"
-                className="field__input"
-                type="time"
-                value={start}
-                onChange={(e) => { setStart(e.target.value); setConflict(null); }}
-                style={{ fontVariantNumeric: "tabular-nums" }}
-              />
-            </div>
-          </div>
-          <div className="field">
-            <span className="field__label" style={{ display: "block" }}>Termina</span>
-            <div className="field__box field__box--tabular" style={{ height: 46 }}>
-              <input className="field__input" value={end} disabled readOnly aria-label="Fim calculado" />
-            </div>
+        <div className="field">
+          <label className="field__label" htmlFor="res-inicio" style={{ display: "block" }}>Início</label>
+          <div className="field__box" style={{ height: 46 }}>
+            <input
+              id="res-inicio"
+              className="field__input"
+              type="time"
+              value={start}
+              onChange={(e) => { setStart(e.target.value); setConflict(null); }}
+              style={{ fontVariantNumeric: "tabular-nums" }}
+            />
           </div>
         </div>
         <div className="field">
           <span className="field__label" style={{ display: "block" }}>Duração</span>
           <div className="segmented" style={{ height: 46 }}>
             {DURATIONS.map((d) => (
-              <button key={d} type="button" className={`segmented__item${duration === d ? " segmented__item--active" : ""}`} onClick={() => { setDuration(d); setConflict(null); }}>
+              <button key={d} type="button" className={`segmented__item${!more && duration === d ? " segmented__item--active" : ""}`} onClick={() => { setDuration(d); setMore(false); setConflict(null); }}>
                 {durationLabel(d)}
               </button>
             ))}
+            <button type="button" className={`segmented__item${more ? " segmented__item--active" : ""}`} onClick={() => setMore(true)}>
+              Mais
+            </button>
+          </div>
+          {more && (
+            <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ display: "flex", gap: 8 }}>
+                {PERIODS.map((p) => {
+                  const active = start === p.start && end === p.end;
+                  return (
+                    <button
+                      key={p.label}
+                      type="button"
+                      className={`alt-chip${active ? " alt-chip--active" : ""}`}
+                      style={{ flex: 1, justifyContent: "center" }}
+                      onClick={() => { setStart(p.start); setDuration(minutesOf(p.end) - minutesOf(p.start)); setConflict(null); }}
+                    >
+                      {p.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="field">
+                <label className="field__label" htmlFor="res-termina" style={{ display: "block" }}>ou termina às</label>
+                <div className="field__box" style={{ height: 46 }}>
+                  <input
+                    id="res-termina"
+                    className="field__input"
+                    type="time"
+                    value={end}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v && minutesOf(v) > minutesOf(start)) { setDuration(minutesOf(v) - minutesOf(start)); setConflict(null); }
+                    }}
+                    style={{ fontVariantNumeric: "tabular-nums" }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+          <div style={{ marginTop: 7, font: "400 11px/1 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-2)" }} data-ends-at>
+            termina às {end} · {durationLabel(duration)}
           </div>
         </div>
 
