@@ -143,7 +143,7 @@ test.describe("fase 2 · mobile", () => {
     await expect(page.locator(".agenda__row")).toHaveCount(10);
   });
 
-  test("F2-10: reserva com data no passado é bloqueada com mensagem", async ({ page }) => {
+  test("F2-10: reserva não aceita passado nem fim antes do início", async ({ page }) => {
     await login(page);
     await page.goto("/salas?novo=1");
     await page.waitForSelector("#res-titulo");
@@ -152,6 +152,18 @@ test.describe("fase 2 · mobile", () => {
     await page.locator("#res-data").fill(ontem);
     await expect(page.getByText("Não é possível reservar um horário no passado.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Confirmar reserva" })).toBeDisabled();
+
+    // fim antes do início: bloqueado com mensagem
+    const amanha = new Date(Date.now() + 86400000).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+    await page.locator("#res-data").fill(amanha);
+    await page.locator("#res-fim").fill("09:00"); // início padrão é 10:00
+    await expect(page.getByText("O fim precisa ser depois do início.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Confirmar reserva" })).toBeDisabled();
+
+    // mudar o início empurra o fim junto — o intervalo nunca fica invertido
+    await page.locator("#res-inicio").fill("14:00");
+    await expect(page.locator("#res-fim")).toHaveValue("15:00");
+    await expect(page.getByRole("button", { name: "Confirmar reserva" })).toBeEnabled();
   });
 
   test("cancelar reserva exige confirmação; colega NÃO cancela reserva alheia", async ({ page }) => {
@@ -187,6 +199,40 @@ test.describe("fase 2 · mobile", () => {
     await expect(page.locator(".reservation-row", { hasText: `Cancelável ${RUN.slice(-5)}` })).toHaveCount(0);
     const { data: final } = await svc.from("reservations").select("cancelled_at").eq("id", resv!.id).single();
     expect(final!.cancelled_at).not.toBeNull();
+  });
+
+  test("sheet fecha deslizando para baixo, como app nativo", async ({ page }) => {
+    await login(page);
+    await page.goto("/cards?novo=1");
+    await page.waitForSelector(".sheet__title");
+    // gesto de arrastar: passa do limiar → fecha
+    await page.evaluate(() => {
+      const el = document.querySelector(".sheet")!;
+      const fire = (type: string, y: number) => {
+        const t = new Touch({ identifier: 1, target: el, clientX: 200, clientY: y });
+        el.dispatchEvent(new TouchEvent(type, { touches: type === "touchend" ? [] : [t], changedTouches: [t], bubbles: true, cancelable: true }));
+      };
+      fire("touchstart", 300);
+      fire("touchmove", 340);
+      fire("touchmove", 460);
+      fire("touchend", 460);
+    });
+    await expect(page.locator(".sheet")).toHaveCount(0);
+
+    // arrasto curto NÃO fecha (volta para o lugar)
+    await page.goto("/alertas?novo=1");
+    await page.waitForSelector(".sheet__title");
+    await page.evaluate(() => {
+      const el = document.querySelector(".sheet")!;
+      const fire = (type: string, y: number) => {
+        const t = new Touch({ identifier: 1, target: el, clientX: 200, clientY: y });
+        el.dispatchEvent(new TouchEvent(type, { touches: type === "touchend" ? [] : [t], changedTouches: [t], bubbles: true, cancelable: true }));
+      };
+      fire("touchstart", 300);
+      fire("touchmove", 330);
+      fire("touchend", 330);
+    });
+    await expect(page.locator(".sheet__title")).toHaveText("Novo alerta de preço");
   });
 
   test("F2-11: trocar senha abre o sheet padrão que desliza de baixo", async ({ page }) => {

@@ -5,6 +5,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
+import { Sheet } from "../components/Sheet";
 import { Card } from "../components/cards";
 import { LineChart, Donut } from "../components/charts";
 import { StatusChip, Banner } from "../components/feedback";
@@ -717,10 +718,7 @@ export default function ClientFile() {
       </header>
 
       {menu && (
-        <>
-          <div className="sheet-scrim" onClick={() => setMenu(false)} />
-          <div className="sheet" role="dialog" aria-label="Ações do cliente">
-            <div className="sheet__handle"><span /></div>
+        <Sheet label="Ações do cliente" onClose={() => setMenu(false)}>
             <div className="sheet__title">{client?.name ?? maskAccount(account)}</div>
             <div className="card" style={{ padding: 0, overflow: "hidden", marginTop: 4 }}>
               {[
@@ -761,8 +759,7 @@ export default function ClientFile() {
             <div className="sheet__footer" style={{ marginTop: 14 }}>
               <Button variant="secondary" block onClick={() => setMenu(false)}>Fechar</Button>
             </div>
-          </div>
-        </>
+        </Sheet>
       )}
 
       <nav className="ficha-tabs" role="tablist">

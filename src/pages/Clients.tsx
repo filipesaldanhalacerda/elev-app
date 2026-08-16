@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
+import { Sheet } from "../components/Sheet";
 import { ClientSearch, type ClientSearchResult } from "../components/ClientSearch";
 import { Avatar } from "../components/Avatar";
 import { Banner } from "../components/feedback";
@@ -235,10 +236,7 @@ export default function Clients() {
       </div>
 
       {filterSheet && (
-        <>
-          <div className="sheet-scrim" onClick={() => setFilterSheet(false)} />
-          <div className="sheet" role="dialog" aria-label="Filtros de clientes">
-            <div className="sheet__handle"><span /></div>
+        <Sheet label="Filtros de clientes" onClose={() => setFilterSheet(false)}>
             <div className="sheet__title">Filtros</div>
             <div className="sheet__fields" style={{ gap: 14 }}>
               <div className="field">
@@ -277,8 +275,7 @@ export default function Clients() {
               <Button variant="secondary" onClick={() => { setFilter("todos"); setSort({ by: "patrimony", asc: false }); }}>Limpar</Button>
               <Button onClick={() => setFilterSheet(false)}>Aplicar</Button>
             </div>
-          </div>
-        </>
+        </Sheet>
       )}
     </MobileShell>
   );

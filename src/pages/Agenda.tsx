@@ -6,8 +6,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
+import { Sheet } from "../components/Sheet";
 import { Button } from "../components/Button";
 import { GoogleLogo } from "../components/GoogleLogo";
+import { hourAfter } from "./Rooms";
 import { supabase } from "../lib/supabase";
 import { formatDate } from "../lib/format";
 import {
@@ -55,10 +57,7 @@ function EventSheet({ editing, onClose, onSaved }: { editing?: GoogleEvent; onCl
   }
 
   return (
-    <>
-      <div className="sheet-scrim" onClick={onClose} />
-      <div className="sheet" role="dialog" aria-label={editing ? "Editar agendamento" : "Novo agendamento"}>
-        <div className="sheet__handle"><span /></div>
+    <Sheet label={editing ? "Editar agendamento" : "Novo agendamento"} onClose={onClose}>
         <div className="sheet__title">{editing ? "Editar agendamento" : "Novo agendamento"}</div>
         <div className="sheet__fields" style={{ gap: 13 }}>
           <div className="field">
@@ -77,7 +76,18 @@ function EventSheet({ editing, onClose, onSaved }: { editing?: GoogleEvent; onCl
             <div className="field">
               <label className="field__label" htmlFor="ag-inicio" style={{ display: "block" }}>Início</label>
               <div className="field__box" style={{ height: 46 }}>
-                <input id="ag-inicio" className="field__input" type="time" value={start} onChange={(e) => setStart(e.target.value)} style={{ fontVariantNumeric: "tabular-nums" }} />
+                <input
+                  id="ag-inicio"
+                  className="field__input"
+                  type="time"
+                  value={start}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setStart(v);
+                    if (v && end <= v) setEnd(hourAfter(v));
+                  }}
+                  style={{ fontVariantNumeric: "tabular-nums" }}
+                />
               </div>
             </div>
           </div>
@@ -114,8 +124,7 @@ function EventSheet({ editing, onClose, onSaved }: { editing?: GoogleEvent; onCl
           <Button variant="secondary" onClick={onClose}>Cancelar</Button>
           <Button disabled={!valid} loading={saving} onClick={save}>{editing ? "Salvar alterações" : "Agendar"}</Button>
         </div>
-      </div>
-    </>
+    </Sheet>
   );
 }
 

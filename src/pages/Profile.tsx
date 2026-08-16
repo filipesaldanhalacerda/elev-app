@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
+import { Sheet } from "../components/Sheet";
 import { Toggle, PasswordField } from "../components/Field";
 import { Toast } from "../components/feedback";
 import { Button } from "../components/Button";
@@ -40,10 +41,7 @@ function ChangePasswordSheet({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <>
-      <div className="sheet-scrim" onClick={onClose} />
-      <div className="sheet" role="dialog" aria-label="Trocar senha">
-        <div className="sheet__handle"><span /></div>
+    <Sheet label="Trocar senha" onClose={onClose}>
         <div className="sheet__title">Trocar senha</div>
         {done ? (
           <div style={{ padding: "8px 0 4px" }}><Toast>Senha trocada.</Toast></div>
@@ -60,8 +58,7 @@ function ChangePasswordSheet({ onClose }: { onClose: () => void }) {
           <Button variant="secondary" onClick={onClose}>Cancelar</Button>
           <Button disabled={!ok || done} loading={saving} onClick={save}>Salvar senha</Button>
         </div>
-      </div>
-    </>
+    </Sheet>
   );
 }
 

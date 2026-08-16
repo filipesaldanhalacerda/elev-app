@@ -5,6 +5,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
+import { Sheet } from "../components/Sheet";
 import { Button } from "../components/Button";
 import { Toggle } from "../components/Field";
 import { useAuth } from "../lib/auth";
@@ -67,10 +68,7 @@ function NewCardSheet({ initialClient = "", onClose, onCreated }: { initialClien
   }
 
   return (
-    <>
-      <div className="sheet-scrim" onClick={onClose} />
-      <div className="sheet" role="dialog" aria-label="Novo card">
-        <div className="sheet__handle"><span /></div>
+    <Sheet label="Novo card" onClose={onClose}>
         <div className="sheet__title">Novo card</div>
         <div className="sheet__fields" style={{ gap: 13 }}>
           <div className="field">
@@ -157,8 +155,7 @@ function NewCardSheet({ initialClient = "", onClose, onCreated }: { initialClien
           <Button variant="secondary" onClick={onClose}>Cancelar</Button>
           <Button disabled={!title.trim() || pastDue} loading={saving} onClick={save}>Criar card</Button>
         </div>
-      </div>
-    </>
+    </Sheet>
   );
 }
 

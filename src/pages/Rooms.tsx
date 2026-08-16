@@ -5,6 +5,7 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
+import { Sheet } from "../components/Sheet";
 import { Button } from "../components/Button";
 import { Banner } from "../components/feedback";
 import { useAuth } from "../lib/auth";
@@ -20,6 +21,11 @@ const HOURS = ["08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "1
 
 const todayISO = () => new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
 const fmtHM = (d: Date) => d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
+/** Uma hora depois de "HH:MM" (limitado a 23:59) — para o fim acompanhar o início. */
+export function hourAfter(hm: string): string {
+  const [h, m] = hm.split(":").map(Number);
+  return h >= 23 ? "23:59" : `${String(h + 1).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
 
 function NewReservation({ rooms, defaults, onClose, onCreated }: {
   rooms: Room[];
@@ -45,9 +51,10 @@ function NewReservation({ rooms, defaults, onClose, onCreated }: {
   }, []);
 
   const roomName = rooms.find((r) => r.id === roomId)?.name ?? "";
-  // F2-10: reserva não pode ficar no passado.
+  // F2-10: reserva não pode ficar no passado, e o fim precisa ser depois do início.
   const past = new Date(`${day}T${start}:00-03:00`).getTime() < Date.now() - 60000;
-  const canConfirm = title.trim().length > 0 && !past && (!conflict || chosen !== null);
+  const badRange = end <= start;
+  const canConfirm = title.trim().length > 0 && !past && !badRange && (!conflict || chosen !== null);
 
   async function confirm() {
     setSaving(true);
@@ -79,10 +86,7 @@ function NewReservation({ rooms, defaults, onClose, onCreated }: {
   }
 
   return (
-    <>
-      <div className="sheet-scrim" onClick={onClose} />
-      <div className="sheet" role="dialog" aria-label="Nova reserva">
-        <div className="sheet__handle"><span /></div>
+    <Sheet label="Nova reserva" onClose={onClose}>
         <div className="sheet__title">Nova reserva</div>
         <div className="sheet__fields" style={{ gap: 13 }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
@@ -108,10 +112,23 @@ function NewReservation({ rooms, defaults, onClose, onCreated }: {
           <div className="field">
             <label className="field__label" htmlFor="res-inicio" style={{ display: "block" }}>Início</label>
             <div className="field__box" style={{ height: 46 }}>
-              <input id="res-inicio" className="field__input" type="time" value={start} onChange={(e) => { setStart(e.target.value); setConflict(null); }} style={{ fontVariantNumeric: "tabular-nums" }} />
+              <input
+                id="res-inicio"
+                className="field__input"
+                type="time"
+                value={start}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setStart(v);
+                  // o fim acompanha: nunca deixa o intervalo invertido por causa do início
+                  if (v && end <= v) setEnd(hourAfter(v));
+                  setConflict(null);
+                }}
+                style={{ fontVariantNumeric: "tabular-nums" }}
+              />
             </div>
           </div>
-          <div className="field">
+          <div className={`field${badRange ? " field--error" : ""}`}>
             <label className="field__label" htmlFor="res-fim" style={{ display: "block" }}>Fim</label>
             <div className="field__box" style={{ height: 46 }}>
               <input id="res-fim" className="field__input" type="time" value={end} onChange={(e) => { setEnd(e.target.value); setConflict(null); }} style={{ fontVariantNumeric: "tabular-nums" }} />
@@ -169,11 +186,11 @@ function NewReservation({ rooms, defaults, onClose, onCreated }: {
           </div>
         </div>
 
-        {past && (
+        {(past || badRange) && (
           <div className="field--error">
             <div className="field__help">
               <i className="ph ph-warning-circle" aria-hidden />
-              Não é possível reservar um horário no passado.
+              {past ? "Não é possível reservar um horário no passado." : "O fim precisa ser depois do início."}
             </div>
           </div>
         )}
@@ -185,8 +202,7 @@ function NewReservation({ rooms, defaults, onClose, onCreated }: {
             Confirmar reserva
           </Button>
         </div>
-      </div>
-    </>
+    </Sheet>
   );
 }
 
@@ -342,10 +358,7 @@ export default function Rooms() {
       )}
 
       {cancelling && (
-        <>
-          <div className="sheet-scrim" onClick={() => setCancelling(null)} />
-          <div className="sheet" role="dialog" aria-label="Cancelar reserva">
-            <div className="sheet__handle"><span /></div>
+        <Sheet label="Cancelar reserva" onClose={() => setCancelling(null)}>
             <div className="sheet__title">Cancelar esta reserva?</div>
             {(() => {
               const p = parsePeriod(cancelling.period);
@@ -379,8 +392,7 @@ export default function Rooms() {
                 Cancelar reserva
               </Button>
             </div>
-          </div>
-        </>
+        </Sheet>
       )}
     </MobileShell>
   );

@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
+import { Sheet } from "../components/Sheet";
 import { Button } from "../components/Button";
 import { AlertCard } from "../components/cards";
 import { usePagedList, InfiniteSentinel } from "../components/infinite";
@@ -116,10 +117,7 @@ function AlertSheet({ initialTicker, initialClient = "", editing, onClose, onSav
 
   const title = editing ? "Editar alerta de preço" : "Novo alerta de preço";
   return (
-    <>
-      <div className="sheet-scrim" onClick={onClose} />
-      <div className="sheet" role="dialog" aria-label={title}>
-        <div className="sheet__handle"><span /></div>
+    <Sheet label={title} onClose={onClose}>
         <div className="sheet__title">{title}</div>
         <div className="sheet__fields">
           <div className="field">
@@ -187,8 +185,7 @@ function AlertSheet({ initialTicker, initialClient = "", editing, onClose, onSav
           <Button variant="secondary" onClick={onClose}>Cancelar</Button>
           <Button disabled={!valid} loading={saving} onClick={save}>{editing ? "Salvar alterações" : "Criar alerta"}</Button>
         </div>
-      </div>
-    </>
+    </Sheet>
   );
 }
 
