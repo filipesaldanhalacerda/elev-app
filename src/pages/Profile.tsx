@@ -11,6 +11,7 @@ import { getThemePreference, setThemePreference, type ThemePreference } from "..
 import { subscribeDevice } from "../lib/push";
 import { initials, displayAdvisorCode } from "../lib/format";
 import { useGoogleStatus, connectGoogle, disconnectGoogle } from "../lib/google";
+import { GoogleLogo } from "../components/GoogleLogo";
 
 const PUSH_ITEMS: { key: string; label: string; description?: string }[] = [
   { key: "alerta_preco", label: "Alerta de preço atingido" },
@@ -176,28 +177,23 @@ export default function Profile() {
 
         <div className="card" style={{ padding: 0, overflow: "hidden" }}>
           <div style={{ minHeight: 56, display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderBottom: "1px solid var(--divider)" }}>
-            <span style={{ width: 30, height: 30, borderRadius: 9, background: "var(--chip-pill-bg)", color: "var(--field-label)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
-              <i className="ph ph-google-logo" style={{ fontSize: 15 }} aria-hidden />
+            <span style={{ width: 30, height: 30, borderRadius: 9, background: "var(--chip-pill-bg)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+              <GoogleLogo size={15} />
             </span>
             <span style={{ flex: 1, minWidth: 0 }}>
               <span style={{ display: "block", font: "400 13px/1.35 var(--font-sans)", color: "var(--text-1)" }}>Conta Google</span>
               <span style={{ display: "block", marginTop: 2, font: "400 10.5px/1.4 var(--font-sans)", color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {google?.connected ? `${google.email} · agenda sincronizada` : "conecte para sincronizar a agenda"}
+                {google?.connected
+                  ? `${google.email} · agenda sincronizada${google.mode === "simulado" ? " (demonstração)" : ""}`
+                  : google?.mode === "simulado"
+                    ? "modo demonstração — a conexão real chega com as credenciais Google"
+                    : "conecte para sincronizar a agenda"}
               </span>
             </span>
             <Button variant="secondary" style={{ height: 44, fontSize: 12 }} loading={googleBusy} onClick={toggleGoogle}>
               {google?.connected ? "Desconectar" : "Conectar"}
             </Button>
           </div>
-          {google?.connected && (
-            <button type="button" style={{ width: "100%", minHeight: 56, display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderBottom: "1px solid var(--divider)", textAlign: "left" }} onClick={() => navigate("/agenda")}>
-              <span style={{ width: 30, height: 30, borderRadius: 9, background: "var(--chip-pill-bg)", color: "var(--field-label)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
-                <i className="ph ph-calendar-blank" style={{ fontSize: 15 }} aria-hidden />
-              </span>
-              <span style={{ flex: 1, font: "400 13px/1.35 var(--font-sans)", color: "var(--text-1)" }}>Abrir agenda</span>
-              <i className="ph ph-caret-right" style={{ fontSize: 16, color: "var(--icon-decor)" }} aria-hidden />
-            </button>
-          )}
           <button type="button" style={{ width: "100%", minHeight: 56, display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderBottom: "1px solid var(--divider)", textAlign: "left" }} onClick={() => setChangingPw(true)}>
             <span style={{ width: 30, height: 30, borderRadius: 9, background: "var(--chip-pill-bg)", color: "var(--field-label)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
               <i className="ph ph-lock-key" style={{ fontSize: 15 }} aria-hidden />

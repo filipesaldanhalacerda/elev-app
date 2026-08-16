@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
 import { Button } from "../components/Button";
+import { GoogleLogo } from "../components/GoogleLogo";
 import { supabase } from "../lib/supabase";
 import { formatDate } from "../lib/format";
 import {
@@ -162,7 +163,7 @@ export default function Agenda() {
       <div style={{ flex: 1, padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 14 }}>
         {status && !status.connected && (
           <div className="empty-state" style={{ borderRadius: 14 }}>
-            <span className="empty-state__icon"><i className="ph ph-google-logo" aria-hidden /></span>
+            <span className="empty-state__icon"><GoogleLogo size={20} /></span>
             <span className="empty-state__title">Conta Google desconectada</span>
             <span className="empty-state__desc">Conecte a sua conta no Perfil para agendar e sincronizar compromissos.</span>
             <span className="empty-state__action">

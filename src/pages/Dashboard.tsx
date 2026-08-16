@@ -307,6 +307,10 @@ export default function Dashboard() {
                   <i className="ph ph-door-open" aria-hidden />
                   <span>Sala</span>
                 </button>
+                <button type="button" className="quick-action" onClick={() => navigate("/agenda")}>
+                  <i className="ph ph-calendar-blank" aria-hidden />
+                  <span>Agenda</span>
+                </button>
               </div>
             )}
           </div>

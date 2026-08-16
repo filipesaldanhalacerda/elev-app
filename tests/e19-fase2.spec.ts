@@ -164,10 +164,11 @@ test.describe("fase 2 · mobile", () => {
     await page.locator(".sheet").getByRole("button", { name: "Cancelar", exact: true }).click();
   });
 
-  test("F2-12: home tem ações rápidas de card, alerta e sala", async ({ page }) => {
+  test("F2-12: home tem ações rápidas de card, alerta, sala e agenda", async ({ page }) => {
     await login(page);
     const quick = page.locator("[data-home-quick-actions]");
     await expect(quick.getByText("Novo card")).toBeVisible();
+    await expect(quick.getByText("Agenda")).toBeVisible();
     await quick.getByText("Alerta").click();
     await page.waitForURL("**/alertas?novo=1");
     await expect(page.locator(".sheet__title")).toHaveText("Novo alerta de preço");
@@ -197,8 +198,11 @@ test.describe("fase 2 · mobile", () => {
     await login(page);
     await page.goto("/perfil");
     await page.getByRole("button", { name: "Conectar" }).first().click();
-    await expect(page.getByText(/agenda sincronizada/)).toBeVisible();
-    await page.getByRole("button", { name: "Abrir agenda" }).click();
+    // no modo demonstração isso fica EXPLÍCITO para o PO
+    await expect(page.getByText(/agenda sincronizada \(demonstração\)/)).toBeVisible();
+    // a Agenda vive nas ações rápidas da home
+    await page.goto("/");
+    await page.locator("[data-home-quick-actions]").getByText("Agenda").click();
     await page.waitForURL("**/agenda");
     await expect(page.locator(".page-header__title")).toHaveText("Agenda");
 
@@ -228,9 +232,12 @@ test.describe("fase 2 · mobile", () => {
     await page.getByRole("button", { name: "Salvar alterações" }).click();
     await expect(page.locator(".reservation-row", { hasText: `Reunião editada ${RUN}` })).toBeVisible();
 
-    // reserva de sala entra na agenda
+    // reserva de sala entra na agenda (sala exclusiva deste teste para não colidir com outras execuções)
+    const svc = serviceClient();
+    await svc.from("rooms").upsert({ name: `Sync ${RUN.slice(-6)}`, capacity: 4, resources: [] }, { onConflict: "name" });
     await page.goto("/salas?novo=1");
     await page.waitForSelector("#res-titulo");
+    await page.locator("#res-sala").selectOption({ label: `Sync ${RUN.slice(-6)}` });
     await page.locator("#res-data").fill(amanha);
     await page.locator("#res-inicio").fill("15:00");
     await page.locator("#res-fim").fill("16:00");
