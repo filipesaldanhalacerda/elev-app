@@ -382,7 +382,7 @@ test.describe("fase 2 · mobile", () => {
       input.dispatchEvent(new Event("input", { bubbles: true }));
     }, target);
     const monthName = new Date(`${target}T12:00:00-03:00`).toLocaleDateString("pt-BR", { month: "long", timeZone: "America/Sao_Paulo" });
-    await expect(page.getByRole("button", { name: "Escolher mês e ano" })).toContainText(new RegExp(monthName, "i"));
+    await expect(page.locator("[data-agenda-month]")).toContainText(new RegExp(monthName, "i"));
     // a faixa de dias reancora no dia escolhido
     await expect(page.locator(`[data-agenda-day="${target}"]`)).toHaveClass(/cal-day--active/);
     // atalho de volta para hoje

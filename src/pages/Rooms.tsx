@@ -2,7 +2,7 @@
  * Tela 14 · Sala de reunião — quadros "14 Sala de reuniao claro" e
  * "14 Reserva conflito escuro" (#3f). Conflito impedido com alternativas em um toque.
  */
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
 import { Sheet } from "../components/Sheet";
@@ -17,7 +17,6 @@ import {
 import { formatDate, addMinutes, durationLabel, nextSlotSP } from "../lib/format";
 import { syncReservationToAgenda, unsyncReservation } from "../lib/google";
 
-const HOURS = ["08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"];
 
 const todayISO = () => new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
 const fmtHM = (d: Date) => d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
@@ -219,7 +218,6 @@ export default function Rooms() {
   const { rooms } = useRooms();
   const [params] = useSearchParams();
   const [day, setDay] = useState(todayISO());
-  const dateInputRef = useRef<HTMLInputElement>(null);
   const [roomId, setRoomId] = useState<string | null>(null);
   const activeRoom = roomId ?? rooms?.find((r) => r.is_active)?.id ?? null;
   const { rows: reservations, reload: reloadDay } = useDayReservations(activeRoom, day);
@@ -236,13 +234,25 @@ export default function Rooms() {
   // reserva nova começando no meio dela (10:00–11:15 e 11:15–12:00) — as duas aparecem.
   const slots = useMemo(() => {
     const list = reservations ?? [];
-    return HOURS.map((hour) => {
+    // janela padrão 08–17, mas estica para mostrar reservas fora dela
+    let first = 8;
+    let last = 18;
+    const zero = new Date(`${day}T00:00:00-03:00`).getTime();
+    for (const r of list) {
+      const p = parsePeriod(r.period);
+      first = Math.min(first, Math.floor((p.start.getTime() - zero) / 3600000));
+      last = Math.max(last, Math.ceil((p.end.getTime() - zero) / 3600000));
+    }
+    first = Math.max(0, first);
+    last = Math.min(24, last);
+    const hoursList = Array.from({ length: last - first }, (_, i) => `${String(first + i).padStart(2, "0")}:00`);
+    return hoursList.map((hour) => {
       const hourStart = new Date(`${day}T${hour}:00-03:00`).getTime();
       const hourEnd = hourStart + 3600000;
       const overlapping = list
         .map((r) => ({ r, p: parsePeriod(r.period) }))
         .filter(({ p }) => p.start.getTime() < hourEnd && p.end.getTime() > hourStart);
-      const startsHere = overlapping.filter(({ p }) => p.start.getTime() >= hourStart || hour === HOURS[0]);
+      const startsHere = overlapping.filter(({ p }) => p.start.getTime() >= hourStart || hour === hoursList[0]);
       const continuing = overlapping.filter((x) => !startsHere.includes(x));
       const contUntil = continuing.length > 0 ? fmtHM(new Date(Math.max(...continuing.map(({ p }) => p.end.getTime())))) : null;
       return {
@@ -277,17 +287,8 @@ export default function Rooms() {
 
       <div className="room-toolbar">
         <div className="room-toolbar__row">
-          <button
-            type="button"
-            className="date-chip"
-            style={{ position: "relative" }}
-            onClick={() => {
-              const el = dateInputRef.current;
-              if (!el) return;
-              if (typeof el.showPicker === "function") el.showPicker();
-              else el.click();
-            }}
-          >
+          {/* iOS/Android: input de data invisível por cima do chip — abre o seletor nativo */}
+          <span className="date-chip" style={{ position: "relative" }}>
             <i className="ph ph-calendar-blank" aria-hidden />
             {day === todayISO()
               ? `hoje, ${formatDate(day).slice(0, 5)}`
@@ -296,15 +297,13 @@ export default function Rooms() {
                 : formatDate(day)}
             <i className="ph ph-caret-down" aria-hidden />
             <input
-              ref={dateInputRef}
               type="date"
               aria-label="Escolher data da agenda"
               value={day}
               onChange={(e) => e.target.value && setDay(e.target.value)}
-              style={{ position: "absolute", inset: 0, opacity: 0, pointerEvents: "none" }}
-              tabIndex={-1}
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer" }}
             />
-          </button>
+          </span>
           {(rooms ?? []).map((r) => (
             <button key={r.id} type="button" className={`room-chip${activeRoom === r.id ? " room-chip--active" : ""}`} onClick={() => setRoomId(r.id)}>
               {r.name} · {r.capacity} lug.

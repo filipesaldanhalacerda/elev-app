@@ -99,6 +99,7 @@ test.describe("tela 14 · fluxo (f)", () => {
     // formulário 10:00–11:00 na Ipê (colide com o Onboarding do Bruno)
     await expect(page.getByText("Nova reserva")).toBeVisible();
     await page.locator("#res-data").fill(tomorrow);
+    await page.locator("#res-inicio").fill("10:00"); // colide com o Onboarding do Bruno
     await page.getByLabel("Título").fill("Revisão trimestral");
     const confirmar = page.getByRole("button", { name: "Confirmar reserva" });
     await confirmar.click();

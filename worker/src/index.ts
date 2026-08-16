@@ -689,15 +689,23 @@ app.post("/api/cron/daily-reminder", async (c) => {
   const users = await fetchAll<{ id: string; push_prefs: Record<string, boolean> }>((from, to) =>
     svc.from("profiles").select("id, push_prefs").eq("is_active", true).order("id").range(from, to)
   );
+  // UMA varredura de cards para todos (agrupada em memória) — nunca uma consulta por usuário
+  const allCards = await fetchAll<{ assignee: string; title: string; due_at: string | null }>((from, to) =>
+    svc
+      .from("cards")
+      .select("assignee, title, due_at")
+      .neq("status", "concluido")
+      .eq("daily_reminder", true)
+      .order("due_at", { ascending: true, nullsFirst: false })
+      .range(from, to)
+  );
+  const byAssignee = new Map<string, { title: string; due_at: string | null }[]>();
+  for (const k of allCards) byAssignee.set(k.assignee, [...(byAssignee.get(k.assignee) ?? []), k]);
+
   let sent = 0;
   for (const u of users) {
     if ((u.push_prefs as Record<string, boolean>).lembrete_diario === false) continue;
-    const { data: cards } = await svc
-      .from("cards")
-      .select("title, due_at, status, daily_reminder")
-      .eq("assignee", u.id)
-      .neq("status", "concluido");
-    const withReminder = (cards ?? []).filter((k) => k.daily_reminder);
+    const withReminder = byAssignee.get(u.id) ?? [];
     if (withReminder.length === 0) continue;
     const overdue = withReminder.filter((k) => k.due_at && new Date(k.due_at).getTime() < Date.now());
     const first = overdue[0] ?? withReminder[0];

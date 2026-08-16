@@ -3,7 +3,7 @@
  * (page-header, sheet, campos #2c, linhas de reserva, estados vazios).
  * Criar, editar e cancelar agendamentos sincronizados com a conta Google conectada.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
 import { Sheet } from "../components/Sheet";
@@ -194,7 +194,6 @@ export default function Agenda() {
   const [selected, setSelected] = useState(todaySP());
   // âncora da faixa de dias — muda quando o mês/ano é escolhido pelo cabeçalho
   const [stripStart, setStripStart] = useState(todaySP());
-  const monthPickerRef = useRef<HTMLInputElement>(null);
   const [newDefaults, setNewDefaults] = useState<{ day: string; start: string } | null>(null);
 
   function jumpTo(iso: string) {
@@ -240,10 +239,18 @@ export default function Agenda() {
   // grade do dia PROPORCIONAL: um bloco por compromisso, com a altura da duração
   // (30 min ocupa meia linha; 2h atravessa duas linhas em um bloco só).
   const HOUR_H = 48;
-  const DAY_START = 8;
-  const DAY_END = 20;
-  const gridHours = Array.from({ length: DAY_END - DAY_START }, (_, i) => DAY_START + i);
   const dayZero = new Date(`${selected}T00:00:00-03:00`).getTime();
+  // janela padrão 08–20, mas a grade ESTICA para mostrar qualquer compromisso fora dela
+  const [DAY_START, DAY_END] = (() => {
+    let s = 8;
+    let e = 20;
+    for (const ev of dayEvents) {
+      s = Math.min(s, Math.floor((new Date(ev.starts_at).getTime() - dayZero) / 3600000));
+      e = Math.max(e, Math.ceil((new Date(ev.ends_at).getTime() - dayZero) / 3600000));
+    }
+    return [Math.max(0, s), Math.min(24, e)];
+  })();
+  const gridHours = Array.from({ length: DAY_END - DAY_START }, (_, i) => DAY_START + i);
   const positioned = (() => {
     const items = dayEvents
       .map((e) => {
@@ -302,29 +309,22 @@ export default function Agenda() {
             {/* mês + faixa de dias */}
             <div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "0 2px 10px" }}>
-                <button
-                  type="button"
+                {/* iOS/Android: o input de data fica invisível POR CIMA — o toque cai nele
+                    e abre o seletor nativo do aparelho, sem depender de showPicker() */}
+                <span
+                  data-agenda-month
                   style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 5, font: "600 15px/1.2 var(--font-sans)", letterSpacing: "-0.01em", color: "var(--text-1)" }}
-                  aria-label="Escolher mês e ano"
-                  onClick={() => {
-                    const el = monthPickerRef.current;
-                    if (!el) return;
-                    if (typeof el.showPicker === "function") el.showPicker();
-                    else el.click();
-                  }}
                 >
                   {monthLabel}
                   <i className="ph ph-caret-down" style={{ fontSize: 13, color: "var(--text-2)" }} aria-hidden />
                   <input
-                    ref={monthPickerRef}
                     type="date"
                     aria-label="Data da agenda"
                     value={selected}
                     onChange={(e) => e.target.value && jumpTo(e.target.value)}
-                    style={{ position: "absolute", inset: 0, opacity: 0, pointerEvents: "none" }}
-                    tabIndex={-1}
+                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer" }}
                   />
-                </button>
+                </span>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                   {selected !== todaySP() && (
                     <button
@@ -382,7 +382,7 @@ export default function Agenda() {
                   </div>
                 ))}
                 <div className="cal-grid__row" style={{ top: (DAY_END - DAY_START) * HOUR_H, height: 0 }}>
-                  <span className="cal-grid__hour">{DAY_END}:00</span>
+                  <span className="cal-grid__hour">{DAY_END === 24 ? "00:00" : `${String(DAY_END).padStart(2, "0")}:00`}</span>
                   <span className="cal-grid__cell" style={{ borderTopStyle: "solid" }} />
                 </div>
                 {positioned.map(({ e, lane, lanes, top, height }) => {
