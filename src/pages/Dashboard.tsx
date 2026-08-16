@@ -198,33 +198,56 @@ export default function Dashboard() {
 
         {/* ticker de mercado */}
         {loading || !data ? (
-          <div style={{ flex: "none", display: "flex", gap: 10, padding: "2px 16px 6px", overflow: "hidden" }}>
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="skeleton" style={{ width: 122, height: 68, borderRadius: 14, flex: "none" }} />
-            ))}
+          <div style={{ flex: "none", padding: "2px 16px 6px" }}>
+            <div className="card" style={{ padding: "4px 14px" }}>
+              {[0, 1, 2].map((i) => (
+                <div key={i} style={{ height: 44, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, borderTop: i > 0 ? "1px solid var(--divider)" : undefined }}>
+                  <div className="skeleton" style={{ width: 64, height: 11 }} />
+                  <div className="skeleton" style={{ width: 132, height: 11 }} />
+                </div>
+              ))}
+            </div>
           </div>
         ) : quotesData && !quotesData.paused && ticker.length > 0 ? (
-          <div style={{ flex: "none", display: "flex", gap: 10, padding: "2px 16px 6px", overflowX: "auto", scrollbarWidth: "none" }} data-ticker>
-            {ticker.map((q) => (
-              <button
-                key={q.symbol}
-                type="button"
-                onClick={() => navigate("/cotacoes")}
-                className={`card${flashClass(q.symbol)}`}
-                style={{ flex: "none", minWidth: 122, padding: "10px 12px", textAlign: "left", display: "flex", flexDirection: "column", gap: 6 }}
-              >
-                <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                  <span className="ticker-strip__code">{q.symbol}</span>
-                  <i className={q.changePct >= 0 ? "icon-trending-up" : "icon-trending-down"} style={{ fontSize: 14, color: q.changePct >= 0 ? "var(--market-up)" : "var(--market-down)" }} aria-hidden />
-                </span>
-                <span style={{ font: "600 15.5px/1 var(--font-sans)", fontVariantNumeric: "tabular-nums", letterSpacing: "-0.01em", color: "var(--text-1)" }}>
-                  {formatQuotePrice(q)}
-                </span>
-                <span className={q.changePct >= 0 ? "market-up" : "market-down"} style={{ font: "600 11.5px/1 var(--font-sans)", fontVariantNumeric: "tabular-nums" }}>
-                  {formatQuoteChange(q)}
-                </span>
-              </button>
-            ))}
+          <div style={{ flex: "none", padding: "2px 16px 6px" }} data-ticker>
+            <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+              {ticker.map((q, i) => {
+                const up = q.changePct >= 0;
+                return (
+                  <button
+                    key={q.symbol}
+                    type="button"
+                    onClick={() => navigate("/cotacoes")}
+                    className={flashClass(q.symbol) || undefined}
+                    style={{ width: "100%", height: 46, display: "flex", alignItems: "center", gap: 12, padding: "0 14px", textAlign: "left", borderTop: i > 0 ? "1px solid var(--divider)" : undefined }}
+                  >
+                    <span className="ticker-strip__code" style={{ flex: 1, minWidth: 0 }}>{q.symbol}</span>
+                    <span style={{ font: "600 14px/1 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-1)" }}>
+                      {formatQuotePrice(q)}
+                    </span>
+                    <span
+                      style={{
+                        flex: "none",
+                        minWidth: 74,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 4,
+                        height: 26,
+                        padding: "0 9px",
+                        borderRadius: 8,
+                        background: `color-mix(in srgb, ${up ? "var(--market-up)" : "var(--market-down)"} 12%, transparent)`,
+                        color: up ? "var(--market-up)" : "var(--market-down)",
+                        font: "600 12px/1 var(--font-sans)",
+                        fontVariantNumeric: "tabular-nums",
+                      }}
+                    >
+                      {formatQuoteChange(q)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         ) : null}
 
