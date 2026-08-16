@@ -59,6 +59,15 @@ svg {
   box-shadow: var(--focus-ring);
 }
 
+/* Campos compostos: o anel de foco pertence à CAIXA (.field__box etc., via :focus-within),
+   nunca ao input interno — senão o anel aparece duplicado por dentro do campo. */
+.field__box :focus-visible,
+.csearch__box :focus-visible,
+.admin-search :focus-visible,
+.tl-composer :focus-visible {
+  box-shadow: none;
+}
+
 /* Escala tipográfica (01-fundacoes.md) */
 .type-display { font-size: 28px; line-height: 32px; font-weight: 600; letter-spacing: -0.02em; color: var(--text-1); }
 .type-title   { font-size: 20px; line-height: 26px; font-weight: 600; letter-spacing: -0.01em; color: var(--text-1); }
