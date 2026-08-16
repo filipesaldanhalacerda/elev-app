@@ -174,22 +174,42 @@ export default function Agenda() {
   const monthLabel = monthRaw.charAt(0).toUpperCase() + monthRaw.slice(1); // "Agosto de 2026"
   const dayEvents = (eventsByDay.get(selected) ?? []).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
 
-  // linha do tempo do dia: mesmo componente da agenda de salas (horas 08–19)
-  const HOURS = Array.from({ length: 12 }, (_, i) => `${String(8 + i).padStart(2, "0")}:00`);
-  const slots = HOURS.map((hour) => {
-    const hourStart = new Date(`${selected}T${hour}:00-03:00`).getTime();
-    const hourEnd = hourStart + 3600000;
-    const overlapping = dayEvents
-      .map((e) => ({ e, s: new Date(e.starts_at).getTime(), f: new Date(e.ends_at).getTime() }))
-      .filter(({ s, f }) => s < hourEnd && f > hourStart);
-    const startsHere = overlapping.filter(({ s }) => s >= hourStart || hour === HOURS[0]);
-    const continuing = overlapping.filter((x) => !startsHere.includes(x));
-    return {
-      hour,
-      contUntil: continuing.length > 0 ? hm(new Date(Math.max(...continuing.map(({ f }) => f))).toISOString()) : null,
-      blocks: startsHere.map(({ e }) => e),
-    };
-  });
+  // grade do dia PROPORCIONAL: um bloco por compromisso, com a altura da duração
+  // (30 min ocupa meia linha; 2h atravessa duas linhas em um bloco só).
+  const HOUR_H = 48;
+  const DAY_START = 8;
+  const DAY_END = 20;
+  const gridHours = Array.from({ length: DAY_END - DAY_START }, (_, i) => DAY_START + i);
+  const dayZero = new Date(`${selected}T00:00:00-03:00`).getTime();
+  const positioned = (() => {
+    const items = dayEvents
+      .map((e) => {
+        const s = Math.max((new Date(e.starts_at).getTime() - dayZero) / 60000, DAY_START * 60);
+        const f = Math.min((new Date(e.ends_at).getTime() - dayZero) / 60000, DAY_END * 60);
+        return { e, s, f };
+      })
+      .filter(({ s, f }) => f > s)
+      .sort((a, b) => a.s - b.s);
+    // pistas para sobreposição: eventos simultâneos dividem a largura
+    const laneEnds: number[] = [];
+    const withLane = items.map((it) => {
+      let lane = laneEnds.findIndex((end) => end <= it.s);
+      if (lane === -1) {
+        lane = laneEnds.length;
+        laneEnds.push(it.f);
+      } else {
+        laneEnds[lane] = it.f;
+      }
+      return { ...it, lane };
+    });
+    const lanes = Math.max(1, laneEnds.length);
+    return withLane.map((it) => ({
+      ...it,
+      lanes,
+      top: ((it.s - DAY_START * 60) / 60) * HOUR_H + 1,
+      height: Math.max(22, ((it.f - it.s) / 60) * HOUR_H - 3),
+    }));
+  })();
 
   return (
     <MobileShell active="inicio">
@@ -242,47 +262,53 @@ export default function Agenda() {
               </div>
             </div>
 
-            {/* linha do tempo do dia — toque no horário livre agenda na hora */}
-            <div className="card" style={{ padding: 14 }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                {slots.map((slot) => (
-                  <div key={slot.hour} className="agenda__row">
-                    <span className="agenda__hour">{slot.hour}</span>
-                    {slot.contUntil === null && slot.blocks.length === 0 ? (
-                      <button
-                        type="button"
-                        className="agenda__free agenda__free--action"
-                        aria-label={`Agendar às ${slot.hour}`}
-                        onClick={() => { setNewDefaults({ day: selected, start: slot.hour }); setEditing(undefined); setSheet(true); }}
-                      >
-                        livre
-                      </button>
-                    ) : (
-                      <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>
-                        {slot.contUntil && <span className="agenda__cont">compromisso até {slot.contUntil}</span>}
-                        {slot.blocks.map((e) => (
-                          <button
-                            key={e.id}
-                            type="button"
-                            className="agenda__block"
-                            style={{ minHeight: 46, textAlign: "left", width: "100%" }}
-                            aria-label={`Agendamento ${e.title}`}
-                            onClick={() => setActions(e)}
-                          >
-                            <span className="agenda__block-title">
-                              {e.reservation_id && <i className="ph ph-door-open" style={{ fontSize: 12, marginRight: 5 }} aria-hidden />}
-                              {e.title}
-                            </span>
-                            <span className="agenda__block-meta">
-                              {hm(e.starts_at)}–{hm(e.ends_at)}
-                              {eventClientName(e) ? ` · ${eventClientName(e)}` : ""}
-                            </span>
-                          </button>
-                        ))}
-                      </span>
-                    )}
+            {/* grade do dia — o bloco tem a altura da duração; toque no vazio agenda naquela hora */}
+            <div className="card" style={{ padding: "16px 14px" }}>
+              <div className="cal-grid" style={{ height: (DAY_END - DAY_START) * HOUR_H + 1 }}>
+                {gridHours.map((h) => (
+                  <div key={h} className="cal-grid__row" style={{ top: (h - DAY_START) * HOUR_H, height: HOUR_H }}>
+                    <span className="cal-grid__hour">{String(h).padStart(2, "0")}:00</span>
+                    <button
+                      type="button"
+                      className="cal-grid__cell"
+                      aria-label={`Agendar às ${String(h).padStart(2, "0")}:00`}
+                      onClick={() => { setNewDefaults({ day: selected, start: `${String(h).padStart(2, "0")}:00` }); setEditing(undefined); setSheet(true); }}
+                    />
                   </div>
                 ))}
+                <div className="cal-grid__row" style={{ top: (DAY_END - DAY_START) * HOUR_H, height: 0 }}>
+                  <span className="cal-grid__hour">{DAY_END}:00</span>
+                  <span className="cal-grid__cell" style={{ borderTopStyle: "solid" }} />
+                </div>
+                {positioned.map(({ e, lane, lanes, top, height }) => {
+                  const compact = height < 40;
+                  const laneWidth = lanes > 1 ? `calc((100% - 62px) / ${lanes})` : undefined;
+                  return (
+                    <button
+                      key={e.id}
+                      type="button"
+                      className={`cal-event${compact ? " cal-event--compact" : ""}`}
+                      style={{
+                        top,
+                        height,
+                        ...(lanes > 1
+                          ? { left: `calc(58px + (100% - 62px) / ${lanes} * ${lane})`, width: laneWidth, right: "auto" }
+                          : {}),
+                      }}
+                      aria-label={`Agendamento ${e.title}`}
+                      onClick={() => setActions(e)}
+                    >
+                      <span className="cal-event__title">
+                        {e.reservation_id && <i className="ph ph-door-open" style={{ fontSize: 11, marginRight: 4 }} aria-hidden />}
+                        {e.title}
+                      </span>
+                      <span className="cal-event__meta">
+                        {hm(e.starts_at)}–{hm(e.ends_at)}
+                        {!compact && eventClientName(e) ? ` · ${eventClientName(e)}` : ""}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
