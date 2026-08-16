@@ -53,8 +53,14 @@ export function useCards(scope: "meus" | "criados", userId: string | undefined) 
 export function useAllCards() {
   const [rows, setRows] = useState<CardRow[] | null>(null);
   const load = async () => {
-    const { data } = await supabase.from("cards").select(SELECT).order("sort_order").order("created_at");
-    setRows((data ?? []).map(mapRow));
+    // varredura paginada: o PostgREST corta em 1000 linhas e tarefas novas sumiriam
+    const all: Record<string, unknown>[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data } = await supabase.from("cards").select(SELECT).order("sort_order").order("created_at").range(from, from + 999);
+      all.push(...((data ?? []) as Record<string, unknown>[]));
+      if (!data || data.length < 1000) break;
+    }
+    setRows(all.map(mapRow));
   };
   useEffect(() => {
     void load();

@@ -170,3 +170,24 @@ interface RadioProps {
 export function Radio({ checked, onSelect, label }: RadioProps) {
   return <button type="button" role="radio" aria-checked={checked} aria-label={label} className="radio" onClick={onSelect} />;
 }
+
+/** Contador de limite (padrão do sistema): aparece quando o texto se aproxima
+ *  do máximo (80%) e avisa quando o limite é atingido. */
+export function CharLimit({ value, max }: { value: string; max: number }) {
+  if (value.length < Math.ceil(max * 0.8)) return null;
+  const atLimit = value.length >= max;
+  return (
+    <div
+      style={{
+        marginTop: 4,
+        textAlign: "right",
+        font: "400 10.5px/1 var(--font-sans)",
+        fontVariantNumeric: "tabular-nums",
+        color: atLimit ? "var(--danger)" : "var(--text-3)",
+      }}
+      aria-live="polite"
+    >
+      {value.length}/{max}{atLimit ? " · limite atingido" : ""}
+    </div>
+  );
+}

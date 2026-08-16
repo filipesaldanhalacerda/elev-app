@@ -8,7 +8,7 @@ import { MobileShell } from "../components/MobileShell";
 import { Sheet } from "../components/Sheet";
 import { DetailSheet } from "../components/DetailSheet";
 import { Button } from "../components/Button";
-import { Toggle } from "../components/Field";
+import { Toggle, CharLimit } from "../components/Field";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabase";
 import { useCards, createCard, updateCard, deleteCard, advanceCard, isOverdue, type CardRow, type CardStatus } from "../lib/cards";
@@ -18,14 +18,12 @@ const HINT_KEY = "elev.cards.dica-dispensada";
 
 function cardMeta(card: CardRow, myId: string): string {
   const parts: string[] = [];
+  if (card.status === "concluido" && card.completed_at) parts.push(`concluída às ${formatTime(card.completed_at)}`);
+  else if (card.due_at) parts.push(isOverdue(card) ? `venceu ${formatDate(card.due_at).slice(0, 5)} às ${formatTime(card.due_at)}` : `às ${formatTime(card.due_at)}`);
   if (card.client_name) parts.push(card.client_name);
-  if (card.due_at) {
-    const d = new Date(card.due_at);
-    const today = new Date().toDateString() === d.toDateString();
-    parts.push(isOverdue(card) ? `venceu ${formatDate(card.due_at).slice(0, 5)}` : today ? `hoje ${formatTime(card.due_at)}` : formatDate(card.due_at).slice(0, 5));
-  }
-  if (card.creator !== myId && card.creator_name) parts.push(`delegado por ${card.creator_name.split(" ")[0]}`);
-  if (card.creator === myId && card.assignee !== myId && card.assignee_name) parts.push(`com ${card.assignee_name.split(" ")[0]}`);
+  if (card.priority === "alta" && card.status !== "concluido") parts.push("prioridade alta");
+  if (card.description) parts.push("com descrição");
+  if (card.creator !== myId && card.creator_name) parts.push(`delegada por ${card.creator_name.split(" ")[0]}`);
   return parts.join(" · ");
 }
 
@@ -87,8 +85,9 @@ function NewCardSheet({ initialClient = "", editing, onClose, onCreated }: { ini
           <div className="field">
             <label className="field__label" htmlFor="card-titulo" style={{ display: "block" }}>Título</label>
             <div className="field__box" style={{ height: 46 }}>
-              <input id="card-titulo" className="field__input" maxLength={80} autoFocus={!editing} value={title} onChange={(e) => setTitle(e.target.value)} />
+              <input id="card-titulo" className="field__input" maxLength={60} autoFocus={!editing} value={title} onChange={(e) => setTitle(e.target.value)} />
             </div>
+            <CharLimit value={title} max={60} />
           </div>
           <div className="field">
             <label className="field__label" htmlFor="card-descricao" style={{ display: "block" }}>Descrição · opcional</label>
@@ -96,9 +95,11 @@ function NewCardSheet({ initialClient = "", editing, onClose, onCreated }: { ini
               id="card-descricao"
               className="field__textarea"
               placeholder="O que precisa ser feito nesta tarefa?"
+              maxLength={240}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
+            <CharLimit value={description} max={240} />
           </div>
           <div className="field">
             <label className="field__label" htmlFor="card-cliente" style={{ display: "block" }}>Cliente · opcional</label>
@@ -175,6 +176,35 @@ export default function Cards() {
   const { rows, reload } = useCards("meus", profile?.id);
   const touchStart = useRef<number | null>(null);
 
+  const groups = useMemo(() => {
+    const todayISO = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+    const tomorrowISO = new Date(Date.now() + 86400000).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+    const list = (rows ?? []).filter((r) => r.status === status);
+    const label = (card: CardRow): { key: string; title: string; order: number } => {
+      if (status === "concluido") {
+        const d = card.completed_at ? spDayOf(card.completed_at) : "";
+        if (d === todayISO) return { key: d, title: `CONCLUÍDAS HOJE · ${formatDate(d).slice(0, 5)}`, order: 0 };
+        return { key: d || "z", title: d ? formatDate(d) : "SEM DATA", order: d ? 1 : 9 };
+      }
+      if (!card.due_at) return { key: "z-sem", title: "SEM PRAZO", order: 8 };
+      const d = spDayOf(card.due_at);
+      if (isOverdue(card)) return { key: "a-atraso", title: "ATRASADAS", order: 0 };
+      if (d === todayISO) return { key: d, title: `HOJE · ${formatDate(d).slice(0, 5)}`, order: 1 };
+      if (d === tomorrowISO) return { key: d, title: `AMANHÃ · ${formatDate(d).slice(0, 5)}`, order: 2 };
+      return { key: d, title: formatDate(d), order: 3 };
+    };
+    const map = new Map<string, { title: string; order: number; items: CardRow[] }>();
+    for (const card of list) {
+      const g = label(card);
+      const cur = map.get(g.key) ?? { title: g.title, order: g.order, items: [] };
+      cur.items.push(card);
+      map.set(g.key, cur);
+    }
+    return [...map.entries()]
+      .sort((a, b) => a[1].order - b[1].order || a[0].localeCompare(b[0]) * (status === "concluido" ? -1 : 1))
+      .map(([, g]) => g);
+  }, [rows, status]);
+
   const byStatus = useMemo(() => {
     const map: Record<CardStatus, CardRow[]> = { pendente: [], andamento: [], concluido: [] };
     for (const c of rows ?? []) map[c.status].push(c);
@@ -220,11 +250,19 @@ export default function Cards() {
           </div>
         )}
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {rows !== null && byStatus[status].map((card) => (
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {rows !== null && groups.map((group) => (
+          <div key={group.title}>
+            <div style={{ font: "600 11px/1 var(--font-mono)", letterSpacing: "0.04em", textTransform: "uppercase", color: group.title === "ATRASADAS" ? "var(--danger)" : "var(--text-2)", padding: "0 2px 8px" }}>
+              {group.title} <span style={{ color: "var(--text-3)" }}>· {group.items.length}</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {group.items.map((card) => (
             <div
               key={card.id}
               className="card-row"
+              style={card.priority === "alta" && card.status !== "concluido" ? { boxShadow: "var(--elev-2)", borderColor: "var(--border-strong)" } : undefined}
+              data-priority={card.priority}
               onTouchStart={(e) => (touchStart.current = e.touches[0].clientX)}
               onTouchEnd={(e) => {
                 // deslizar para a direita = atalho para avançar status
@@ -257,6 +295,9 @@ export default function Cards() {
                 </button>
               )}
             </div>
+            ))}
+            </div>
+          </div>
           ))}
         </div>
 

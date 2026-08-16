@@ -118,7 +118,7 @@ test.describe("tela 13 · lista por status (mobile)", () => {
     await login(page, RAFA.email, RAFA.password);
     await page.goto("/cards");
     const row = page.locator(".card-row", { hasText: `Ligar sobre COE ${RUN}` });
-    await expect(row.locator(".card-row__meta")).toContainText(`delegado por Bruno${RUN.slice(-3)}`);
+    await expect(row.locator(".card-row__meta")).toContainText(`delegada por Bruno${RUN.slice(-3)}`);
 
     // notificação de card delegado criada pelo trigger
     const { data: notif } = await svc.from("notifications").select("title, body").eq("user_id", rafaId).eq("kind", "card_delegado");

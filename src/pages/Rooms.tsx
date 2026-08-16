@@ -8,6 +8,7 @@ import { MobileShell } from "../components/MobileShell";
 import { Sheet } from "../components/Sheet";
 import { DetailSheet } from "../components/DetailSheet";
 import { Button } from "../components/Button";
+import { CharLimit } from "../components/Field";
 import { Banner } from "../components/feedback";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabase";
@@ -169,8 +170,9 @@ function NewReservation({ rooms, defaults, onClose, onCreated }: {
         <div className="field">
           <label className="field__label" htmlFor="res-titulo" style={{ display: "block" }}>Título</label>
           <div className="field__box" style={{ height: 46 }}>
-            <input id="res-titulo" className="field__input" value={title} onChange={(e) => setTitle(e.target.value)} />
+            <input id="res-titulo" className="field__input" maxLength={60} value={title} onChange={(e) => setTitle(e.target.value)} />
           </div>
+          <CharLimit value={title} max={60} />
         </div>
         <div className="field">
           <label className="field__label" htmlFor="res-cliente" style={{ display: "block" }}>Cliente · opcional</label>

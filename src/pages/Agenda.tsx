@@ -9,6 +9,7 @@ import { MobileShell } from "../components/MobileShell";
 import { Sheet } from "../components/Sheet";
 import { DetailSheet } from "../components/DetailSheet";
 import { Button } from "../components/Button";
+import { CharLimit } from "../components/Field";
 import { GoogleCalendarLogo } from "../components/GoogleLogo";
 import { addMinutes, durationLabel, nextSlotSP } from "../lib/format";
 import { supabase } from "../lib/supabase";
@@ -80,8 +81,9 @@ function EventSheet({ editing, initialDay, initialStart, onClose, onSaved }: { e
           <div className="field">
             <label className="field__label" htmlFor="ag-titulo" style={{ display: "block" }}>Título</label>
             <div className="field__box" style={{ height: 46 }}>
-              <input id="ag-titulo" className="field__input" autoFocus={!editing} value={title} onChange={(e) => setTitle(e.target.value)} />
+              <input id="ag-titulo" className="field__input" maxLength={60} autoFocus={!editing} value={title} onChange={(e) => setTitle(e.target.value)} />
             </div>
+            <CharLimit value={title} max={60} />
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
             <div className={`field${past ? " field--error" : ""}`}>

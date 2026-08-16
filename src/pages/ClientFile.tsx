@@ -10,6 +10,7 @@ import { Card } from "../components/cards";
 import { LineChart, Donut } from "../components/charts";
 import { StatusChip, Banner } from "../components/feedback";
 import { Button } from "../components/Button";
+import { CharLimit } from "../components/Field";
 import {
   useClient, usePatrimonySeries, usePortfolio, useMovements, useClientExtras, useTimeline,
   saveClientExtra, addTimelineNote, type Position,
@@ -461,7 +462,8 @@ function ExtrasTab({ account, advisorCode }: { account: string; advisorCode: str
         </div>
         {editing === "notes" ? (
           <>
-            <textarea className="field__textarea" style={{ marginTop: 10 }} autoFocus value={value} onChange={(e) => setValue(e.target.value)} aria-label="Observações" />
+            <textarea className="field__textarea" style={{ marginTop: 10 }} maxLength={500} autoFocus value={value} onChange={(e) => setValue(e.target.value)} aria-label="Observações" />
+            <CharLimit value={value} max={500} />
             <div className="extras-edit__buttons">
               <Button variant="secondary" onClick={() => setEditing(null)}>Cancelar</Button>
               <Button loading={saving} onClick={save}>Salvar</Button>
