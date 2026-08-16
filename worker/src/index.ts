@@ -775,11 +775,70 @@ app.post("/api/google/disconnect", async (c) => {
   return c.json({ ok: true });
 });
 
+/** Quem conectou DEPOIS de já usar a agenda local: compromissos futuros ainda não
+ *  enviados (google_id nulo) sobem para o Google automaticamente — padrão de mercado,
+ *  sem botão manual. Idempotente: cada evento sobe uma única vez. */
+async function pushLocalToGoogle(env: Env, svc: SupabaseClient, userId: string) {
+  const { data: acc } = await svc.from("google_accounts").select("mode").eq("user_id", userId).maybeSingle();
+  if (!acc || acc.mode !== "real") return;
+  const { data: pending } = await svc
+    .from("google_events")
+    .select("id, title, starts_at, ends_at")
+    .eq("user_id", userId)
+    .eq("status", "confirmado")
+    .is("google_id", null)
+    .gte("ends_at", new Date().toISOString());
+  for (const ev of pending ?? []) {
+    const googleId = await pushToGoogle(env, svc, userId, { kind: "create", title: ev.title, startsAt: ev.starts_at, endsAt: ev.ends_at });
+    if (googleId) await svc.from("google_events").update({ google_id: googleId }).eq("id", ev.id);
+  }
+}
+
+/** Espelha a agenda REAL do Google para dentro do Elev (importação de mão dupla). */
+async function importFromGoogle(env: Env, svc: SupabaseClient, userId: string) {
+  const timeMin = new Date(Date.now() - 86400000).toISOString();
+  const timeMax = new Date(Date.now() + 60 * 86400000).toISOString();
+  const remote = await listFromGoogle(env, svc, userId, timeMin, timeMax);
+  if (remote === null) return; // simulado ou sem token: nada a importar
+  const { data: locals } = await svc
+    .from("google_events")
+    .select("id, google_id, title, starts_at, ends_at, status")
+    .eq("user_id", userId)
+    .gte("starts_at", timeMin)
+    .lte("starts_at", timeMax);
+  const byGoogleId = new Map((locals ?? []).filter((l) => l.google_id).map((l) => [String(l.google_id), l]));
+  const remoteIds = new Set(remote.map((r) => r.googleId));
+  for (const r of remote) {
+    const local = byGoogleId.get(r.googleId);
+    if (!local) {
+      await svc.from("google_events").insert({
+        user_id: userId, google_id: r.googleId, title: r.title,
+        starts_at: r.startsAt, ends_at: r.endsAt, origin: "google",
+      });
+    } else if (
+      local.title !== r.title ||
+      new Date(local.starts_at).getTime() !== new Date(r.startsAt).getTime() ||
+      new Date(local.ends_at).getTime() !== new Date(r.endsAt).getTime() ||
+      local.status !== "confirmado"
+    ) {
+      await svc.from("google_events").update({ title: r.title, starts_at: r.startsAt, ends_at: r.endsAt, status: "confirmado" }).eq("id", local.id);
+    }
+  }
+  // sumiu do Google dentro da janela → cancelado também aqui
+  for (const l of locals ?? []) {
+    if (l.google_id && l.status === "confirmado" && !remoteIds.has(String(l.google_id))) {
+      await svc.from("google_events").update({ status: "cancelado" }).eq("id", l.id);
+    }
+  }
+}
+
 app.get("/api/google/events", async (c) => {
   const auth = await requireUser(c);
   if (!auth) return c.json({ error: "Não autenticado." }, 401);
-  // melhor esforço: espelha a agenda real do Google (quando conectada)
+  // melhor esforço: primeiro empurra o que ainda não subiu (conexão tardia),
+  // depois espelha a agenda real do Google (quando conectada)
   try {
+    await pushLocalToGoogle(c.env, auth.svc, auth.userId);
     await importFromGoogle(c.env, auth.svc, auth.userId);
   } catch {
     // sem rede/token: a lista local continua respondendo
