@@ -179,24 +179,24 @@ export default function Cards() {
   const groups = useMemo(() => {
     const todayISO = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
     const tomorrowISO = new Date(Date.now() + 86400000).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+    const yesterdayISO = new Date(Date.now() - 86400000).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
     const list = (rows ?? []).filter((r) => r.status === status);
-    const label = (card: CardRow): { key: string; title: string; order: number } => {
+    // cabeçalho ÚNICO por data em todas as abas: "Hoje — 16/08/2026", "15/08/2026"…
+    const dateTitle = (d: string) =>
+      d === todayISO ? `Hoje — ${formatDate(d)}` : d === tomorrowISO ? `Amanhã — ${formatDate(d)}` : d === yesterdayISO ? `Ontem — ${formatDate(d)}` : formatDate(d);
+    const label = (card: CardRow): { key: string; title: string; order: number; danger?: boolean } => {
       if (status === "concluido") {
         const d = card.completed_at ? spDayOf(card.completed_at) : "";
-        if (d === todayISO) return { key: d, title: `CONCLUÍDAS HOJE · ${formatDate(d).slice(0, 5)}`, order: 0 };
-        return { key: d || "z", title: d ? formatDate(d) : "SEM DATA", order: d ? 1 : 9 };
+        return { key: d || "z", title: d ? dateTitle(d) : "Sem data", order: d ? 0 : 9 };
       }
-      if (!card.due_at) return { key: "z-sem", title: "SEM PRAZO", order: 8 };
+      if (!card.due_at) return { key: "zz-sem", title: "Sem prazo", order: 9 };
       const d = spDayOf(card.due_at);
-      if (isOverdue(card)) return { key: "a-atraso", title: "ATRASADAS", order: 0 };
-      if (d === todayISO) return { key: d, title: `HOJE · ${formatDate(d).slice(0, 5)}`, order: 1 };
-      if (d === tomorrowISO) return { key: d, title: `AMANHÃ · ${formatDate(d).slice(0, 5)}`, order: 2 };
-      return { key: d, title: formatDate(d), order: 3 };
+      return { key: d, title: dateTitle(d), order: 0, danger: isOverdue(card) && d < todayISO };
     };
-    const map = new Map<string, { title: string; order: number; items: CardRow[] }>();
+    const map = new Map<string, { title: string; order: number; danger?: boolean; items: CardRow[] }>();
     for (const card of list) {
       const g = label(card);
-      const cur = map.get(g.key) ?? { title: g.title, order: g.order, items: [] };
+      const cur = map.get(g.key) ?? { title: g.title, order: g.order, danger: g.danger, items: [] };
       cur.items.push(card);
       map.set(g.key, cur);
     }
@@ -253,8 +253,10 @@ export default function Cards() {
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {rows !== null && groups.map((group) => (
           <div key={group.title}>
-            <div style={{ font: "600 11px/1 var(--font-mono)", letterSpacing: "0.04em", textTransform: "uppercase", color: group.title === "ATRASADAS" ? "var(--danger)" : "var(--text-2)", padding: "0 2px 8px" }}>
-              {group.title} <span style={{ color: "var(--text-3)" }}>· {group.items.length}</span>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 6, font: "600 11px/1 var(--font-mono)", letterSpacing: "0.04em", textTransform: "uppercase", fontVariantNumeric: "tabular-nums", color: group.danger ? "var(--danger)" : "var(--text-2)", padding: "0 2px 8px" }}>
+              {group.title}
+              <span style={{ color: "var(--text-3)", fontWeight: 400 }}>· {group.items.length}</span>
+              {group.danger && <span style={{ marginLeft: "auto", color: "var(--danger)", fontWeight: 400 }}>em atraso</span>}
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {group.items.map((card) => (
