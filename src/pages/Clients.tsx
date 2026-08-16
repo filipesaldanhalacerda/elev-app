@@ -104,12 +104,6 @@ export default function Clients() {
     <MobileShell active="clientes">
       <header className="page-header">
         <span className="page-header__title">Clientes</span>
-        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {data && <span className="page-header__count">{formatInt(data.total)}</span>}
-          <button type="button" className="page-header__action" aria-label="Filtrar" onClick={() => setFilterSheet(true)}>
-            <i className="icon-funnel" aria-hidden />
-          </button>
-        </span>
       </header>
 
       <div style={{ padding: "4px 16px 12px" }}>
@@ -123,17 +117,17 @@ export default function Clients() {
           onSelect={(r) => openClient((r as ClientSearchResult & { raw: string }).raw)}
         />
         {!error && (
-          <div className="filter-row" style={{ marginTop: 10 }}>
-            {(["todos", "ativos", "inativos"] as const).map((f) => (
-              <button key={f} type="button" className={`filter-chip${filter === f ? " filter-chip--active" : ""}`} onClick={() => setFilter(f)}>
-                {f === "todos" ? "Todos" : f === "ativos" ? "Ativos" : "Inativos"}
-              </button>
-            ))}
-            <button type="button" className="filter-sort" onClick={() => setFilterSheet(true)}>
-              <i className={`${sort.asc ? "icon-arrow-up" : "icon-arrow-down"}`} aria-hidden />
-              {sort.by === "patrimony" ? "Patrimônio" : sort.by === "name" ? "Nome" : "Variação"}
-            </button>
-          </div>
+          <button type="button" className="filter-sort" data-open-filters style={{ marginTop: 10, width: "100%", height: 44, justifyContent: "space-between", gap: 8, paddingInline: 14 }} onClick={() => setFilterSheet(true)}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+              <i className="icon-sliders-horizontal" aria-hidden />
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                Filtros · {filter === "todos" ? "Todos" : filter === "ativos" ? "Ativos" : "Inativos"} · {sort.by === "patrimony" ? "Patrimônio" : sort.by === "name" ? "Nome" : "Variação"}
+              </span>
+            </span>
+            {data && (
+              <span className="page-header__count" style={{ flex: "none", display: "inline-flex", alignItems: "center", padding: "4px 10px", borderRadius: 999, background: "var(--chip-pill-bg)", font: "600 12px/1 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-body)" }}>{formatInt(data.total)}</span>
+            )}
+          </button>
         )}
       </div>
 

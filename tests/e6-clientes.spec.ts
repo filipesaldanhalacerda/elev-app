@@ -92,8 +92,10 @@ emAmbosTemas("tela 05 · lista de clientes", () => {
     await expect(page.locator(".client-row", { hasText: "Cliente Secreto Do B" })).toHaveCount(0);
     await expect(page.locator(".page-header__count")).toHaveText("2");
 
-    // filtro Inativos
-    await page.getByRole("button", { name: "Inativos" }).click();
+    // filtro Inativos (pelo sheet de Filtros)
+    await page.locator("[data-open-filters]").click();
+    await page.getByRole("dialog", { name: "Filtros de clientes" }).getByRole("button", { name: "Inativos" }).click();
+    await page.getByRole("button", { name: "Aplicar" }).click();
     await expect(page.locator(".client-row")).toHaveCount(1);
     await expect(page.locator(".client-row__name")).toHaveText("Carlos Bertrand");
   });

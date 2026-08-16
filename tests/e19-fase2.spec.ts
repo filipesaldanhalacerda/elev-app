@@ -301,12 +301,12 @@ test.describe("fase 2 · mobile", () => {
     await login(page);
     await page.goto("/clientes");
     await page.waitForSelector(".client-row");
-    await page.getByRole("button", { name: "Filtrar" }).click();
+    await page.locator("[data-open-filters]").click();
     const sheet = page.getByRole("dialog", { name: "Filtros de clientes" });
     await sheet.getByRole("button", { name: "Nome" }).click();
     await sheet.getByRole("button", { name: "Menor primeiro" }).click();
     await sheet.getByRole("button", { name: "Aplicar" }).click();
-    await expect(page.locator(".filter-sort")).toContainText("Nome");
+    await expect(page.locator("[data-open-filters]")).toContainText("Nome");
     // A→Z: Ana vem antes de Zulmira
     await expect(page.locator(".client-row").first()).toContainText("Ana Bertoldi");
   });
