@@ -77,7 +77,7 @@ function NewReservation({ rooms, defaults, onClose, onCreated }: {
         </span>
       </header>
       <div style={{ flex: 1, padding: "16px 20px 0", display: "flex", flexDirection: "column", gap: 13, background: "var(--bg)" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
           <div className="field">
             <label className="field__label" htmlFor="res-sala" style={{ display: "block" }}>Sala</label>
             <div className="field__box" style={{ height: 46 }}>
@@ -96,7 +96,7 @@ function NewReservation({ rooms, defaults, onClose, onCreated }: {
             </div>
           </div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
           <div className="field">
             <label className="field__label" htmlFor="res-inicio" style={{ display: "block" }}>Início</label>
             <div className="field__box" style={{ height: 46 }}>

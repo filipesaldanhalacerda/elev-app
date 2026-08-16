@@ -107,6 +107,71 @@ test("alertas automáticos: vencimento 30d, movimentação relevante e saldo par
   expect(after!.length).toBe(before);
 });
 
+test("editar alerta pelo lápis: sheet pré-preenchido e alteração salva", async ({ page }) => {
+  const svc = serviceClient();
+  await svc.from("alerts").insert({ owner: advisorId, ticker: "ITUB4", direction: "alta", target_price: 40, created_price: 33 });
+  await login(page);
+  await page.goto("/alertas");
+  const card = page.locator(".card", { hasText: "ITUB4" }).first();
+  await card.getByRole("button", { name: "Editar alerta de ITUB4" }).click();
+  const sheet = page.getByRole("dialog", { name: "Editar alerta de preço" });
+  await expect(sheet.getByLabel("Ativo")).toHaveValue("ITUB4");
+  await expect(sheet.getByLabel("Preço-alvo")).toHaveValue("40,00");
+  await sheet.getByLabel("Preço-alvo").fill("45,50");
+  await sheet.getByRole("button", { name: "Salvar alterações" }).click();
+  await expect(page.locator(".card", { hasText: "ITUB4" }).first().locator(".alert-card__target")).toContainText("alvo R$ 45,50");
+  const { data } = await svc.from("alerts").select("target_price").eq("owner", advisorId).eq("ticker", "ITUB4").single();
+  expect(data!.target_price).toBe(45.5);
+});
+
+test("disparado fica só no histórico e a busca rápida filtra as duas abas", async ({ page }) => {
+  const svc = serviceClient();
+  await svc.from("alerts").insert({ owner: advisorId, ticker: "BBAS3", direction: "baixa", target_price: 20, created_price: 28, status: "disparado", triggered_at: new Date().toISOString(), triggered_price: 20 });
+  await login(page);
+  await page.goto("/alertas");
+  await expect(page.locator(".alert-card__ticker").first()).toBeVisible();
+  // disparado NUNCA aparece na aba de ativos
+  await expect(page.locator(".card", { hasText: "BBAS3" })).toHaveCount(0);
+
+  // busca nos ativos: só o ativo procurado fica na lista
+  await page.getByLabel("Buscar alerta por ativo").fill("ITUB");
+  await expect(page.locator(".alert-card__ticker")).toHaveCount(1);
+  await expect(page.locator(".alert-card__ticker")).toHaveText("ITUB4");
+
+  // a mesma busca vale no histórico
+  await page.getByLabel("Buscar alerta por ativo").fill("BBAS");
+  await page.getByRole("tab", { name: "Histórico" }).click();
+  await expect(page.locator(".triggered-row")).toHaveCount(1);
+  await expect(page.locator(".triggered-row__title")).toContainText("BBAS3 atingiu R$ 20,00");
+
+  // limpar volta a lista completa (VALE3 do fluxo (c) + BBAS3)
+  await page.getByRole("button", { name: "Limpar busca" }).click();
+  await expect(page.locator(".triggered-row")).toHaveCount(2);
+});
+
+test("rolagem infinita: a lista pagina e carrega mais ao rolar", async ({ page }) => {
+  const svc = serviceClient();
+  const bulk = Array.from({ length: 30 }, (_, i) => ({
+    owner: advisorId,
+    ticker: `PAG${String(i).padStart(2, "0")}`,
+    direction: "alta" as const,
+    target_price: 10 + i,
+    created_price: 5,
+    status: "ativo" as const,
+  }));
+  await svc.from("alerts").insert(bulk);
+  await login(page);
+  await page.goto("/alertas");
+  await expect(page.locator(".alert-card__ticker").first()).toBeVisible();
+  // primeira página tem exatamente o tamanho da página (25)
+  await expect(page.locator(".alert-card__ticker")).toHaveCount(25);
+  // rolar até a sentinela carrega a página seguinte
+  await page.locator("[data-infinite-sentinel]").scrollIntoViewIfNeeded();
+  await expect(async () => {
+    expect(await page.locator(".alert-card__ticker").count()).toBeGreaterThan(25);
+  }).toPass();
+});
+
 test("cancelar alerta pelo ícone de proibido", async ({ page }) => {
   const svc = serviceClient();
   await svc.from("alerts").insert({ owner: advisorId, ticker: "HGLG11", direction: "baixa", target_price: 1, created_price: 158 });

@@ -1,12 +1,14 @@
 /**
  * Tela 12 · Central de alertas — quadros "12 Alertas claro" e "12 Novo alerta escuro" (#3e).
- * Alertas de preço com direção, progresso até o alvo, histórico e sheet de criação.
+ * Alertas de preço com direção, progresso até o alvo, histórico e sheet de criação/edição.
+ * Listas paginadas com rolagem infinita (components/infinite) e busca rápida por ativo.
  */
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
 import { Button } from "../components/Button";
 import { AlertCard } from "../components/cards";
+import { usePagedList, InfiniteSentinel } from "../components/infinite";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 import { useQuoteDetail, formatQuotePrice, type Quote } from "../lib/quotes";
@@ -28,25 +30,24 @@ interface AlertRow {
   client_name?: string | null;
 }
 
-function useAlerts() {
-  const [rows, setRows] = useState<AlertRow[] | null>(null);
-  const load = async () => {
-    const { data } = await supabase
-      .from("alerts")
-      .select("*, clients(name)")
-      .neq("status", "cancelado")
-      .order("created_at", { ascending: false });
-    setRows(
-      (data ?? []).map((r) => ({
-        ...(r as AlertRow),
-        client_name: ((r as { clients?: { name?: string } | { name?: string }[] }).clients as { name?: string } | null)?.name ?? null,
-      }))
-    );
-  };
-  useEffect(() => {
-    void load();
-  }, []);
-  return { rows, reload: load };
+function mapRows(data: unknown[] | null): AlertRow[] {
+  return (data ?? []).map((r) => ({
+    ...(r as AlertRow),
+    client_name: ((r as { clients?: { name?: string } | { name?: string }[] }).clients as { name?: string } | null)?.name ?? null,
+  }));
+}
+
+function useAlertList(status: "ativo" | "disparado", search: string) {
+  return usePagedList<AlertRow>(
+    async (from, to) => {
+      let q = supabase.from("alerts").select("*, clients(name)", { count: "exact" }).eq("status", status);
+      if (search.trim()) q = q.ilike("ticker", `%${search.trim()}%`);
+      q = status === "ativo" ? q.order("created_at", { ascending: false }) : q.order("triggered_at", { ascending: false, nullsFirst: false });
+      const { data, count } = await q.range(from, to);
+      return { rows: mapRows(data), total: count };
+    },
+    [status, search]
+  );
 }
 
 function progressInfo(a: AlertRow, quote: Quote | undefined) {
@@ -59,13 +60,17 @@ function progressInfo(a: AlertRow, quote: Quote | undefined) {
   return { price, remainingPct: Number(remainingPct.toFixed(1)), progress: Math.max(0.04, done) };
 }
 
-function NewAlertSheet({ initialTicker, onClose, onCreated }: { initialTicker: string; onClose: () => void; onCreated: () => void }) {
+function moneyText(n: number | null): string {
+  return n === null ? "" : n.toFixed(2).replace(".", ",");
+}
+
+function AlertSheet({ initialTicker, editing, onClose, onSaved }: { initialTicker: string; editing?: AlertRow; onClose: () => void; onSaved: () => void }) {
   const { profile } = useAuth();
-  const [ticker, setTicker] = useState(initialTicker);
-  const [direction, setDirection] = useState<"alta" | "baixa">("alta");
-  const [target, setTarget] = useState("");
-  const [dayPct, setDayPct] = useState("");
-  const [client, setClient] = useState<string>("");
+  const [ticker, setTicker] = useState(editing?.ticker ?? initialTicker);
+  const [direction, setDirection] = useState<"alta" | "baixa">(editing?.direction ?? "alta");
+  const [target, setTarget] = useState(editing ? moneyText(editing.target_price) : "");
+  const [dayPct, setDayPct] = useState(editing?.target_day_pct != null ? String(editing.target_day_pct).replace(".", ",") : "");
+  const [client, setClient] = useState<string>(editing?.account_code ?? "");
   const [clients, setClients] = useState<{ account_code: string; name: string | null }[]>([]);
   const [saving, setSaving] = useState(false);
   const detail = useQuoteDetail(ticker.length >= 4 ? ticker.toUpperCase() : null);
@@ -83,30 +88,39 @@ function NewAlertSheet({ initialTicker, onClose, onCreated }: { initialTicker: s
   const dayPctNum = Number(dayPct.replace(",", "."));
   const valid = ticker.trim().length >= 4 && ((target && targetNum > 0) || (dayPct && dayPctNum > 0));
 
-  async function create() {
+  async function save() {
     setSaving(true);
-    const { error } = await supabase.from("alerts").insert({
-      owner: profile!.id,
+    const values = {
       ticker: ticker.trim().toUpperCase(),
       direction,
       target_price: target ? targetNum : null,
       target_day_pct: dayPct && !target ? dayPctNum : null,
       account_code: client || null,
-      created_price: detail?.quote?.price ?? null,
-    });
+    };
+    const { error } = editing
+      ? await supabase
+          .from("alerts")
+          .update(
+            editing.ticker === values.ticker
+              ? values
+              : { ...values, created_price: detail?.quote?.price ?? null }
+          )
+          .eq("id", editing.id)
+      : await supabase.from("alerts").insert({ ...values, owner: profile!.id, created_price: detail?.quote?.price ?? null });
     setSaving(false);
     if (!error) {
-      onCreated();
+      onSaved();
       onClose();
     }
   }
 
+  const title = editing ? "Editar alerta de preço" : "Novo alerta de preço";
   return (
     <>
       <div className="sheet-scrim" onClick={onClose} />
-      <div className="sheet" role="dialog" aria-label="Novo alerta de preço">
+      <div className="sheet" role="dialog" aria-label={title}>
         <div className="sheet__handle"><span /></div>
-        <div className="sheet__title">Novo alerta de preço</div>
+        <div className="sheet__title">{title}</div>
         <div className="sheet__fields">
           <div className="field">
             <label className="field__label" htmlFor="alerta-ativo" style={{ display: "block" }}>Ativo</label>
@@ -126,12 +140,12 @@ function NewAlertSheet({ initialTicker, onClose, onCreated }: { initialTicker: s
               </button>
             </div>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.3fr) minmax(0, 1fr)", gap: 10 }}>
             <div className="field">
               <label className="field__label" htmlFor="alerta-alvo" style={{ display: "block" }}>Preço-alvo</label>
               <div className="field__box">
                 <span className="field__prefix">R$</span>
-                <input id="alerta-alvo" className="field__input field__money" inputMode="decimal" autoFocus value={target} onChange={(e) => { setTarget(e.target.value); if (e.target.value) setDayPct(""); }} />
+                <input id="alerta-alvo" className="field__input field__money" inputMode="decimal" autoFocus={!editing} value={target} onChange={(e) => { setTarget(e.target.value); if (e.target.value) setDayPct(""); }} />
               </div>
             </div>
             <div className="field">
@@ -171,7 +185,7 @@ function NewAlertSheet({ initialTicker, onClose, onCreated }: { initialTicker: s
 
         <div className="sheet__footer">
           <Button variant="secondary" onClick={onClose}>Cancelar</Button>
-          <Button disabled={!valid} loading={saving} onClick={create}>Criar alerta</Button>
+          <Button disabled={!valid} loading={saving} onClick={save}>{editing ? "Salvar alterações" : "Criar alerta"}</Button>
         </div>
       </div>
     </>
@@ -180,39 +194,53 @@ function NewAlertSheet({ initialTicker, onClose, onCreated }: { initialTicker: s
 
 export default function Alerts() {
   const [params] = useSearchParams();
-  const { rows, reload } = useAlerts();
   const [tab, setTab] = useState<"ativos" | "historico">("ativos");
   const [sheet, setSheet] = useState(params.get("novo") !== null);
+  const [editing, setEditing] = useState<AlertRow | undefined>(undefined);
   const [quotes, setQuotes] = useState<Map<string, Quote>>(new Map());
 
-  const active = useMemo(() => (rows ?? []).filter((r) => r.status === "ativo"), [rows]);
-  const triggered = useMemo(() => (rows ?? []).filter((r) => r.status === "disparado"), [rows]);
-  const recentTriggered = triggered.filter((t) => t.triggered_at && Date.now() - new Date(t.triggered_at).getTime() < 86400000);
-
+  // busca rápida por ativo, com debounce, vale para as duas abas
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
   useEffect(() => {
-    const symbols = [...new Set(active.map((a) => a.ticker))];
-    if (symbols.length === 0) return;
-    workerFetch(`/api/quotes?symbols=${symbols.join(",")}`)
+    const t = setTimeout(() => setSearch(searchInput), 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  const activeList = useAlertList("ativo", search);
+  const historyList = useAlertList("disparado", search);
+  const active = activeList.items;
+  const triggered = historyList.items;
+
+  const activeSymbols = useMemo(() => [...new Set((active ?? []).map((a) => a.ticker))], [active]);
+  useEffect(() => {
+    if (activeSymbols.length === 0) return;
+    workerFetch(`/api/quotes?symbols=${activeSymbols.join(",")}`)
       .then((body) => setQuotes(new Map(((body as { quotes: Quote[] }).quotes ?? []).map((q) => [q.symbol, q]))))
       .catch(() => {});
-  }, [active.length]);
+  }, [activeSymbols.join(",")]);
 
   async function cancel(id: string) {
     await supabase.from("alerts").update({ status: "cancelado" }).eq("id", id);
-    await reload();
+    await activeList.reload();
+  }
+
+  function reloadAll() {
+    void activeList.reload();
+    void historyList.reload();
   }
 
   return (
     <MobileShell active="inicio">
       <header className="page-header" style={{ background: "var(--surface)" }}>
         <span className="page-header__title">Alertas</span>
-        <Button icon="ph-plus" style={{ height: 40, fontSize: 12.5 }} onClick={() => setSheet(true)}>
+        <Button icon="ph-plus" style={{ height: 40, fontSize: 12.5 }} onClick={() => { setEditing(undefined); setSheet(true); }}>
           Novo
         </Button>
       </header>
       <nav className="tabs-42" role="tablist">
         <button type="button" role="tab" aria-selected={tab === "ativos"} className={`tab-42${tab === "ativos" ? " tab-42--active" : ""}`} onClick={() => setTab("ativos")}>
-          Ativos<span className="tab-42__count">{active.length}</span>
+          Ativos{activeList.total !== null && activeList.total > 0 && <span className="tab-42__count">{activeList.total}</span>}
         </button>
         <button type="button" role="tab" aria-selected={tab === "historico"} className={`tab-42${tab === "historico" ? " tab-42--active" : ""}`} onClick={() => setTab("historico")}>
           Histórico
@@ -220,11 +248,27 @@ export default function Alerts() {
       </nav>
 
       <div style={{ flex: 1, padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 10 }}>
-        {rows === null && <div className="skeleton" style={{ height: 140, borderRadius: 14 }} />}
+        <div className="csearch__box" style={{ height: 48 }}>
+          <i className="ph ph-magnifying-glass csearch__icon" aria-hidden style={{ fontSize: 18 }} />
+          <input
+            className="csearch__input"
+            style={{ fontSize: 14 }}
+            placeholder="Buscar alerta por ativo"
+            aria-label="Buscar alerta por ativo"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+          />
+          {searchInput && (
+            <button type="button" className="csearch__clear" aria-label="Limpar busca" onClick={() => setSearchInput("")}>
+              <i className="ph ph-x" aria-hidden />
+            </button>
+          )}
+        </div>
 
-        {tab === "ativos" && rows !== null && (
+        {tab === "ativos" && (
           <>
-            {active.map((a) => {
+            {active === null && <div className="skeleton" style={{ height: 140, borderRadius: 14 }} />}
+            {(active ?? []).map((a) => {
               const q = quotes.get(a.ticker);
               const info = progressInfo(a, q);
               return (
@@ -243,7 +287,7 @@ export default function Alerts() {
                         criado {formatDate(a.created_at).slice(0, 5)} · {a.client_name ? `vinculado a ${a.client_name}` : "sem cliente vinculado"}
                       </span>
                       <span className="alert-foot__actions">
-                        <button type="button" className="alert-foot__btn" aria-label={`Editar alerta de ${a.ticker}`}>
+                        <button type="button" className="alert-foot__btn" aria-label={`Editar alerta de ${a.ticker}`} onClick={() => { setEditing(a); setSheet(true); }}>
                           <i className="ph ph-pencil-simple" aria-hidden />
                         </button>
                         <button type="button" className="alert-foot__btn alert-foot__btn--danger" aria-label={`Cancelar alerta de ${a.ticker}`} onClick={() => cancel(a.id)}>
@@ -255,28 +299,22 @@ export default function Alerts() {
                 />
               );
             })}
-            {recentTriggered.map((t) => (
-              <div key={t.id} className="card triggered-row">
-                <span className="triggered-row__icon"><i className="ph ph-check" aria-hidden /></span>
-                <span style={{ flex: 1 }}>
-                  <span className="triggered-row__title">
-                    {t.ticker} atingiu {t.target_price !== null ? formatBRL(t.target_price) : `${t.target_day_pct}%`}
-                  </span>
-                  <span className="triggered-row__meta">disparado {t.triggered_at ? formatDateAtTime(t.triggered_at) : ""} · movido ao histórico</span>
-                </span>
-              </div>
-            ))}
-            {active.length === 0 && recentTriggered.length === 0 && (
+            <InfiniteSentinel hasMore={activeList.hasMore} loading={activeList.loadingMore} onMore={activeList.loadMore} />
+            {active !== null && active.length === 0 && (
               <div className="empty-state" style={{ borderRadius: 14 }}>
                 <span className="empty-state__icon"><i className="ph ph-target" aria-hidden /></span>
-                <span className="empty-state__title">Nenhum alerta ativo</span>
-                <span className="empty-state__desc">Crie um alerta de preço e receba push quando o alvo for atingido.</span>
-                <span className="empty-state__action">
-                  <Button icon="ph-plus" onClick={() => setSheet(true)}>Criar alerta</Button>
+                <span className="empty-state__title">{search ? "Nenhum alerta encontrado" : "Nenhum alerta ativo"}</span>
+                <span className="empty-state__desc">
+                  {search ? `Nenhum alerta ativo corresponde a "${search.trim().toUpperCase()}".` : "Crie um alerta de preço e receba push quando o alvo for atingido."}
                 </span>
+                {!search && (
+                  <span className="empty-state__action">
+                    <Button icon="ph-plus" onClick={() => { setEditing(undefined); setSheet(true); }}>Criar alerta</Button>
+                  </span>
+                )}
               </div>
             )}
-            {(active.length > 0 || recentTriggered.length > 0) && (
+            {active !== null && active.length > 0 && !activeList.hasMore && (
               <div style={{ font: "400 11px/1.5 var(--font-sans)", color: "var(--text-3)", padding: "2px 2px 14px" }}>
                 Alerta disparado sai da lista de ativos e vira registro no histórico, com o horário exato do disparo.
               </div>
@@ -284,16 +322,19 @@ export default function Alerts() {
           </>
         )}
 
-        {tab === "historico" && rows !== null && (
+        {tab === "historico" && (
           <>
-            {triggered.length === 0 && (
+            {triggered === null && <div className="skeleton" style={{ height: 140, borderRadius: 14 }} />}
+            {triggered !== null && triggered.length === 0 && (
               <div className="empty-state" style={{ borderRadius: 14 }}>
                 <span className="empty-state__icon"><i className="ph ph-clock-counter-clockwise" aria-hidden /></span>
-                <span className="empty-state__title">Histórico vazio</span>
-                <span className="empty-state__desc">Alertas disparados aparecem aqui com o horário exato do disparo.</span>
+                <span className="empty-state__title">{search ? "Nenhum alerta encontrado" : "Histórico vazio"}</span>
+                <span className="empty-state__desc">
+                  {search ? `Nenhum disparo corresponde a "${search.trim().toUpperCase()}".` : "Alertas disparados aparecem aqui com o horário exato do disparo."}
+                </span>
               </div>
             )}
-            {triggered.map((t) => (
+            {(triggered ?? []).map((t) => (
               <div key={t.id} className="card triggered-row" style={{ opacity: 1 }}>
                 <span className="triggered-row__icon"><i className="ph ph-check" aria-hidden /></span>
                 <span style={{ flex: 1 }}>
@@ -304,11 +345,19 @@ export default function Alerts() {
                 </span>
               </div>
             ))}
+            <InfiniteSentinel hasMore={historyList.hasMore} loading={historyList.loadingMore} onMore={historyList.loadMore} />
           </>
         )}
       </div>
 
-      {sheet && <NewAlertSheet initialTicker={params.get("ativo") ?? ""} onClose={() => setSheet(false)} onCreated={reload} />}
+      {sheet && (
+        <AlertSheet
+          initialTicker={params.get("ativo") ?? ""}
+          editing={editing}
+          onClose={() => { setSheet(false); setEditing(undefined); }}
+          onSaved={reloadAll}
+        />
+      )}
     </MobileShell>
   );
 }

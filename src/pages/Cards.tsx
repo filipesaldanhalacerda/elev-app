@@ -72,7 +72,7 @@ function NewCardSheet({ onClose, onCreated }: { onClose: () => void; onCreated: 
               <input id="card-titulo" className="field__input" autoFocus value={title} onChange={(e) => setTitle(e.target.value)} />
             </div>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
             <div className="field">
               <label className="field__label" htmlFor="card-cliente" style={{ display: "block" }}>Cliente</label>
               <div className="field__box" style={{ height: 46 }}>
@@ -98,7 +98,7 @@ function NewCardSheet({ onClose, onCreated }: { onClose: () => void; onCreated: 
               </div>
             </div>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
             <div className="field">
               <label className="field__label" htmlFor="card-prazo" style={{ display: "block" }}>Prazo</label>
               <div className="field__box" style={{ height: 46 }}>

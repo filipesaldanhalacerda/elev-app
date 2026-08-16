@@ -508,6 +508,18 @@ async function advisorUsers(svc: SupabaseClient): Promise<Map<string, string>> {
   return new Map((data ?? []).map((p) => [String(p.advisor_code), p.id]));
 }
 
+// Varre a tabela inteira em blocos: um limite fixo silencioso deixaria
+// vencimentos/movimentações de fora conforme a base cresce.
+async function fetchAll<T>(build: (from: number, to: number) => PromiseLike<{ data: T[] | null }>, chunk = 1000): Promise<T[]> {
+  const out: T[] = [];
+  for (let from = 0; ; from += chunk) {
+    const { data } = await build(from, from + chunk - 1);
+    const rows = data ?? [];
+    out.push(...rows);
+    if (rows.length < chunk) return out;
+  }
+}
+
 app.post("/api/cron/alerts", async (c) => {
   const svc = svcOf(c.env);
   const now = new Date();
@@ -548,13 +560,16 @@ app.post("/api/cron/alerts", async (c) => {
   // 2) vencimento de renda fixa nos próximos N dias
   const horizon = new Date(now.getTime() + (settings?.maturity_window_days ?? 30) * 86400000).toISOString().slice(0, 10);
   const today = now.toISOString().slice(0, 10);
-  const { data: maturing } = await svc
-    .from("positions")
-    .select("account_code, advisor_code, asset, maturity_date, value")
-    .gte("maturity_date", today)
-    .lte("maturity_date", horizon)
-    .limit(200);
-  for (const p of maturing ?? []) {
+  const maturing = await fetchAll<{ account_code: string; advisor_code: string; asset: string; maturity_date: string | null; value: number }>((from, to) =>
+    svc
+      .from("positions")
+      .select("account_code, advisor_code, asset, maturity_date, value")
+      .gte("maturity_date", today)
+      .lte("maturity_date", horizon)
+      .order("maturity_date", { ascending: true })
+      .range(from, to)
+  );
+  for (const p of maturing) {
     const owner = advisors.get(String(p.advisor_code));
     if (!owner) continue;
     const refKey = `${p.asset}:${p.maturity_date}`;
@@ -570,13 +585,18 @@ app.post("/api/cron/alerts", async (c) => {
 
   // 3) movimentação relevante (valor configurável)
   const since = new Date(now.getTime() - 7 * 86400000).toISOString().slice(0, 10);
-  const { data: bigMoves } = await svc
-    .from("movements")
-    .select("id, account_code, advisor_code, amount, mov_date, kind")
-    .gte("mov_date", since)
-    .limit(500);
-  for (const m of bigMoves ?? []) {
-    if (Math.abs(m.amount) < (settings?.relevant_movement_threshold ?? 50000)) continue;
+  const threshold = settings?.relevant_movement_threshold ?? 50000;
+  const bigMoves = await fetchAll<{ id: string; account_code: string; advisor_code: string; amount: number; mov_date: string; kind: string }>((from, to) =>
+    svc
+      .from("movements")
+      .select("id, account_code, advisor_code, amount, mov_date, kind")
+      .gte("mov_date", since)
+      .or(`amount.gte.${threshold},amount.lte.${-threshold}`)
+      .order("mov_date", { ascending: false })
+      .range(from, to)
+  );
+  for (const m of bigMoves) {
+    if (Math.abs(m.amount) < threshold) continue;
     const owner = advisors.get(String(m.advisor_code));
     if (!owner) continue;
     const refKey = `mov:${m.id}`;
@@ -593,13 +613,15 @@ app.post("/api/cron/alerts", async (c) => {
   }
 
   // 4) saldo parado em conta
-  const { data: latestBal } = await svc
-    .from("balances")
-    .select("account_code, advisor_code, total, ref_date")
-    .gte("total", settings?.idle_cash_threshold ?? 10000)
-    .order("ref_date", { ascending: false })
-    .limit(200);
-  for (const b of latestBal ?? []) {
+  const latestBal = await fetchAll<{ account_code: string; advisor_code: string; total: number; ref_date: string }>((from, to) =>
+    svc
+      .from("balances")
+      .select("account_code, advisor_code, total, ref_date")
+      .gte("total", settings?.idle_cash_threshold ?? 10000)
+      .order("ref_date", { ascending: false })
+      .range(from, to)
+  );
+  for (const b of latestBal) {
     const owner = advisors.get(String(b.advisor_code));
     if (!owner) continue;
     const refKey = `saldo:${b.ref_date}`;

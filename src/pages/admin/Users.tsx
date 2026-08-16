@@ -87,7 +87,7 @@ function UserFormModal({
         {error && <Banner kind="danger">{error}</Banner>}
         <TextField label="Nome completo" value={name} onChange={(e) => setName(e.target.value)} />
         <TextField label="E-mail" type="email" value={email} disabled={!!user} onChange={(e) => setEmail(e.target.value)} />
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
           <TextField label="Código de assessor" mono placeholder="A-31342" value={advisorCode} onChange={(e) => setAdvisorCode(e.target.value)} />
           <div className="field">
             <label className="field__label" htmlFor="perfil-select" style={{ display: "block" }}>
