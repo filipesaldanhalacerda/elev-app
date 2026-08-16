@@ -23,7 +23,7 @@ export default defineConfig({
   projects: [
     {
       name: "assessor",
-      testIgnore: [/e3-rls/, /e7-cotacoes/],
+      testIgnore: [/e3-rls/, /e7-cotacoes/, /e17-qa/],
       use: {
         ...devices["iPhone 12"],
         viewport: { width: 390, height: 844 },
@@ -32,7 +32,7 @@ export default defineConfig({
     },
     {
       name: "admin",
-      testIgnore: [/e3-rls/, /e7-cotacoes/],
+      testIgnore: [/e3-rls/, /e7-cotacoes/, /e17-qa/],
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width: 1440, height: 900 },
@@ -42,6 +42,12 @@ export default defineConfig({
       // testes de banco/RLS: só API, sem navegador; um único worker para não competir
       name: "rls",
       testMatch: /e3-rls/,
+      workers: 1,
+    },
+    {
+      // E17: varredura de QA — serial, cria os próprios contexts
+      name: "qa",
+      testMatch: /e17-qa/,
       workers: 1,
     },
     {

@@ -60,8 +60,8 @@ export function LineChart({ points, height = 92, axis, stroke = "var(--chart-lin
       </svg>
       {axis && (
         <div className="chart-axis">
-          {axis.map((a) => (
-            <span key={a}>{a}</span>
+          {axis.map((a, i) => (
+            <span key={`${i}-${a}`}>{a}</span>
           ))}
         </div>
       )}

@@ -82,9 +82,14 @@ function OverviewTab({ account }: { account: string }) {
             <LineChart
               points={series.map((s) => s.net_em_m!)}
               height={104}
-              axis={[series[0], series[Math.floor((series.length - 1) / 2)], series[series.length - 1]].map((s) =>
-                `${String(new Date(`${s.ref_date}T12:00:00Z`).getUTCMonth() + 1).padStart(2, "0")}/${String(new Date(`${s.ref_date}T12:00:00Z`).getUTCFullYear()).slice(2)}`
-              )}
+              axis={(series.length >= 3
+                ? [series[0], series[Math.floor((series.length - 1) / 2)], series[series.length - 1]]
+                : [series[0], series[series.length - 1]]
+              )
+                .map((s) =>
+                  `${String(new Date(`${s.ref_date}T12:00:00Z`).getUTCMonth() + 1).padStart(2, "0")}/${String(new Date(`${s.ref_date}T12:00:00Z`).getUTCFullYear()).slice(2)}`
+                )
+                .filter((label, i, arr) => i === 0 || label !== arr[i - 1])}
             />
           ) : (
             <div className="empty-state" style={{ border: "none", padding: "12px 0" }}>
@@ -427,6 +432,11 @@ function ExtrasTab({ account, advisorCode }: { account: string; advisorCode: str
 }
 
 // ---------- Aba 10 · Linha do tempo ----------
+// Dia no fuso do produto: timestamps convertem para America/Sao_Paulo; datas puras (aaaa-mm-dd) passam direto.
+function spDay(at: string): string {
+  return at.includes("T") ? new Date(at).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" }) : at.slice(0, 10);
+}
+
 interface TlEvent {
   at: string;
   icon: string;
@@ -521,11 +531,11 @@ function TimelineTab({ account, advisorCode }: { account: string; advisorCode: s
   const days = useMemo(() => {
     const map = new Map<string, TlEvent[]>();
     for (const e of events) {
-      const key = e.at.slice(0, 10);
+      const key = spDay(e.at);
       map.set(key, [...(map.get(key) ?? []), e]);
     }
-    const today = new Date().toISOString().slice(0, 10);
-    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const today = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+    const yesterday = new Date(Date.now() - 86400000).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
     return [...map.entries()].map(([day, items]) => ({
       day,
       label: day === today ? `Hoje · ${formatDate(day).slice(0, 5)}` : day === yesterday ? `Ontem · ${formatDate(day).slice(0, 5)}` : formatDate(day),
@@ -562,16 +572,16 @@ function TimelineTab({ account, advisorCode }: { account: string; advisorCode: s
         <div style={{ padding: "0 2px" }}>
           <div className="tl-summary__title">
             {(() => {
-              const last = events[0].at.slice(0, 10);
-              const today = new Date().toISOString().slice(0, 10);
-              const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+              const last = spDay(events[0].at);
+              const today = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+              const yesterday = new Date(Date.now() - 86400000).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
               return `Último contato ${last === today ? "hoje" : last === yesterday ? "ontem" : `em ${formatDate(last)}`}`;
             })()}
           </div>
           <div className="tl-summary__meta">
             {(() => {
-              const month = new Date().toISOString().slice(0, 7);
-              const inMonth = events.filter((e) => e.at.startsWith(month)).length;
+              const month = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" }).slice(0, 7);
+              const inMonth = events.filter((e) => spDay(e.at).startsWith(month)).length;
               return `${inMonth} evento${inMonth !== 1 ? "s" : ""} em ${MONTHS[new Date().getMonth()]}`;
             })()}
           </div>
