@@ -11,7 +11,7 @@ import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabase";
 import {
   useRooms, useDayReservations, useMyReservations, createReservation, findAlternatives, cancelReservation,
-  parsePeriod, type ConflictInfo, type Alternative, type Room,
+  parsePeriod, type ConflictInfo, type Alternative, type Room, type Reservation,
 } from "../lib/rooms";
 import { formatDate } from "../lib/format";
 import { syncReservationToAgenda, unsyncReservation } from "../lib/google";
@@ -79,16 +79,12 @@ function NewReservation({ rooms, defaults, onClose, onCreated }: {
   }
 
   return (
-    <div className="mobile-shell" style={{ position: "fixed", inset: 0, zIndex: 80, overflowY: "auto" }}>
-      <header className="ficha-header" style={{ background: "var(--surface)" }}>
-        <span className="ficha-header__lead">
-          <button type="button" className="ficha-header__back" aria-label="Voltar" onClick={onClose}>
-            <i className="ph ph-arrow-left" aria-hidden />
-          </button>
-          <span className="mheader__title">Nova reserva</span>
-        </span>
-      </header>
-      <div style={{ flex: 1, padding: "16px 20px 0", display: "flex", flexDirection: "column", gap: 13, background: "var(--bg)" }}>
+    <>
+      <div className="sheet-scrim" onClick={onClose} />
+      <div className="sheet" role="dialog" aria-label="Nova reserva">
+        <div className="sheet__handle"><span /></div>
+        <div className="sheet__title">Nova reserva</div>
+        <div className="sheet__fields" style={{ gap: 13 }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
           <div className="field">
             <label className="field__label" htmlFor="res-sala" style={{ display: "block" }}>Sala</label>
@@ -126,21 +122,31 @@ function NewReservation({ rooms, defaults, onClose, onCreated }: {
         {conflict && (
           <Banner kind="danger" title={`A ${roomName} já está reservada das ${conflict.start} às ${conflict.end}`}>
             {conflict.title}
-            {conflict.owner_name ? ` — ${conflict.owner_name}` : ""}. Escolha um horário livre ou outra sala.
+            {conflict.owner_name ? ` — ${conflict.owner_name}` : ""}.
           </Banner>
         )}
 
         {conflict && alternatives.length > 0 && (
           <div>
             <span className="field__label" style={{ display: "block", marginBottom: 8 }}>Alternativas livres</span>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {alternatives.map((alt, i) => (
-                <button key={i} type="button" className={`alt-chip${chosen === i ? " alt-chip--active" : ""}`} onClick={() => setChosen(i)}>
+                <button key={i} type="button" className={`alt-chip alt-chip--row${chosen === i ? " alt-chip--active" : ""}`} onClick={() => setChosen(i)}>
                   <i className={`ph ${alt.sameRoom ? "ph-clock" : "ph-door-open"}`} aria-hidden />
-                  {alt.roomName} · {alt.start}–{alt.end}
+                  <span style={{ flex: 1, textAlign: "left" }}>
+                    {alt.roomName}
+                    <span className="alt-chip__meta">{alt.sameRoom ? "mesma sala, outro horário" : "outra sala, mesmo horário"}</span>
+                  </span>
+                  <span style={{ fontVariantNumeric: "tabular-nums" }}>{alt.start}–{alt.end}</span>
+                  <i className={`ph ${chosen === i ? "ph-check-circle" : "ph-circle"} alt-chip__check`} aria-hidden />
                 </button>
               ))}
             </div>
+            {chosen === null && (
+              <div style={{ marginTop: 8, font: "400 11px/1.5 var(--font-sans)", color: "var(--text-2)" }}>
+                Escolha uma alternativa livre para liberar a confirmação.
+              </div>
+            )}
           </div>
         )}
 
@@ -171,20 +177,16 @@ function NewReservation({ rooms, defaults, onClose, onCreated }: {
             </div>
           </div>
         )}
+        </div>
 
-        <div style={{ marginTop: 4 }}>
-          <Button block disabled={!canConfirm} loading={saving} onClick={confirm}>
+        <div className="sheet__footer" style={{ marginTop: 16 }}>
+          <Button variant="secondary" onClick={onClose}>Cancelar</Button>
+          <Button disabled={!canConfirm} loading={saving} onClick={confirm}>
             Confirmar reserva
           </Button>
         </div>
-        {conflict && (
-          <div style={{ font: "400 11px/1.5 var(--font-sans)", color: "var(--text-3)", textAlign: "center", paddingBottom: 16 }}>
-            Escolha uma alternativa livre para liberar a confirmação.
-          </div>
-        )}
-        <div style={{ height: 16 }} />
       </div>
-    </div>
+    </>
   );
 }
 
@@ -200,6 +202,9 @@ export default function Rooms() {
   const [creating, setCreating] = useState<{ start: string; account?: string } | null>(
     params.get("novo") !== null ? { start: "10:00", account: params.get("cliente") ?? undefined } : null
   );
+  // cancelar exige confirmação — e só as PRÓPRIAS reservas aparecem aqui (RLS impede as dos colegas)
+  const [cancelling, setCancelling] = useState<Reservation | null>(null);
+  const [cancelBusy, setCancelBusy] = useState(false);
 
   // F2-07: cada reserva aparece UMA vez, na hora em que começa; as horas seguintes
   // que ela ainda ocupa viram continuação discreta ("ocupada até HH:MM"), nunca um segundo cartão.
@@ -316,15 +321,7 @@ export default function Rooms() {
                       {isToday ? "hoje" : formatDate(p.start).slice(0, 5)} · {r.room_name} · {fmtHM(p.start)}–{fmtHM(p.end)}
                     </span>
                   </span>
-                  <Button
-                    variant="destructive"
-                    icon="ph-prohibit"
-                    onClick={async () => {
-                      await cancelReservation(r.id);
-                      void unsyncReservation(r.id);
-                      reloadAll();
-                    }}
-                  >
+                  <Button variant="destructive" icon="ph-prohibit" onClick={() => setCancelling(r)}>
                     Cancelar
                   </Button>
                 </div>
@@ -342,6 +339,48 @@ export default function Rooms() {
           onClose={() => setCreating(null)}
           onCreated={reloadAll}
         />
+      )}
+
+      {cancelling && (
+        <>
+          <div className="sheet-scrim" onClick={() => setCancelling(null)} />
+          <div className="sheet" role="dialog" aria-label="Cancelar reserva">
+            <div className="sheet__handle"><span /></div>
+            <div className="sheet__title">Cancelar esta reserva?</div>
+            {(() => {
+              const p = parsePeriod(cancelling.period);
+              return (
+                <div className="card" style={{ marginTop: 14, padding: 14 }}>
+                  <span className="reservation-row__title">{cancelling.title}</span>
+                  <span className="reservation-row__meta">
+                    {formatDate(p.start)} · {cancelling.room_name ?? ""} · {fmtHM(p.start)}–{fmtHM(p.end)}
+                  </span>
+                </div>
+              );
+            })()}
+            <div style={{ marginTop: 12, font: "400 11.5px/1.5 var(--font-sans)", color: "var(--text-2)" }}>
+              O horário volta a ficar livre para os colegas. Só quem criou a reserva pode cancelá-la.
+            </div>
+            <div className="sheet__footer" style={{ marginTop: 16 }}>
+              <Button variant="secondary" onClick={() => setCancelling(null)}>Voltar</Button>
+              <Button
+                variant="destructive"
+                icon="ph-prohibit"
+                loading={cancelBusy}
+                onClick={async () => {
+                  setCancelBusy(true);
+                  await cancelReservation(cancelling.id);
+                  void unsyncReservation(cancelling.id);
+                  setCancelBusy(false);
+                  setCancelling(null);
+                  reloadAll();
+                }}
+              >
+                Cancelar reserva
+              </Button>
+            </div>
+          </div>
+        </>
       )}
     </MobileShell>
   );

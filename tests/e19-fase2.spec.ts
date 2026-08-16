@@ -154,6 +154,41 @@ test.describe("fase 2 · mobile", () => {
     await expect(page.getByRole("button", { name: "Confirmar reserva" })).toBeDisabled();
   });
 
+  test("cancelar reserva exige confirmação; colega NÃO cancela reserva alheia", async ({ page }) => {
+    const svc = serviceClient();
+    const { data: room } = await svc.from("rooms").upsert({ name: `Canc ${RUN.slice(-6)}`, capacity: 2, resources: [] }, { onConflict: "name" }).select("id").single();
+    await svc.from("reservations").delete().eq("room_id", room!.id);
+    const amanha = new Date(Date.now() + 86400000).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+    const { data: resv } = await svc
+      .from("reservations")
+      .insert({ room_id: room!.id, owner: advId, title: `Cancelável ${RUN.slice(-5)}`, period: `[${amanha}T09:00:00-03:00,${amanha}T10:00:00-03:00)` })
+      .select("id")
+      .single();
+
+    // outro assessor tenta cancelar a reserva alheia: o RLS ignora o update (0 linhas)
+    const env = supabaseEnv();
+    const asB = makeClient(env.url, env.anon);
+    await asB.auth.signInWithPassword({ email: ADV_B.email, password: ADV_B.password });
+    const { data: tentativa } = await asB.from("reservations").update({ cancelled_at: new Date().toISOString() }).eq("id", resv!.id).select("id");
+    expect(tentativa).toHaveLength(0);
+    await asB.auth.signOut();
+
+    // o dono cancela, mas só depois de confirmar no sheet
+    await login(page);
+    await page.goto("/salas");
+    const row = page.locator(".reservation-row", { hasText: `Cancelável ${RUN.slice(-5)}` });
+    await row.getByRole("button", { name: "Cancelar" }).click();
+    await expect(page.locator(".sheet__title")).toHaveText("Cancelar esta reserva?");
+    // Voltar não cancela nada
+    await page.locator(".sheet").getByRole("button", { name: "Voltar" }).click();
+    await expect(row).toBeVisible();
+    await row.getByRole("button", { name: "Cancelar" }).click();
+    await page.locator(".sheet").getByRole("button", { name: "Cancelar reserva" }).click();
+    await expect(page.locator(".reservation-row", { hasText: `Cancelável ${RUN.slice(-5)}` })).toHaveCount(0);
+    const { data: final } = await svc.from("reservations").select("cancelled_at").eq("id", resv!.id).single();
+    expect(final!.cancelled_at).not.toBeNull();
+  });
+
   test("F2-11: trocar senha abre o sheet padrão que desliza de baixo", async ({ page }) => {
     await login(page);
     await page.goto("/perfil");
@@ -175,9 +210,9 @@ test.describe("fase 2 · mobile", () => {
     await page.locator(".sheet").getByRole("button", { name: "Cancelar", exact: true }).click();
 
     await page.goto("/");
-    await quick.getByText("Sala").click();
-    await page.waitForURL("**/salas?novo=1");
-    await expect(page.getByText("Nova reserva")).toBeVisible();
+    await quick.getByText("Sala", { exact: true }).click();
+    await page.waitForURL("**/salas");
+    await expect(page.locator(".page-header__title")).toHaveText("Sala de reunião");
   });
 
   test("F2-08: funil abre filtros e a ordenação por nome reordena a lista", async ({ page }) => {

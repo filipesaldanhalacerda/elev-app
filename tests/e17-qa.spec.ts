@@ -217,8 +217,8 @@ for (const theme of ["claro", "escuro"] as const) {
     await page.goto("http://localhost:5173/salas");
     await page.getByRole("button", { name: "Reservar" }).click();
     await page.waitForSelector("#res-titulo");
-    await page.screenshot({ path: `${SHOTS}/14-nova-reserva-${theme}.png`, fullPage: true });
-    await page.getByRole("button", { name: "Voltar" }).click();
+    await page.screenshot({ path: `${SHOTS}/14-nova-reserva-${theme}.png` });
+    await page.locator(".sheet").getByRole("button", { name: "Cancelar", exact: true }).click();
 
     await page.goto(`http://localhost:5173/cotacoes`);
     await page.getByLabel("Buscar ativo").fill("VALE3");

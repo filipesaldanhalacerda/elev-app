@@ -132,6 +132,9 @@ test.describe("tela 14 · fluxo (f)", () => {
     await page.goto("/salas");
     const row = page.locator(".reservation-row", { hasText: "Revisão trimestral" });
     await row.getByRole("button", { name: "Cancelar" }).click();
+    // confirmação obrigatória antes de cancelar
+    await expect(page.locator(".sheet__title")).toHaveText("Cancelar esta reserva?");
+    await page.locator(".sheet").getByRole("button", { name: "Cancelar reserva" }).click();
     await expect(page.locator(".reservation-row", { hasText: "Revisão trimestral" })).toHaveCount(0);
     const { data } = await svc.from("reservations").select("cancelled_at").eq("owner", rafaId).eq("title", "Revisão trimestral").single();
     expect(data!.cancelled_at).not.toBeNull();

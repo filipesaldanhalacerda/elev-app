@@ -303,7 +303,7 @@ export default function Dashboard() {
                   <i className="ph ph-target" aria-hidden />
                   <span>Alerta</span>
                 </button>
-                <button type="button" className="quick-action" onClick={() => navigate("/salas?novo=1")}>
+                <button type="button" className="quick-action" onClick={() => navigate("/salas")}>
                   <i className="ph ph-door-open" aria-hidden />
                   <span>Sala</span>
                 </button>
