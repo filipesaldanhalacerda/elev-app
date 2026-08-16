@@ -6,19 +6,21 @@ import { useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
 import { Card } from "../components/cards";
-import { LineChart, Donut } from "../components/charts";
+import { LineChart, AllocationBar } from "../components/charts";
 import { StatusChip, Banner } from "../components/feedback";
 import { Button } from "../components/Button";
 import { CharLimit } from "../components/Field";
 import {
-  useClient, usePatrimonySeries, usePortfolio, useMovements, useClientExtras, useTimeline,
-  saveClientExtra, addTimelineNote, type Position,
+  useClient, usePatrimonySeries, usePortfolio, useMovements, useClientExtras, useClientNotes,
+  saveClientExtra, addTimelineNote, updateTimelineNote, deleteTimelineNote, type Position, type TimelineNote,
 } from "../lib/clientData";
+import { Sheet } from "../components/Sheet";
+import { DetailSheet } from "../components/DetailSheet";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabase";
 import { recordClientVisit } from "./Dashboard";
 import { enqueueNote } from "../lib/offline";
-import { formatBRL, formatSignedBRL, formatPct, formatDate, formatInt, initials, formatPhone, isValidEmail } from "../lib/format";
+import { formatBRL, formatSignedBRL, formatPct, formatDate, formatInt, formatPhone, isValidEmail } from "../lib/format";
 
 const TABS = ["Visão geral", "Carteira", "Movimentações", "Cadastro", "Notas"] as const;
 type Tab = (typeof TABS)[number];
@@ -118,7 +120,7 @@ function OverviewTab({ account }: { account: string }) {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <Card>
           <div className="kpi-card__label" style={{ lineHeight: 1.3 }}>Captação líquida · {monthName}</div>
-          <div style={{ marginTop: 8, font: "600 17px/1 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-1)" }}>
+          <div style={{ marginTop: 8, font: "600 17px/1 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: client.captacao_liquida_m === null ? "var(--text-1)" : client.captacao_liquida_m >= 0 ? "var(--market-up)" : "var(--market-down)" }}>
             {client.captacao_liquida_m !== null ? formatBRL(client.captacao_liquida_m) : "—"}
           </div>
           <div style={{ marginTop: 7, font: "400 10.5px/1 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-3)" }}>
@@ -221,12 +223,8 @@ function PortfolioTab({ account }: { account: string }) {
 
   return (
     <div className="ficha-body" style={{ gap: 14 }}>
-      <Card style={{ padding: 16, display: "flex", alignItems: "center", gap: 16 }}>
-        <Donut
-          size={88}
-          hole={54}
-          slices={data.groups.slice(0, 4).map((g) => ({ label: g.product, pct: g.pct }))}
-        />
+      <Card style={{ padding: 16 }}>
+        <AllocationBar items={data.groups.map((g) => ({ label: g.product, pct: g.pct }))} />
       </Card>
       {data.groups.map((group, gi) => {
         const isOpen = expanded(group.product, gi);
@@ -285,6 +283,7 @@ function PortfolioTab({ account }: { account: string }) {
 function MovementsTab({ account }: { account: string }) {
   const [filter, setFilter] = useState<"tudo" | "aportes" | "resgates">("tudo");
   const [days, setDays] = useState<30 | 365>(365);
+  const [filterSheet, setFilterSheet] = useState(false);
   const { data, loading } = useMovements(account, filter, days);
 
   const groups = useMemo(() => {
@@ -304,17 +303,41 @@ function MovementsTab({ account }: { account: string }) {
 
   return (
     <div className="ficha-body" style={{ gap: 12, paddingTop: 14 }}>
-      <div className="filter-row">
-        {(["tudo", "aportes", "resgates"] as const).map((f) => (
-          <button key={f} type="button" className={`filter-chip${filter === f ? " filter-chip--active" : ""}`} onClick={() => setFilter(f)}>
-            {f === "tudo" ? "Tudo" : f === "aportes" ? "Aportes" : "Resgates"}
-          </button>
-        ))}
-        <button type="button" className="filter-sort" onClick={() => setDays((d) => (d === 365 ? 30 : 365))}>
-          {days === 365 ? "12 meses" : "30 dias"}
-          <i className="icon-chevron-down" aria-hidden />
-        </button>
-      </div>
+      <button type="button" className="filter-sort" data-open-mov-filters style={{ width: "100%", height: 44, justifyContent: "space-between", gap: 8, paddingInline: 14 }} onClick={() => setFilterSheet(true)}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <i className="icon-sliders-horizontal" aria-hidden />
+          Filtros · {filter === "tudo" ? "Tudo" : filter === "aportes" ? "Aportes" : "Resgates"} · {days === 365 ? "12 meses" : "30 dias"}
+        </span>
+      </button>
+
+      {filterSheet && (
+        <Sheet label="Filtros de movimentações" onClose={() => setFilterSheet(false)}>
+            <div className="sheet__title">Filtros</div>
+            <div className="sheet__fields" style={{ gap: 14 }}>
+              <div className="field">
+                <span className="field__label" style={{ display: "block" }}>Tipo</span>
+                <div className="segmented" style={{ height: 44 }}>
+                  {(["tudo", "aportes", "resgates"] as const).map((f) => (
+                    <button key={f} type="button" className={`segmented__item${filter === f ? " segmented__item--active" : ""}`} onClick={() => setFilter(f)}>
+                      {f === "tudo" ? "Tudo" : f === "aportes" ? "Aportes" : "Resgates"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="field">
+                <span className="field__label" style={{ display: "block" }}>Período</span>
+                <div className="segmented" style={{ height: 44 }}>
+                  <button type="button" className={`segmented__item${days === 365 ? " segmented__item--active" : ""}`} onClick={() => setDays(365)}>12 meses</button>
+                  <button type="button" className={`segmented__item${days === 30 ? " segmented__item--active" : ""}`} onClick={() => setDays(30)}>30 dias</button>
+                </div>
+              </div>
+            </div>
+            <div className="sheet__footer" style={{ marginTop: 14 }}>
+              <Button variant="secondary" onClick={() => { setFilter("tudo"); setDays(365); }}>Limpar</Button>
+              <Button onClick={() => setFilterSheet(false)}>Aplicar</Button>
+            </div>
+        </Sheet>
+      )}
 
       {loading && <div className="skeleton" style={{ height: 140, borderRadius: 14 }} />}
 
@@ -344,27 +367,22 @@ function MovementsTab({ account }: { account: string }) {
           <div key={g.month} className="mov-group">
             <div className="mov-group__head">
               <span className="mov-group__month">{g.label}</span>
-              <span className="mov-group__net">líquido {formatSignedBRL(g.net)}</span>
+              <span className="mov-group__net" style={{ color: g.net >= 0 ? "var(--market-up)" : "var(--market-down)" }}>líquido {formatSignedBRL(g.net)}</span>
             </div>
             {g.rows.map((m) => (
               <div key={m.id} className="mov-row">
-                <span className="mov-row__icon">
+                <span className="mov-row__icon" style={{ color: m.amount >= 0 ? "var(--market-up)" : "var(--market-down)" }}>
                   <i className={`${m.amount >= 0 ? "icon-arrow-down-left" : "icon-arrow-up-right"}`} aria-hidden />
                 </span>
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span className="mov-row__title">{m.amount >= 0 ? "Aporte" : "Resgate"} · {m.kind}</span>
                   <span className="mov-row__meta">{formatDate(m.mov_date)} · liquidado</span>
                 </span>
-                <span className="mov-row__amount">{formatSignedBRL(m.amount)}</span>
+                <span className="mov-row__amount" style={{ color: m.amount >= 0 ? "var(--market-up)" : "var(--market-down)" }}>{formatSignedBRL(m.amount)}</span>
               </div>
             ))}
           </div>
         ))}
-      {!loading && groups.length > 0 && (
-        <div style={{ font: "400 11px/1.5 var(--font-sans)", color: "var(--text-3)", padding: "2px 2px 14px" }}>
-          Aporte e resgate são fluxo de caixa, não variação de preço: entram em neutro com sinal, nunca no verde ou vermelho de mercado.
-        </div>
-      )}
     </div>
   );
 }
@@ -483,113 +501,148 @@ function ExtrasTab({ account, advisorCode }: { account: string; advisorCode: str
   );
 }
 
-// ---------- Aba 10 · Linha do tempo ----------
-// Dia no fuso do produto: timestamps convertem para America/Sao_Paulo; datas puras (aaaa-mm-dd) passam direto.
-function spDay(at: string): string {
-  return at.includes("T") ? new Date(at).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" }) : at.slice(0, 10);
+// ---------- Aba 10 · Notas ----------
+const noteWhen = (at: string) => `${formatDate(at)} às ${new Date(at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" })}`;
+
+function NoteSheet({ account, advisorCode, editing, onClose, onSaved }: { account: string; advisorCode: string; editing: TimelineNote | null; onClose: () => void; onSaved: () => void }) {
+  const [body, setBody] = useState(editing?.body ?? "");
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    if (!body.trim()) return;
+    setSaving(true);
+    try {
+      if (!navigator.onLine) throw new Error("offline");
+      if (editing) await updateTimelineNote(editing.id, body.trim());
+      else await addTimelineNote(account, advisorCode, body.trim());
+      onSaved();
+    } catch {
+      // sem rede: nota NOVA entra na fila e sincroniza quando a rede voltar (tela 24)
+      if (!editing) enqueueNote({ account, advisorCode, body: body.trim(), at: Date.now() });
+    }
+    setSaving(false);
+    onClose();
+  }
+
+  const title = editing ? "Editar nota" : "Nova nota";
+  return (
+    <Sheet label={title} onClose={onClose}>
+      <div className="sheet__title">{title}</div>
+      <div className="sheet__fields">
+        <div className="field">
+          <label className="field__label" htmlFor="nota-texto" style={{ display: "block" }}>Nota</label>
+          <textarea
+            id="nota-texto"
+            className="field__textarea"
+            style={{ minHeight: 130 }}
+            placeholder="Pontos importantes da conversa, combinados, contexto do cliente…"
+            maxLength={500}
+            autoFocus
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+          />
+          <CharLimit value={body} max={500} />
+        </div>
+      </div>
+      <div className="sheet__footer">
+        <Button variant="secondary" onClick={onClose}>Cancelar</Button>
+        <Button onClick={save} disabled={saving || !body.trim()}>{editing ? "Salvar" : "Salvar nota"}</Button>
+      </div>
+    </Sheet>
+  );
 }
 
 function NotesTab({ account, advisorCode }: { account: string; advisorCode: string }) {
   const { profile } = useAuth();
-  const { data, loading, reload } = useTimeline(account);
-  const [draft, setDraft] = useState("");
-  const [sending, setSending] = useState(false);
-
-  const notes = useMemo(() => [...(data?.notes ?? [])].sort((a, b) => (a.created_at < b.created_at ? 1 : -1)), [data]);
-
-  const days = useMemo(() => {
-    const map = new Map<string, typeof notes>();
-    for (const n of notes) {
-      const key = spDay(n.created_at);
-      map.set(key, [...(map.get(key) ?? []), n]);
-    }
-    const today = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
-    const yesterday = new Date(Date.now() - 86400000).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
-    return [...map.entries()].map(([day, items]) => ({
-      day,
-      label: day === today ? `Hoje · ${formatDate(day).slice(0, 5)}` : day === yesterday ? `Ontem · ${formatDate(day).slice(0, 5)}` : formatDate(day),
-      items,
-    }));
-  }, [notes]);
-
-  async function send() {
-    if (!draft.trim()) return;
-    setSending(true);
-    try {
-      if (!navigator.onLine) throw new Error("offline");
-      await addTimelineNote(account, advisorCode, draft.trim());
-      reload();
-    } catch {
-      // sem rede: guarda no aparelho e sincroniza quando a rede voltar (tela 24)
-      enqueueNote({ account, advisorCode, body: draft.trim(), at: Date.now() });
-    }
-    setDraft("");
-    setSending(false);
-  }
+  const { data: notes, loading, reload } = useClientNotes(account);
+  const [editor, setEditor] = useState<{ editing: TimelineNote | null } | null>(null);
+  const [viewing, setViewing] = useState<TimelineNote | null>(null);
+  const [removing, setRemoving] = useState<TimelineNote | null>(null);
 
   return (
-    <div className="ficha-body" style={{ gap: 18, paddingTop: 12 }}>
+    <div className="ficha-body" data-notes style={{ gap: 12, paddingTop: 12 }}>
+      <Button block onClick={() => setEditor({ editing: null })}>
+        <i className="icon-plus" aria-hidden /> Nova nota
+      </Button>
+
       {loading && <div className="skeleton" style={{ height: 160, borderRadius: 14 }} />}
 
-      {!loading && notes.length === 0 && (
+      {!loading && (notes ?? []).length === 0 && (
         <div className="empty-state" style={{ borderRadius: 14 }}>
           <span className="empty-state__icon"><i className="icon-square-pen" aria-hidden /></span>
           <span className="empty-state__title">Nenhuma nota ainda</span>
-          <span className="empty-state__desc">Registre abaixo pontos importantes de conversas com o cliente — as notas ficam guardadas só nesta ficha.</span>
+          <span className="empty-state__desc">Registre pontos importantes de conversas com o cliente — as notas ficam guardadas só nesta ficha.</span>
         </div>
       )}
 
-      {!loading && days.map((d) => (
-        <div key={d.day}>
-          <div className="tl-day__head">
-            <span className="tl-day__label">{d.label}</span>
-            <span className="tl-day__count">{d.items.length} nota{d.items.length > 1 ? "s" : ""}</span>
-          </div>
-          <div className="tl-track">
-            {d.items.length > 1 && <span className="tl-track__rail" aria-hidden />}
-            {d.items.map((n, i) => (
-              <div key={i} className="tl-item" style={i === d.items.length - 1 ? { paddingBottom: 0 } : undefined}>
-                <span className="tl-item__time">{new Date(n.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" })}</span>
-                <span className="tl-item__node-col">
-                  <span className="tl-item__node">
-                    <i className="icon-square-pen" aria-hidden />
-                  </span>
-                </span>
-                <span className="tl-item__main">
-                  <span className="tl-item__note">{n.body}</span>
-                  <span className="tl-item__row">
-                    <span style={{ width: 20, height: 20, borderRadius: 999, background: "var(--brand-tint)", color: "var(--ghost-text)", display: "flex", alignItems: "center", justifyContent: "center", font: "600 8.5px/1 var(--font-sans)" }}>
-                      {initials(n.author_name || "?")}
-                    </span>
-                    <span style={{ font: "400 10.5px/1 var(--font-sans)", color: "var(--text-3)" }}>{n.author_name}</span>
-                  </span>
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+      {!loading && (notes ?? []).map((n) => (
+        <button
+          key={n.id}
+          type="button"
+          className="card"
+          data-note
+          style={{ textAlign: "left", padding: "13px 14px", display: "flex", flexDirection: "column", gap: 8 }}
+          onClick={() => setViewing(n)}
+        >
+          <span style={{ font: "400 13px/1.5 var(--font-sans)", color: "var(--text-1)", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflowWrap: "anywhere" }}>
+            {n.body}
+          </span>
+          <span style={{ display: "flex", alignItems: "center", gap: 6, font: "400 11px/1 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-3)" }}>
+            <i className="icon-clock" style={{ fontSize: 12 }} aria-hidden />
+            {noteWhen(n.created_at)}
+            {n.updated_at && " · editada"}
+            {n.author !== profile?.id && n.author_name && ` · ${n.author_name.split(" ")[0]}`}
+          </span>
+        </button>
       ))}
 
-      <div className="tl-composer">
-        <span style={{ width: 30, height: 30, flex: "none", borderRadius: 999, background: "var(--brand-tint)", color: "var(--ghost-text)", display: "flex", alignItems: "center", justifyContent: "center", font: "600 10.5px/1 var(--font-sans)" }}>
-          {profile ? initials(profile.name) : ""}
-        </span>
-        <span className="tl-composer__box">
-          <input
-            className="tl-composer__input"
-            placeholder="Escrever uma nota sobre o cliente"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && send()}
-            aria-label="Escrever uma nota sobre o cliente"
-            maxLength={500}
-            disabled={sending}
-          />
-          <button type="button" className="tl-composer__send" aria-label="Salvar nota" onClick={send} disabled={sending}>
-            <i className="icon-send" aria-hidden />
-          </button>
-        </span>
-      </div>
+      {viewing && (
+        <DetailSheet
+          label="Detalhes da nota"
+          icon="icon-square-pen"
+          title="Nota"
+          rows={[
+            { icon: "icon-calendar", label: "Criada", value: noteWhen(viewing.created_at) },
+            ...(viewing.updated_at ? [{ icon: "icon-pencil", label: "Editada", value: noteWhen(viewing.updated_at) }] : []),
+            { icon: "icon-user", label: "Autor", value: viewing.author_name || "—" },
+          ]}
+          description={viewing.body}
+          actions={viewing.author === profile?.id ? [
+            { icon: "icon-pencil", label: "Editar", onClick: () => { setEditor({ editing: viewing }); setViewing(null); } },
+            { icon: "icon-trash", label: "Excluir", danger: true, onClick: () => { setRemoving(viewing); setViewing(null); } },
+          ] : []}
+          footnote={viewing.author !== profile?.id ? "Só quem escreveu a nota pode editar ou excluir." : undefined}
+          onClose={() => setViewing(null)}
+        />
+      )}
+
+      {editor && (
+        <NoteSheet
+          account={account}
+          advisorCode={advisorCode}
+          editing={editor.editing}
+          onClose={() => setEditor(null)}
+          onSaved={reload}
+        />
+      )}
+
+      {removing && (
+        <Sheet label="Excluir nota" onClose={() => setRemoving(null)}>
+          <div className="sheet__title">Excluir esta nota?</div>
+          <div style={{ marginTop: 8, font: "400 12.5px/1.55 var(--font-sans)", color: "var(--text-2)", overflowWrap: "anywhere" }}>
+            “{removing.body.length > 120 ? `${removing.body.slice(0, 120)}…` : removing.body}” será apagada de vez.
+          </div>
+          <div className="sheet__footer" style={{ marginTop: 16 }}>
+            <Button variant="secondary" onClick={() => setRemoving(null)}>Cancelar</Button>
+            <Button
+              variant="destructive"
+              onClick={async () => { await deleteTimelineNote(removing.id).catch(() => {}); setRemoving(null); reload(); }}
+            >
+              Excluir nota
+            </Button>
+          </div>
+        </Sheet>
+      )}
     </div>
   );
 }
@@ -649,6 +702,7 @@ export default function ClientFile() {
             type="button"
             role="tab"
             aria-selected={t === tab}
+            ref={t === tab ? (el) => el?.scrollIntoView({ inline: "center", block: "nearest" }) : undefined}
             className={`ficha-tab${t === tab ? " ficha-tab--active" : ""}`}
             onClick={(e) => { e.currentTarget.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" }); setParams({ aba: t }); }}
           >

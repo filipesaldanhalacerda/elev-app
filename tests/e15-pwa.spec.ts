@@ -47,12 +47,13 @@ test("fila de sincronização: anotação offline entra na fila e sincroniza ao 
   const svc = serviceClient();
   await login(page);
   await page.goto(`/clientes/${ANA}?aba=Notas`);
-  await expect(page.getByLabel("Escrever uma nota sobre o cliente")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Nova nota" })).toBeVisible();
 
   // offline: anotar → vai para a fila
   await context.setOffline(true);
   await page.evaluate(() => window.dispatchEvent(new Event("offline")));
-  await page.getByLabel("Escrever uma nota sobre o cliente").fill(`Anotação offline ${RUN}`);
+  await page.getByRole("button", { name: "Nova nota" }).click();
+  await page.getByLabel("Nota", { exact: true }).fill(`Anotação offline ${RUN}`);
   await page.getByRole("button", { name: "Salvar nota" }).click();
   await expect(page.locator("[data-sync-queue]")).toContainText("1 anotação aguardando sincronizar");
   await expect(page.locator("[data-sync-queue]")).toContainText("na fila");

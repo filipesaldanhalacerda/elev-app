@@ -42,6 +42,8 @@ export interface TimelineNote {
   id: string;
   body: string;
   created_at: string;
+  updated_at: string | null;
+  author: string;
   author_name: string;
 }
 
@@ -208,36 +210,20 @@ export async function saveClientExtra(account: string, _advisorCode: string, fie
   await supabase.rpc("log_audit", { p_category: "cadastro", p_event: `Editou ${label}`, p_detail: `conta ${account}` });
 }
 
-export function useTimeline(account: string) {
+export function useClientNotes(account: string) {
   return useQuery(async () => {
-    const notes = throwing<{ id: string; body: string; created_at: string; profiles: { name: string } | { name: string }[] | null }[]>(
+    const notes = throwing<{ id: string; body: string; created_at: string; updated_at: string | null; author: string; profiles: { name: string } | { name: string }[] | null }[]>(
       await supabase
         .from("timeline_notes")
-        .select("id, body, created_at, profiles!timeline_notes_author_fkey(name)")
+        .select("id, body, created_at, updated_at, author, profiles!timeline_notes_author_fkey(name)")
         .eq("account_code", account)
         .order("created_at", { ascending: false })
-        .limit(30)
+        .limit(100)
     );
-    const movements = throwing<Movement[]>(
-      await supabase
-        .from("movements")
-        .select("id, mov_date, kind, flow, amount")
-        .eq("account_code", account)
-        .order("mov_date", { ascending: false })
-        .limit(10)
-    );
-    const alerts = throwing<{ id: string; ticker: string; target_price: number | null; triggered_at: string | null; status: string }[]>(
-      await supabase.from("alerts").select("id, ticker, target_price, triggered_at, status").eq("account_code", account).limit(10)
-    );
-    const cards = throwing<{ id: string; title: string; status: string; completed_at: string | null; created_at: string }[]>(
-      await supabase.from("cards").select("id, title, status, completed_at, created_at").eq("account_code", account).limit(10)
-    );
-    return {
-      notes: notes.map((n) => ({ id: n.id, body: n.body, created_at: n.created_at, author_name: (Array.isArray(n.profiles) ? n.profiles[0]?.name : n.profiles?.name) ?? "" }) as TimelineNote),
-      movements,
-      alerts,
-      cards,
-    };
+    return notes.map((n) => ({
+      id: n.id, body: n.body, created_at: n.created_at, updated_at: n.updated_at, author: n.author,
+      author_name: (Array.isArray(n.profiles) ? n.profiles[0]?.name : n.profiles?.name) ?? "",
+    }) as TimelineNote);
   }, [account]);
 }
 
@@ -249,5 +235,15 @@ export async function addTimelineNote(account: string, advisorCode: string, body
     author: me.user!.id,
     body,
   });
+  if (error) throw new Error(error.message);
+}
+
+export async function updateTimelineNote(id: string, body: string) {
+  const { error } = await supabase.from("timeline_notes").update({ body, updated_at: new Date().toISOString() }).eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteTimelineNote(id: string) {
+  const { error } = await supabase.from("timeline_notes").delete().eq("id", id);
   if (error) throw new Error(error.message);
 }

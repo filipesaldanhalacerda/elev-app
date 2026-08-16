@@ -161,21 +161,25 @@ test.describe.serial("fluxo (b) · busca → ficha → abas → volta", () => {
     await expect(rf.getByText("CDB Banco Fictício")).toBeVisible();
     await expect(rf.getByText("CDB · vence 18/08/2026")).toBeVisible();
     await expect(page.locator(".position-row__name--ticker", { hasText: "PETR4" })).toBeVisible();
-    await expect(page.locator(".donut-legend__item").first()).toContainText("Renda Fixa");
+    await expect(page.locator(".alloc").getByText("Renda Fixa")).toBeVisible();
     await expect(page.locator(".list-footnote")).toContainText("4 ativos · posição de 15/08/2026 · fonte Diversificação");
 
-    // 08 · movimentações (neutro com sinal)
+    // 08 · movimentações (entrada em verde, saída em vermelho — padrão do sistema)
     await page.getByRole("tab", { name: "Movimentações" }).click();
     const ago = page.locator(".mov-group", { hasText: "Agosto 2026" });
     await expect(ago.locator(".mov-group__net")).toHaveText("líquido +R$ 210.000,00");
     await expect(ago.locator(".mov-row__amount").first()).toHaveText("+R$ 250.000,00");
     await expect(ago.locator(".mov-row__amount").nth(1)).toHaveText("−R$ 40.000,00");
-    const amountColor = await ago.locator(".mov-row__amount").first().evaluate((el) => getComputedStyle(el).color);
-    expect(["rgb(20, 32, 28)", "rgb(233, 239, 236)"]).toContain(amountColor); // neutro, nunca cor de mercado
+    const upColor = await ago.locator(".mov-row__amount").first().evaluate((el) => getComputedStyle(el).color);
+    const downColor = await ago.locator(".mov-row__amount").nth(1).evaluate((el) => getComputedStyle(el).color);
+    expect(["rgb(11, 124, 85)", "rgb(70, 206, 151)"]).toContain(upColor); // verde de entrada
+    expect(["rgb(196, 52, 42)", "rgb(240, 112, 94)"]).toContain(downColor); // vermelho de saída
     await expect(page.locator(".mov-group", { hasText: "Julho 2026" }).locator(".mov-group__net")).toHaveText("líquido −R$ 80.000,00");
 
-    // filtro Resgates
-    await page.getByRole("button", { name: "Resgates" }).click();
+    // filtro Resgates pelo sheet padrão
+    await page.locator("[data-open-mov-filters]").click();
+    await page.getByRole("dialog", { name: "Filtros de movimentações" }).getByRole("button", { name: "Resgates" }).click();
+    await page.getByRole("button", { name: "Aplicar" }).click();
     await expect(page.locator(".mov-row")).toHaveCount(2);
 
     // 09 · cadastro complementar com edição inline auditada
@@ -186,12 +190,28 @@ test.describe.serial("fluxo (b) · busca → ficha → abas → volta", () => {
     await page.getByRole("button", { name: "Salvar" }).click();
     await expect(page.locator(".extras-row__value").first()).toHaveText("(11) 98812-4402");
 
-    // 10 · notas: registro via compositor
+    // 10 · notas: criar, ver, editar e excluir (padrão app de notas)
     await page.getByRole("tab", { name: "Notas" }).click();
-    await page.getByLabel("Escrever uma nota sobre o cliente").fill("Quer antecipar a aposentadoria em 2028.");
+    await page.getByRole("button", { name: "Nova nota" }).click();
+    await page.getByLabel("Nota", { exact: true }).fill("Quer antecipar a aposentadoria em 2028.");
     await page.getByRole("button", { name: "Salvar nota" }).click();
-    await expect(page.locator(".tl-item__note")).toContainText("Quer antecipar a aposentadoria em 2028.");
-    await expect(page.getByText("Rafael Moura")).toBeVisible();
+    const note = page.locator("[data-note]", { hasText: "Quer antecipar a aposentadoria" });
+    await expect(note).toBeVisible();
+
+    // ver detalhes e editar
+    await note.click();
+    const detail = page.getByRole("dialog", { name: "Detalhes da nota" });
+    await expect(detail.getByText("Rafael Moura")).toBeVisible();
+    await detail.getByText("Editar", { exact: true }).click();
+    await page.getByLabel("Nota", { exact: true }).fill("Quer antecipar a aposentadoria em 2027.");
+    await page.getByRole("button", { name: "Salvar", exact: true }).click();
+    await expect(page.locator("[data-note]", { hasText: "em 2027." })).toContainText("editada");
+
+    // excluir com confirmação
+    await page.locator("[data-note]", { hasText: "em 2027." }).click();
+    await page.getByRole("dialog", { name: "Detalhes da nota" }).getByText("Excluir", { exact: true }).click();
+    await page.getByRole("button", { name: "Excluir nota" }).click();
+    await expect(page.locator("[data-note]")).toHaveCount(0);
 
     // volta para a lista
     await page.getByRole("button", { name: "Voltar" }).click();

@@ -103,6 +103,36 @@ export interface DonutSlice {
   pct: number;
 }
 
+/**
+ * Distribuição da carteira para telas de celular: barra horizontal empilhada
+ * com legenda em linhas — leitura de proporção muito melhor que pizza no mobile.
+ */
+export function AllocationBar({ items }: { items: DonutSlice[] }) {
+  const colors = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)"];
+  const top = items.slice(0, 4);
+  const restPct = Math.round(items.slice(4).reduce((acc, s) => acc + s.pct, 0));
+  const segments = restPct > 0 ? [...top, { label: "Outros", pct: restPct }] : top;
+  const color = (i: number) => (i < 4 ? colors[i] : "var(--border-strong)");
+  return (
+    <div className="alloc" style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%" }}>
+      <div style={{ display: "flex", height: 14, borderRadius: 999, overflow: "hidden", gap: 2 }} aria-hidden>
+        {segments.map((s, i) => (
+          <span key={s.label} style={{ width: `${s.pct}%`, minWidth: s.pct > 0 ? 8 : 0, background: color(i) }} />
+        ))}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+        {segments.map((s, i) => (
+          <div key={s.label} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ width: 10, height: 10, borderRadius: 3, background: color(i), flex: "none" }} />
+            <span style={{ flex: 1, minWidth: 0, font: "400 12px/1.3 var(--font-sans)", color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.label}</span>
+            <span style={{ font: "600 12px/1 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-1)" }}>{s.pct}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /** Donut 4 passos (#2f): conic-gradient com filete de 1,2% na cor do card entre fatias. */
 export function Donut({ slices, size = 74, hole = 44 }: { slices: DonutSlice[]; size?: number; hole?: number }) {
   const GAP = 1.2;
