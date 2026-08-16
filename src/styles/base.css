@@ -68,14 +68,23 @@ svg {
   box-shadow: none;
 }
 
-/* Tabs: o indicador desenhado é o sublinhado, e o container corta o anel em cima/embaixo,
-   deixando só bordas laterais — então o anel global não se aplica a elas. */
+/* Tabs (F2-01): o indicador desenhado é o sublinhado, e o container corta o anel em
+   cima/embaixo, deixando só bordas laterais — então NENHUM anel de foco se aplica a elas
+   (nem :focus nem :focus-visible; inclui as abas da ficha, que têm classe própria). */
+.tab:focus,
 .tab:focus-visible,
-.tab-42:focus-visible {
+.tab-42:focus,
+.tab-42:focus-visible,
+.ficha-tab:focus,
+.ficha-tab:focus-visible {
   box-shadow: none;
 }
+.tab--active:focus,
 .tab--active:focus-visible,
-.tab-42--active:focus-visible {
+.tab-42--active:focus,
+.tab-42--active:focus-visible,
+.ficha-tab--active:focus,
+.ficha-tab--active:focus-visible {
   box-shadow: inset 0 -2px 0 var(--action);
 }
 

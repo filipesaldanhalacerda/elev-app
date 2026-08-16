@@ -9,7 +9,7 @@ import { ClientSearch, type ClientSearchResult } from "../components/ClientSearc
 import { Avatar } from "../components/Avatar";
 import { Banner } from "../components/feedback";
 import { Button } from "../components/Button";
-import { useClientList, type ClientOverview } from "../lib/clientData";
+import { useClientList, type ClientOverview, type ClientSort } from "../lib/clientData";
 import { supabase } from "../lib/supabase";
 import { formatBRL, formatInt, formatDateAtTime, formatPct } from "../lib/format";
 
@@ -28,7 +28,10 @@ export default function Clients() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<"todos" | "ativos" | "inativos">("todos");
   const [limit, setLimit] = useState(PAGE);
-  const { data, loading, error, reload } = useClientList(filter, limit);
+  // F2-08: o funil abre o sheet de filtros (status + ordenação)
+  const [sort, setSort] = useState<ClientSort>({ by: "patrimony", asc: false });
+  const [filterSheet, setFilterSheet] = useState(false);
+  const { data, loading, error, reload } = useClientList(filter, limit, sort);
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<ClientSearchResult[] | null>(null);
   const [searching, setSearching] = useState(false);
@@ -102,7 +105,7 @@ export default function Clients() {
         <span className="page-header__title">Clientes</span>
         <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {data && <span className="page-header__count">{formatInt(data.total)}</span>}
-          <button type="button" className="page-header__action" aria-label="Filtrar">
+          <button type="button" className="page-header__action" aria-label="Filtrar" onClick={() => setFilterSheet(true)}>
             <i className="ph ph-funnel" aria-hidden />
           </button>
         </span>
@@ -125,10 +128,10 @@ export default function Clients() {
                 {f === "todos" ? "Todos" : f === "ativos" ? "Ativos" : "Inativos"}
               </button>
             ))}
-            <span className="filter-sort">
-              <i className="ph ph-arrow-down" aria-hidden />
-              Patrimônio
-            </span>
+            <button type="button" className="filter-sort" onClick={() => setFilterSheet(true)}>
+              <i className={`ph ${sort.asc ? "ph-arrow-up" : "ph-arrow-down"}`} aria-hidden />
+              {sort.by === "patrimony" ? "Patrimônio" : sort.by === "name" ? "Nome" : "Variação"}
+            </button>
           </div>
         )}
       </div>
@@ -230,6 +233,53 @@ export default function Clients() {
           </>
         )}
       </div>
+
+      {filterSheet && (
+        <>
+          <div className="sheet-scrim" onClick={() => setFilterSheet(false)} />
+          <div className="sheet" role="dialog" aria-label="Filtros de clientes">
+            <div className="sheet__handle"><span /></div>
+            <div className="sheet__title">Filtros</div>
+            <div className="sheet__fields" style={{ gap: 14 }}>
+              <div className="field">
+                <span className="field__label" style={{ display: "block" }}>Status</span>
+                <div className="segmented" style={{ height: 44 }}>
+                  {(["todos", "ativos", "inativos"] as const).map((f) => (
+                    <button key={f} type="button" className={`segmented__item${filter === f ? " segmented__item--active" : ""}`} onClick={() => setFilter(f)}>
+                      {f === "todos" ? "Todos" : f === "ativos" ? "Ativos" : "Inativos"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="field">
+                <span className="field__label" style={{ display: "block" }}>Ordenar por</span>
+                <div className="segmented" style={{ height: 44 }}>
+                  {([["patrimony", "Patrimônio"], ["name", "Nome"], ["month_pct", "Variação"]] as const).map(([by, label]) => (
+                    <button key={by} type="button" className={`segmented__item${sort.by === by ? " segmented__item--active" : ""}`} onClick={() => setSort((s) => ({ ...s, by }))}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="field">
+                <span className="field__label" style={{ display: "block" }}>Direção</span>
+                <div className="segmented" style={{ height: 44 }}>
+                  <button type="button" className={`segmented__item${!sort.asc ? " segmented__item--active" : ""}`} onClick={() => setSort((s) => ({ ...s, asc: false }))}>
+                    <i className="ph ph-arrow-down" aria-hidden />Maior primeiro
+                  </button>
+                  <button type="button" className={`segmented__item${sort.asc ? " segmented__item--active" : ""}`} onClick={() => setSort((s) => ({ ...s, asc: true }))}>
+                    <i className="ph ph-arrow-up" aria-hidden />Menor primeiro
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="sheet__footer" style={{ marginTop: 14 }}>
+              <Button variant="secondary" onClick={() => { setFilter("todos"); setSort({ by: "patrimony", asc: false }); }}>Limpar</Button>
+              <Button onClick={() => setFilterSheet(false)}>Aplicar</Button>
+            </div>
+          </div>
+        </>
+      )}
     </MobileShell>
   );
 }

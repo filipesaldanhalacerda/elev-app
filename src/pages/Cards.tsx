@@ -3,6 +3,7 @@
  * No celular NÃO há kanban: lista por status, botão de próxima ação e swipe como atalho.
  */
 import { useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
 import { Button } from "../components/Button";
 import { Toggle } from "../components/Field";
@@ -26,11 +27,13 @@ function cardMeta(card: CardRow, myId: string): string {
   return parts.join(" · ");
 }
 
-function NewCardSheet({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+function NewCardSheet({ initialClient = "", onClose, onCreated }: { initialClient?: string; onClose: () => void; onCreated: () => void }) {
   const { profile } = useAuth();
-  const colleagues = useColleagues();
+  // F2-09: delegar card é papel do admin; assessor cria só para si mesmo.
+  const isAdmin = profile?.role === "admin";
+  const colleagues = useColleagues(isAdmin);
   const [title, setTitle] = useState("");
-  const [client, setClient] = useState("");
+  const [client, setClient] = useState(initialClient);
   const [assignee, setAssignee] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
@@ -42,6 +45,10 @@ function NewCardSheet({ onClose, onCreated }: { onClose: () => void; onCreated: 
   useMemo(() => {
     supabase.from("client_overview").select("account_code, name").order("patrimony", { ascending: false, nullsFirst: false }).limit(50).then(({ data }) => setClients(data ?? []));
   }, []);
+
+  // F2-10: prazo não pode ficar no passado.
+  const todaySP = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+  const pastDue = !!date && new Date(`${date}T${time || "23:59"}:00-03:00`).getTime() < Date.now();
 
   async function save() {
     setSaving(true);
@@ -87,31 +94,45 @@ function NewCardSheet({ onClose, onCreated }: { onClose: () => void; onCreated: 
             </div>
             <div className="field">
               <label className="field__label" htmlFor="card-resp" style={{ display: "block" }}>Responsável</label>
-              <div className="field__box" style={{ height: 46 }}>
-                <select id="card-resp" className="field__input" style={{ appearance: "none", width: "100%" }} value={assignee} onChange={(e) => setAssignee(e.target.value)}>
-                  <option value="">Você</option>
-                  {colleagues.filter((c) => c.id !== profile?.id).map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-                <i className="ph ph-caret-down field__caret" aria-hidden />
-              </div>
+              {isAdmin ? (
+                <div className="field__box" style={{ height: 46 }}>
+                  <select id="card-resp" className="field__input" style={{ appearance: "none", width: "100%" }} value={assignee} onChange={(e) => setAssignee(e.target.value)}>
+                    <option value="">Você</option>
+                    {colleagues.filter((c) => c.id !== profile?.id).map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                  <i className="ph ph-caret-down field__caret" aria-hidden />
+                </div>
+              ) : (
+                <div className="field__box field__box--tabular" style={{ height: 46 }} aria-describedby="card-resp-hint">
+                  <input id="card-resp" className="field__input" value="Você" disabled readOnly />
+                </div>
+              )}
             </div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
-            <div className="field">
+            <div className={`field${pastDue ? " field--error" : ""}`}>
               <label className="field__label" htmlFor="card-prazo" style={{ display: "block" }}>Prazo</label>
               <div className="field__box" style={{ height: 46 }}>
-                <input id="card-prazo" className="field__input" type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ fontVariantNumeric: "tabular-nums" }} />
+                <input id="card-prazo" className="field__input" type="date" min={todaySP} value={date} onChange={(e) => setDate(e.target.value)} style={{ fontVariantNumeric: "tabular-nums" }} />
               </div>
             </div>
-            <div className="field">
+            <div className={`field${pastDue ? " field--error" : ""}`}>
               <label className="field__label" htmlFor="card-hora" style={{ display: "block" }}>Hora</label>
               <div className="field__box" style={{ height: 46 }}>
                 <input id="card-hora" className="field__input" type="time" value={time} onChange={(e) => setTime(e.target.value)} style={{ fontVariantNumeric: "tabular-nums" }} />
               </div>
             </div>
           </div>
+          {pastDue && (
+            <div className="field--error" style={{ marginTop: -6 }}>
+              <div className="field__help">
+                <i className="ph ph-warning-circle" aria-hidden />
+                O prazo não pode ficar no passado.
+              </div>
+            </div>
+          )}
           <div className="field">
             <span className="field__label" style={{ display: "block" }}>Prioridade</span>
             <div className="segmented" style={{ height: 46 }}>
@@ -134,7 +155,7 @@ function NewCardSheet({ onClose, onCreated }: { onClose: () => void; onCreated: 
         </div>
         <div className="sheet__footer" style={{ marginTop: 16 }}>
           <Button variant="secondary" onClick={onClose}>Cancelar</Button>
-          <Button disabled={!title.trim()} loading={saving} onClick={save}>Criar card</Button>
+          <Button disabled={!title.trim() || pastDue} loading={saving} onClick={save}>Criar card</Button>
         </div>
       </div>
     </>
@@ -143,9 +164,10 @@ function NewCardSheet({ onClose, onCreated }: { onClose: () => void; onCreated: 
 
 export default function Cards() {
   const { profile } = useAuth();
+  const [params] = useSearchParams();
   const [tab, setTab] = useState<"meus" | "criados">("meus");
   const [status, setStatus] = useState<CardStatus>("pendente");
-  const [sheet, setSheet] = useState(false);
+  const [sheet, setSheet] = useState(params.get("novo") !== null);
   const [hintDismissed, setHintDismissed] = useState(() => localStorage.getItem(HINT_KEY) === "1");
   const { rows, reload } = useCards(tab, profile?.id);
   const touchStart = useRef<number | null>(null);
@@ -262,7 +284,7 @@ export default function Cards() {
         )}
       </div>
 
-      {sheet && <NewCardSheet onClose={() => setSheet(false)} onCreated={reload} />}
+      {sheet && <NewCardSheet initialClient={params.get("cliente") ?? ""} onClose={() => setSheet(false)} onCreated={reload} />}
     </MobileShell>
   );
 }

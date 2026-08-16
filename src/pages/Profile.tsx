@@ -3,13 +3,14 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
 import { Toggle, PasswordField } from "../components/Field";
-import { Modal, Toast } from "../components/feedback";
+import { Toast } from "../components/feedback";
 import { Button } from "../components/Button";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabase";
 import { getThemePreference, setThemePreference, type ThemePreference } from "../lib/theme";
 import { subscribeDevice } from "../lib/push";
 import { initials, displayAdvisorCode } from "../lib/format";
+import { useGoogleStatus, connectGoogle, disconnectGoogle } from "../lib/google";
 
 const PUSH_ITEMS: { key: string; label: string; description?: string }[] = [
   { key: "alerta_preco", label: "Alerta de preço atingido" },
@@ -18,7 +19,8 @@ const PUSH_ITEMS: { key: string; label: string; description?: string }[] = [
   { key: "movimentacoes", label: "Movimentações de clientes", description: "aportes e resgates relevantes" },
 ];
 
-function ChangePasswordModal({ onClose }: { onClose: () => void }) {
+/** F2-11: no mobile o padrão do sistema é o sheet que desliza de baixo — não modal central. */
+function ChangePasswordSheet({ onClose }: { onClose: () => void }) {
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
   const [saving, setSaving] = useState(false);
@@ -37,26 +39,28 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <Modal
-      title="Trocar senha"
-      onClose={onClose}
-      note="Pelo menos 8 caracteres, uma maiúscula e um número."
-      actions={
-        <>
+    <>
+      <div className="sheet-scrim" onClick={onClose} />
+      <div className="sheet" role="dialog" aria-label="Trocar senha">
+        <div className="sheet__handle"><span /></div>
+        <div className="sheet__title">Trocar senha</div>
+        {done ? (
+          <div style={{ padding: "8px 0 4px" }}><Toast>Senha trocada.</Toast></div>
+        ) : (
+          <div className="sheet__fields" style={{ gap: 14 }}>
+            <PasswordField label="Nova senha" autoFocus value={pw} onChange={(e) => setPw(e.target.value)} />
+            <PasswordField label="Repita a senha" value={pw2} onChange={(e) => setPw2(e.target.value)} />
+            <div style={{ font: "400 11px/1.5 var(--font-sans)", color: "var(--text-3)" }}>
+              Pelo menos 8 caracteres, uma maiúscula e um número.
+            </div>
+          </div>
+        )}
+        <div className="sheet__footer" style={{ marginTop: 14 }}>
           <Button variant="secondary" onClick={onClose}>Cancelar</Button>
-          <Button disabled={!ok} loading={saving} onClick={save}>Salvar senha</Button>
-        </>
-      }
-    >
-      {done ? (
-        <Toast>Senha trocada.</Toast>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <PasswordField label="Nova senha" autoFocus value={pw} onChange={(e) => setPw(e.target.value)} />
-          <PasswordField label="Repita a senha" value={pw2} onChange={(e) => setPw2(e.target.value)} />
+          <Button disabled={!ok || done} loading={saving} onClick={save}>Salvar senha</Button>
         </div>
-      )}
-    </Modal>
+      </div>
+    </>
   );
 }
 
@@ -66,7 +70,26 @@ export default function Profile() {
   const [theme, setTheme] = useState<ThemePreference>(getThemePreference());
   const [prefs, setPrefs] = useState<Record<string, boolean>>(profile?.push_prefs ?? {});
   const [changingPw, setChangingPw] = useState(false);
-  const [googleNote, setGoogleNote] = useState(false);
+  const { status: google, reload: reloadGoogle } = useGoogleStatus();
+  const [googleBusy, setGoogleBusy] = useState(false);
+
+  async function toggleGoogle() {
+    setGoogleBusy(true);
+    try {
+      if (google?.connected) {
+        await disconnectGoogle();
+      } else {
+        const res = await connectGoogle();
+        if (res.url) {
+          window.location.href = res.url; // modo real: consentimento no Google
+          return;
+        }
+      }
+      await reloadGoogle();
+    } finally {
+      setGoogleBusy(false);
+    }
+  }
 
   async function pickTheme(next: ThemePreference) {
     setTheme(next);
@@ -156,16 +179,25 @@ export default function Profile() {
             <span style={{ width: 30, height: 30, borderRadius: 9, background: "var(--chip-pill-bg)", color: "var(--field-label)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
               <i className="ph ph-google-logo" style={{ fontSize: 15 }} aria-hidden />
             </span>
-            <span style={{ flex: 1 }}>
+            <span style={{ flex: 1, minWidth: 0 }}>
               <span style={{ display: "block", font: "400 13px/1.35 var(--font-sans)", color: "var(--text-1)" }}>Conta Google</span>
-              <span style={{ display: "block", marginTop: 2, font: "400 10.5px/1.4 var(--font-sans)", color: "var(--text-3)" }}>
-                conecte para sincronizar a agenda
+              <span style={{ display: "block", marginTop: 2, font: "400 10.5px/1.4 var(--font-sans)", color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {google?.connected ? `${google.email} · agenda sincronizada` : "conecte para sincronizar a agenda"}
               </span>
             </span>
-            <Button variant="secondary" style={{ height: 44, fontSize: 12 }} onClick={() => setGoogleNote(true)}>
-              Conectar
+            <Button variant="secondary" style={{ height: 44, fontSize: 12 }} loading={googleBusy} onClick={toggleGoogle}>
+              {google?.connected ? "Desconectar" : "Conectar"}
             </Button>
           </div>
+          {google?.connected && (
+            <button type="button" style={{ width: "100%", minHeight: 56, display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderBottom: "1px solid var(--divider)", textAlign: "left" }} onClick={() => navigate("/agenda")}>
+              <span style={{ width: 30, height: 30, borderRadius: 9, background: "var(--chip-pill-bg)", color: "var(--field-label)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+                <i className="ph ph-calendar-blank" style={{ fontSize: 15 }} aria-hidden />
+              </span>
+              <span style={{ flex: 1, font: "400 13px/1.35 var(--font-sans)", color: "var(--text-1)" }}>Abrir agenda</span>
+              <i className="ph ph-caret-right" style={{ fontSize: 16, color: "var(--icon-decor)" }} aria-hidden />
+            </button>
+          )}
           <button type="button" style={{ width: "100%", minHeight: 56, display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderBottom: "1px solid var(--divider)", textAlign: "left" }} onClick={() => setChangingPw(true)}>
             <span style={{ width: 30, height: 30, borderRadius: 9, background: "var(--chip-pill-bg)", color: "var(--field-label)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
               <i className="ph ph-lock-key" style={{ fontSize: 15 }} aria-hidden />
@@ -193,12 +225,7 @@ export default function Profile() {
         </div>
       </div>
 
-      {googleNote && (
-        <div style={{ position: "fixed", left: 16, right: 16, bottom: 100, zIndex: 120, maxWidth: 488, margin: "0 auto" }}>
-          <Toast icon="ph-info">A conexão com a agenda Google chega na fase 2.</Toast>
-        </div>
-      )}
-      {changingPw && <ChangePasswordModal onClose={() => setChangingPw(false)} />}
+      {changingPw && <ChangePasswordSheet onClose={() => setChangingPw(false)} />}
     </MobileShell>
   );
 }

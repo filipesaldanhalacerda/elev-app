@@ -75,19 +75,21 @@ const throwing = <T,>({ data, error }: { data: T | null; error: { message: strin
 };
 
 /** Lista da tela 05: carteira do assessor ordenável, com filtro por status. */
-export function useClientList(filter: "todos" | "ativos" | "inativos", limit: number) {
+export type ClientSort = { by: "patrimony" | "name" | "month_pct"; asc: boolean };
+
+export function useClientList(filter: "todos" | "ativos" | "inativos", limit: number, sort: ClientSort = { by: "patrimony", asc: false }) {
   return useQuery(async () => {
     let q = supabase
       .from("client_overview")
       .select("*", { count: "exact" })
-      .order("patrimony", { ascending: false, nullsFirst: false })
+      .order(sort.by, { ascending: sort.asc, nullsFirst: false })
       .limit(limit);
     if (filter === "ativos") q = q.eq("status", "ATIVO");
     if (filter === "inativos") q = q.neq("status", "ATIVO");
     const { data, error, count } = await q;
     if (error) throw new Error(error.message);
     return { rows: (data ?? []) as ClientOverview[], total: count ?? 0 };
-  }, [filter, limit]);
+  }, [filter, limit, sort.by, sort.asc]);
 }
 
 export function useClient(account: string) {

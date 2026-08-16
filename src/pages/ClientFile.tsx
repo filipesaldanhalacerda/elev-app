@@ -16,7 +16,7 @@ import {
 import { useAuth } from "../lib/auth";
 import { recordClientVisit } from "./Dashboard";
 import { enqueueNote } from "../lib/offline";
-import { formatBRL, formatSignedBRL, formatPct, formatDate, formatInt, initials } from "../lib/format";
+import { formatBRL, formatSignedBRL, formatPct, formatDate, formatInt, initials, formatPhone, isValidEmail } from "../lib/format";
 
 const TABS = ["Visão geral", "Carteira", "Movimentações", "Cadastro", "Linha do tempo"] as const;
 type Tab = (typeof TABS)[number];
@@ -354,18 +354,34 @@ function ExtrasTab({ account, advisorCode }: { account: string; advisorCode: str
     reload();
   };
 
+  // F2-05/F2-06: telefone com máscara progressiva; e-mail validado antes de salvar.
+  const emailInvalid = editing === "email" && value.trim() !== "" && !isValidEmail(value);
   const row = (field: "phone" | "email", label: string) =>
     editing === field ? (
       <div key={field} className="extras-edit">
         <span className="extras-row__label">{label}</span>
-        <div className="field" style={{ marginTop: 7 }}>
+        <div className={`field${field === "email" && emailInvalid ? " field--error" : ""}`} style={{ marginTop: 7 }}>
           <div className="field__box">
-            <input className="field__input" autoFocus value={value} onChange={(e) => setValue(e.target.value)} aria-label={label} />
+            <input
+              className="field__input"
+              autoFocus
+              inputMode={field === "phone" ? "tel" : "email"}
+              placeholder={field === "phone" ? "(11) 98812-4402" : "nome@dominio.com"}
+              value={value}
+              onChange={(e) => setValue(field === "phone" ? formatPhone(e.target.value) : e.target.value)}
+              aria-label={label}
+            />
           </div>
+          {field === "email" && emailInvalid && (
+            <div className="field__help">
+              <i className="ph ph-warning-circle" aria-hidden />
+              Digite um e-mail válido, como nome@dominio.com.
+            </div>
+          )}
         </div>
         <div className="extras-edit__buttons">
           <Button variant="secondary" onClick={() => setEditing(null)}>Cancelar</Button>
-          <Button loading={saving} onClick={save}>Salvar</Button>
+          <Button loading={saving} disabled={field === "email" && emailInvalid} onClick={save}>Salvar</Button>
         </div>
       </div>
     ) : (
@@ -677,6 +693,8 @@ export default function ClientFile() {
   const { data: client } = useClient(account);
   const { profile } = useAuth();
   const advisorCode = client?.advisor_code ?? profile?.advisor_code ?? "";
+  const [menu, setMenu] = useState(false);
+  const [copied, setCopied] = useState(false);
   useMemo(() => {
     if (client?.name) recordClientVisit(account, client.name);
   }, [client?.name, account]);
@@ -693,10 +711,59 @@ export default function ClientFile() {
             <span className="ficha-header__account">{maskAccount(account)}</span>
           </span>
         </span>
-        <button type="button" className="ficha-header__menu" aria-label="Mais opções">
+        <button type="button" className="ficha-header__menu" aria-label="Mais opções" onClick={() => setMenu(true)}>
           <i className="ph ph-dots-three-vertical" aria-hidden />
         </button>
       </header>
+
+      {menu && (
+        <>
+          <div className="sheet-scrim" onClick={() => setMenu(false)} />
+          <div className="sheet" role="dialog" aria-label="Ações do cliente">
+            <div className="sheet__handle"><span /></div>
+            <div className="sheet__title">{client?.name ?? maskAccount(account)}</div>
+            <div className="card" style={{ padding: 0, overflow: "hidden", marginTop: 4 }}>
+              {[
+                { icon: "ph-kanban", label: "Novo card", go: `/cards?novo=1&cliente=${account}` },
+                { icon: "ph-target", label: "Novo alerta", go: `/alertas?novo=1&cliente=${account}` },
+                { icon: "ph-door-open", label: "Reservar sala", go: `/salas?novo=1&cliente=${account}` },
+              ].map((a, i) => (
+                <button
+                  key={a.label}
+                  type="button"
+                  style={{ width: "100%", minHeight: 52, display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", textAlign: "left", borderTop: i > 0 ? "1px solid var(--divider)" : undefined }}
+                  onClick={() => { setMenu(false); navigate(a.go); }}
+                >
+                  <span style={{ width: 30, height: 30, borderRadius: 9, background: "var(--chip-pill-bg)", color: "var(--field-label)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+                    <i className={`ph ${a.icon}`} style={{ fontSize: 15 }} aria-hidden />
+                  </span>
+                  <span style={{ flex: 1, font: "400 13px/1.35 var(--font-sans)", color: "var(--text-1)" }}>{a.label}</span>
+                  <i className="ph ph-caret-right" style={{ fontSize: 16, color: "var(--icon-decor)" }} aria-hidden />
+                </button>
+              ))}
+              <button
+                type="button"
+                style={{ width: "100%", minHeight: 52, display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", textAlign: "left", borderTop: "1px solid var(--divider)" }}
+                onClick={async () => {
+                  await navigator.clipboard.writeText(account).catch(() => {});
+                  setCopied(true);
+                  setTimeout(() => { setCopied(false); setMenu(false); }, 1100);
+                }}
+              >
+                <span style={{ width: 30, height: 30, borderRadius: 9, background: "var(--chip-pill-bg)", color: "var(--field-label)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+                  <i className="ph ph-copy" style={{ fontSize: 15 }} aria-hidden />
+                </span>
+                <span style={{ flex: 1, font: "400 13px/1.35 var(--font-sans)", color: "var(--text-1)" }}>
+                  {copied ? "Conta copiada." : "Copiar número da conta"}
+                </span>
+              </button>
+            </div>
+            <div className="sheet__footer" style={{ marginTop: 14 }}>
+              <Button variant="secondary" block onClick={() => setMenu(false)}>Fechar</Button>
+            </div>
+          </div>
+        </>
+      )}
 
       <nav className="ficha-tabs" role="tablist">
         {TABS.map((t) => (

@@ -27,6 +27,12 @@ interface GeneratedCode {
 }
 
 /** Form de usuário — composto SÓ de componentes desenhados (modal #2h + campos #2c). Decisão do PO em 15/08/2026. */
+interface AdvisorCode {
+  code: string;
+  clients: number;
+  taken: boolean;
+}
+
 function UserFormModal({
   user,
   onClose,
@@ -42,6 +48,15 @@ function UserFormModal({
   const [role, setRole] = useState<"admin" | "advisor">(user?.role ?? "advisor");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // F2-02: novo acesso nasce vinculado a um assessor QUE EXISTE na base importada.
+  const [codes, setCodes] = useState<AdvisorCode[] | null>(user ? [] : null);
+  useEffect(() => {
+    if (user) return;
+    workerFetch("/api/admin/advisor-codes")
+      .then((b) => setCodes((b as { codes: AdvisorCode[] }).codes))
+      .catch(() => setCodes([]));
+  }, [user]);
+  const noBase = !user && codes !== null && codes.length === 0;
 
   async function save() {
     setSaving(true);
@@ -77,7 +92,7 @@ function UserFormModal({
           <Button variant="secondary" onClick={onClose}>
             Cancelar
           </Button>
-          <Button loading={saving} disabled={!name || (!user && !email) || (role === "advisor" && !advisorCode)} onClick={save}>
+          <Button loading={saving} disabled={!name || (!user && !email) || (role === "advisor" && !advisorCode) || noBase} onClick={save}>
             {user ? "Salvar" : "Criar e gerar código"}
           </Button>
         </>
@@ -85,29 +100,71 @@ function UserFormModal({
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         {error && <Banner kind="danger">{error}</Banner>}
+        {noBase && (
+          <Banner kind="danger" title="Nenhuma base importada">
+            Importe uma base (Positivador) na tela de Importações antes de criar acessos — todo acesso nasce vinculado a um assessor da base.
+          </Banner>
+        )}
         <TextField label="Nome completo" value={name} onChange={(e) => setName(e.target.value)} />
         <TextField label="E-mail" type="email" value={email} disabled={!!user} onChange={(e) => setEmail(e.target.value)} />
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
-          <TextField label="Código de assessor" mono placeholder="A-31342" value={advisorCode} onChange={(e) => setAdvisorCode(e.target.value)} />
+          {user ? (
+            <TextField label="Código de assessor" mono placeholder="A-31342" value={advisorCode} onChange={(e) => setAdvisorCode(e.target.value)} />
+          ) : (
+            <div className="field">
+              <label className="field__label" htmlFor="codigo-select" style={{ display: "block" }}>
+                Código de assessor
+              </label>
+              <div className="field__box">
+                <select
+                  id="codigo-select"
+                  className="field__input field__input--mono"
+                  value={advisorCode}
+                  onChange={(e) => setAdvisorCode(e.target.value)}
+                  disabled={noBase}
+                  style={{ appearance: "none", width: "100%" }}
+                >
+                  <option value="">Escolher da base…</option>
+                  {(codes ?? []).map((c) => (
+                    <option key={c.code} value={c.code} disabled={c.taken}>
+                      {displayAdvisorCode(c.code)} · {c.clients} cliente{c.clients !== 1 ? "s" : ""}{c.taken ? " · já tem acesso" : ""}
+                    </option>
+                  ))}
+                </select>
+                <i className="ph ph-caret-down field__caret" aria-hidden />
+              </div>
+            </div>
+          )}
           <div className="field">
             <label className="field__label" htmlFor="perfil-select" style={{ display: "block" }}>
               Perfil
             </label>
             <div className="field__box">
-              <select
-                id="perfil-select"
-                className="field__input"
-                value={role}
-                onChange={(e) => setRole(e.target.value as "admin" | "advisor")}
-                style={{ appearance: "none", width: "100%" }}
-              >
-                <option value="advisor">Assessor</option>
-                <option value="admin">Administrador</option>
-              </select>
-              <i className="ph ph-caret-down field__caret" aria-hidden />
+              {user ? (
+                <>
+                  <select
+                    id="perfil-select"
+                    className="field__input"
+                    value={role}
+                    onChange={(e) => setRole(e.target.value as "admin" | "advisor")}
+                    style={{ appearance: "none", width: "100%" }}
+                  >
+                    <option value="advisor">Assessor</option>
+                    <option value="admin">Administrador</option>
+                  </select>
+                  <i className="ph ph-caret-down field__caret" aria-hidden />
+                </>
+              ) : (
+                <input id="perfil-select" className="field__input" value="Assessor" disabled readOnly />
+              )}
             </div>
           </div>
         </div>
+        {!user && (
+          <div style={{ font: "400 11px/1.5 var(--font-sans)", color: "var(--text-3)" }}>
+            O acesso nasce vinculado ao assessor escolhido e enxerga SOMENTE a carteira dele — regra garantida no banco (RLS).
+          </div>
+        )}
       </div>
     </Modal>
   );

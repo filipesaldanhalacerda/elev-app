@@ -17,6 +17,7 @@ import RoomsAdmin from "./pages/admin/RoomsAdmin";
 import Notifications from "./pages/Notifications";
 import Profile from "./pages/Profile";
 import Dashboard from "./pages/Dashboard";
+import Agenda from "./pages/Agenda";
 import AdminHome from "./pages/admin/AdminHome";
 import Audit from "./pages/admin/Audit";
 import MetaTrader from "./pages/admin/MetaTrader";
@@ -107,6 +108,14 @@ export default function App() {
             element={
               <Guard admin>
                 <RoomsAdmin />
+              </Guard>
+            }
+          />
+          <Route
+            path="/agenda"
+            element={
+              <Guard>
+                <Agenda />
               </Guard>
             }
           />

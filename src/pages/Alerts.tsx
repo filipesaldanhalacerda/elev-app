@@ -64,13 +64,13 @@ function moneyText(n: number | null): string {
   return n === null ? "" : n.toFixed(2).replace(".", ",");
 }
 
-function AlertSheet({ initialTicker, editing, onClose, onSaved }: { initialTicker: string; editing?: AlertRow; onClose: () => void; onSaved: () => void }) {
+function AlertSheet({ initialTicker, initialClient = "", editing, onClose, onSaved }: { initialTicker: string; initialClient?: string; editing?: AlertRow; onClose: () => void; onSaved: () => void }) {
   const { profile } = useAuth();
   const [ticker, setTicker] = useState(editing?.ticker ?? initialTicker);
   const [direction, setDirection] = useState<"alta" | "baixa">(editing?.direction ?? "alta");
   const [target, setTarget] = useState(editing ? moneyText(editing.target_price) : "");
   const [dayPct, setDayPct] = useState(editing?.target_day_pct != null ? String(editing.target_day_pct).replace(".", ",") : "");
-  const [client, setClient] = useState<string>(editing?.account_code ?? "");
+  const [client, setClient] = useState<string>(editing?.account_code ?? initialClient);
   const [clients, setClients] = useState<{ account_code: string; name: string | null }[]>([]);
   const [saving, setSaving] = useState(false);
   const detail = useQuoteDetail(ticker.length >= 4 ? ticker.toUpperCase() : null);
@@ -353,6 +353,7 @@ export default function Alerts() {
       {sheet && (
         <AlertSheet
           initialTicker={params.get("ativo") ?? ""}
+          initialClient={params.get("cliente") ?? ""}
           editing={editing}
           onClose={() => { setSheet(false); setEditing(undefined); }}
           onSaved={reloadAll}

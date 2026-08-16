@@ -7,8 +7,9 @@ import { Hono } from "hono";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { fakeQuote, fakeSeries, fakeMtTest } from "./quotes";
 import { sendWebPush, type PushSubscriptionRecord, type PushEnv } from "./webpush";
+import { googleMode, signedState, verifyState, authUrl, exchangeCode, userEmail, pushToGoogle, type GoogleEnv } from "./google";
 
-type Env = { SUPABASE_URL: string; SERVICE_ROLE_KEY: string; METAAPI_TOKEN?: string } & PushEnv;
+type Env = { SUPABASE_URL: string; SERVICE_ROLE_KEY: string; METAAPI_TOKEN?: string } & PushEnv & GoogleEnv;
 type Ctx = { Bindings: Env; Variables: { svc: SupabaseClient; admin: { id: string; name: string } } };
 
 const app = new Hono<Ctx>();
@@ -161,13 +162,34 @@ app.get("/api/admin/users", async (c) => {
   });
 });
 
+// F2-02: os códigos de assessor que EXISTEM na base importada, com contagem de clientes.
+app.get("/api/admin/advisor-codes", async (c) => {
+  const svc = c.get("svc");
+  const rows = await fetchAll<{ advisor_code: string }>((from, to) =>
+    svc.from("clients").select("advisor_code").order("advisor_code").range(from, to)
+  );
+  const counts = new Map<string, number>();
+  for (const r of rows) counts.set(r.advisor_code, (counts.get(r.advisor_code) ?? 0) + 1);
+  const { data: used } = await svc.from("profiles").select("advisor_code").not("advisor_code", "is", null);
+  const taken = new Set((used ?? []).map((u) => String(u.advisor_code)));
+  return c.json({
+    codes: [...counts.entries()].map(([code, clients]) => ({ code, clients, taken: taken.has(code) })),
+  });
+});
+
 app.post("/api/admin/users", async (c) => {
   const svc = c.get("svc");
   const admin = c.get("admin");
   const { name, email, advisor_code, role } = await c.req.json<{ name: string; email: string; advisor_code: string | null; role: "admin" | "advisor" }>();
   if (!name || !email || !role) return c.json({ error: "Nome, e-mail e perfil são obrigatórios." }, 400);
   const normalized = advisor_code ? advisor_code.toUpperCase().replace(/^A[\s-]?/, "").replace(/^0+/, "") : null;
-  if (role === "advisor" && !normalized) return c.json({ error: "Assessor precisa de código de assessor." }, 400);
+  // F2-02: todo novo acesso nasce vinculado a um assessor QUE EXISTE na base importada.
+  if (role !== "advisor") return c.json({ error: "Todo novo acesso nasce vinculado a um assessor da base importada." }, 400);
+  if (!normalized) return c.json({ error: "Assessor precisa de código de assessor." }, 400);
+  const { count: baseCount } = await svc.from("clients").select("account_code", { count: "exact", head: true });
+  if (!baseCount) return c.json({ error: "Importe uma base (Positivador) antes de criar acessos." }, 400);
+  const { count: codeCount } = await svc.from("clients").select("account_code", { count: "exact", head: true }).eq("advisor_code", normalized);
+  if (!codeCount) return c.json({ error: `O código A-${normalized} não existe na base importada.` }, 400);
   const { data: created, error } = await svc.auth.admin.createUser({ email, password: randomPassword(), email_confirm: true });
   if (error) return c.json({ error: error.message }, 400);
   const { error: pErr } = await svc.from("profiles").insert({ id: created.user.id, name, email, advisor_code: normalized, role });
@@ -677,6 +699,157 @@ app.post("/api/cron/daily-reminder", async (c) => {
     sent++;
   }
   return c.json({ ok: true, sent });
+});
+
+// ---------- Google Agenda (F2-03) — usuário autenticado ----------
+
+app.get("/api/google/status", async (c) => {
+  const auth = await requireUser(c);
+  if (!auth) return c.json({ error: "Não autenticado." }, 401);
+  const { data } = await auth.svc.from("google_accounts").select("email, mode, connected_at").eq("user_id", auth.userId).maybeSingle();
+  return c.json({ connected: !!data, email: data?.email ?? null, mode: data?.mode ?? googleMode(c.env) });
+});
+
+app.post("/api/google/connect", async (c) => {
+  const auth = await requireUser(c);
+  if (!auth) return c.json({ error: "Não autenticado." }, 401);
+  if (googleMode(c.env) === "real") {
+    return c.json({ url: authUrl(c.env, await signedState(c.env, auth.userId)) });
+  }
+  // simulado: conexão imediata, e-mail derivado do usuário (mesmo padrão do MetaTrader fake)
+  const { data: prof } = await auth.svc.from("profiles").select("email").eq("id", auth.userId).single();
+  const email = `agenda.${(prof?.email ?? "assessor@elev").split("@")[0]}@gmail.com`;
+  const { error } = await auth.svc.from("google_accounts").upsert({ user_id: auth.userId, email, mode: "simulado" });
+  if (error) return c.json({ error: error.message }, 500);
+  await audit(auth.svc, "usuario", "Conta Google conectada", email);
+  return c.json({ connected: true, email });
+});
+
+app.get("/api/google/callback", async (c) => {
+  const code = c.req.query("code");
+  const state = c.req.query("state");
+  if (!code || !state) return c.text("Parâmetros ausentes.", 400);
+  const userId = await verifyState(c.env, state);
+  if (!userId) return c.text("Estado inválido.", 400);
+  const svc = svcOf(c.env);
+  try {
+    const tok = await exchangeCode(c.env, code);
+    const email = await userEmail(tok.access_token);
+    await svc.from("google_accounts").upsert({
+      user_id: userId,
+      email,
+      mode: "real",
+      access_token: tok.access_token,
+      refresh_token: tok.refresh_token ?? null,
+      token_expires_at: new Date(Date.now() + tok.expires_in * 1000).toISOString(),
+    });
+    await audit(svc, "usuario", "Conta Google conectada", email);
+  } catch (e) {
+    return c.text(`A conexão com o Google falhou: ${(e as Error).message}`, 500);
+  }
+  return c.redirect("/perfil?google=ok");
+});
+
+app.post("/api/google/disconnect", async (c) => {
+  const auth = await requireUser(c);
+  if (!auth) return c.json({ error: "Não autenticado." }, 401);
+  await auth.svc.from("google_accounts").delete().eq("user_id", auth.userId);
+  await audit(auth.svc, "usuario", "Conta Google desconectada", null);
+  return c.json({ ok: true });
+});
+
+async function requireGoogle(c: Parameters<typeof requireUser>[0]) {
+  const auth = await requireUser(c);
+  if (!auth) return null;
+  const { data } = await auth.svc.from("google_accounts").select("user_id").eq("user_id", auth.userId).maybeSingle();
+  return data ? auth : null;
+}
+
+app.get("/api/google/events", async (c) => {
+  const auth = await requireUser(c);
+  if (!auth) return c.json({ error: "Não autenticado." }, 401);
+  const { data } = await auth.svc
+    .from("google_events")
+    .select("*, clients(name)")
+    .eq("user_id", auth.userId)
+    .eq("status", "confirmado")
+    .gte("ends_at", new Date(Date.now() - 86400000).toISOString())
+    .order("starts_at");
+  return c.json({ events: data ?? [] });
+});
+
+app.post("/api/google/events", async (c) => {
+  const auth = await requireGoogle(c);
+  if (!auth) return c.json({ error: "Conecte a conta Google primeiro." }, 400);
+  const b = await c.req.json<{ title: string; starts_at: string; ends_at: string; account_code?: string | null; reservation_id?: string | null }>();
+  if (!b.title?.trim() || !b.starts_at || !b.ends_at) return c.json({ error: "Título, início e fim são obrigatórios." }, 400);
+  if (new Date(b.ends_at) <= new Date(b.starts_at)) return c.json({ error: "O fim precisa ser depois do início." }, 400);
+  if (!b.reservation_id && new Date(b.starts_at).getTime() < Date.now() - 60000) {
+    return c.json({ error: "Não é possível agendar no passado." }, 400);
+  }
+  const googleId = await pushToGoogle(c.env, auth.svc, auth.userId, { kind: "create", title: b.title.trim(), startsAt: b.starts_at, endsAt: b.ends_at });
+  const { data, error } = await auth.svc
+    .from("google_events")
+    .insert({
+      user_id: auth.userId,
+      google_id: googleId,
+      title: b.title.trim(),
+      starts_at: b.starts_at,
+      ends_at: b.ends_at,
+      account_code: b.account_code ?? null,
+      reservation_id: b.reservation_id ?? null,
+    })
+    .select("id")
+    .single();
+  if (error) return c.json({ error: error.message }, 500);
+  return c.json({ id: data.id });
+});
+
+app.patch("/api/google/events/:id", async (c) => {
+  const auth = await requireGoogle(c);
+  if (!auth) return c.json({ error: "Conecte a conta Google primeiro." }, 400);
+  const id = c.req.param("id");
+  const b = await c.req.json<{ title?: string; starts_at?: string; ends_at?: string; account_code?: string | null }>();
+  const { data: ev } = await auth.svc.from("google_events").select("*").eq("id", id).eq("user_id", auth.userId).maybeSingle();
+  if (!ev) return c.json({ error: "Agendamento não encontrado." }, 404);
+  const next = { title: b.title ?? ev.title, starts_at: b.starts_at ?? ev.starts_at, ends_at: b.ends_at ?? ev.ends_at };
+  if (new Date(next.ends_at) <= new Date(next.starts_at)) return c.json({ error: "O fim precisa ser depois do início." }, 400);
+  if (b.starts_at && new Date(b.starts_at).getTime() < Date.now() - 60000) {
+    return c.json({ error: "Não é possível agendar no passado." }, 400);
+  }
+  if (ev.google_id) {
+    await pushToGoogle(c.env, auth.svc, auth.userId, { kind: "update", googleId: ev.google_id, title: next.title, startsAt: next.starts_at, endsAt: next.ends_at });
+  }
+  const { error } = await auth.svc
+    .from("google_events")
+    .update({ ...next, account_code: b.account_code === undefined ? ev.account_code : b.account_code })
+    .eq("id", id);
+  if (error) return c.json({ error: error.message }, 500);
+  return c.json({ ok: true });
+});
+
+app.delete("/api/google/events/:id", async (c) => {
+  const auth = await requireGoogle(c);
+  if (!auth) return c.json({ error: "Conecte a conta Google primeiro." }, 400);
+  const id = c.req.param("id");
+  const { data: ev } = await auth.svc.from("google_events").select("*").eq("id", id).eq("user_id", auth.userId).maybeSingle();
+  if (!ev) return c.json({ error: "Agendamento não encontrado." }, 404);
+  if (ev.google_id) await pushToGoogle(c.env, auth.svc, auth.userId, { kind: "delete", googleId: ev.google_id });
+  const { error } = await auth.svc.from("google_events").update({ status: "cancelado" }).eq("id", id);
+  if (error) return c.json({ error: error.message }, 500);
+  return c.json({ ok: true });
+});
+
+// Reserva de sala sincroniza com a agenda conectada (criação e cancelamento).
+app.delete("/api/google/events/by-reservation/:rid", async (c) => {
+  const auth = await requireUser(c);
+  if (!auth) return c.json({ error: "Não autenticado." }, 401);
+  const rid = c.req.param("rid");
+  const { data: ev } = await auth.svc.from("google_events").select("*").eq("reservation_id", rid).eq("user_id", auth.userId).eq("status", "confirmado").maybeSingle();
+  if (!ev) return c.json({ ok: true });
+  if (ev.google_id) await pushToGoogle(c.env, auth.svc, auth.userId, { kind: "delete", googleId: ev.google_id });
+  await auth.svc.from("google_events").update({ status: "cancelado" }).eq("id", ev.id);
+  return c.json({ ok: true });
 });
 
 export default app;

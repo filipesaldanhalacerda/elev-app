@@ -96,18 +96,18 @@ export interface ConflictInfo {
   end: string;
 }
 
-export type CreateResult = { ok: true } | { ok: false; conflict: ConflictInfo | null };
+export type CreateResult = { ok: true; id: string } | { ok: false; conflict: ConflictInfo | null };
 
 /** Cria a reserva; o EXCLUDE do banco devolve 23P01 em conflito. */
 export async function createReservation(owner: string, roomId: string, day: string, start: string, end: string, title: string, account: string | null): Promise<CreateResult> {
-  const { error } = await supabase.from("reservations").insert({
+  const { data: created, error } = await supabase.from("reservations").insert({
     owner,
     room_id: roomId,
     period: makePeriod(day, start, end),
     title,
     account_code: account,
-  });
-  if (!error) return { ok: true };
+  }).select("id").single();
+  if (!error) return { ok: true, id: created.id };
   if (error.code !== "23P01") throw new Error(error.message);
   // busca quem ocupa para a mensagem do quadro
   const { data } = await supabase

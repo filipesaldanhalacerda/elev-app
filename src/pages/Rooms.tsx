@@ -3,6 +3,7 @@
  * "14 Reserva conflito escuro" (#3f). Conflito impedido com alternativas em um toque.
  */
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
 import { Button } from "../components/Button";
 import { Banner } from "../components/feedback";
@@ -13,6 +14,7 @@ import {
   parsePeriod, type ConflictInfo, type Alternative, type Room,
 } from "../lib/rooms";
 import { formatDate } from "../lib/format";
+import { syncReservationToAgenda, unsyncReservation } from "../lib/google";
 
 const HOURS = ["08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"];
 
@@ -21,7 +23,7 @@ const fmtHM = (d: Date) => d.toLocaleTimeString("pt-BR", { hour: "2-digit", minu
 
 function NewReservation({ rooms, defaults, onClose, onCreated }: {
   rooms: Room[];
-  defaults: { roomId: string; day: string; start: string };
+  defaults: { roomId: string; day: string; start: string; account?: string };
   onClose: () => void;
   onCreated: () => void;
 }) {
@@ -31,7 +33,7 @@ function NewReservation({ rooms, defaults, onClose, onCreated }: {
   const [start, setStart] = useState(defaults.start);
   const [end, setEnd] = useState(() => `${String(Number(defaults.start.slice(0, 2)) + 1).padStart(2, "0")}:00`);
   const [title, setTitle] = useState("");
-  const [account, setAccount] = useState("");
+  const [account, setAccount] = useState(defaults.account ?? "");
   const [clients, setClients] = useState<{ account_code: string; name: string | null }[]>([]);
   const [conflict, setConflict] = useState<ConflictInfo | null>(null);
   const [alternatives, setAlternatives] = useState<Alternative[]>([]);
@@ -43,7 +45,9 @@ function NewReservation({ rooms, defaults, onClose, onCreated }: {
   }, []);
 
   const roomName = rooms.find((r) => r.id === roomId)?.name ?? "";
-  const canConfirm = title.trim().length > 0 && (!conflict || chosen !== null);
+  // F2-10: reserva não pode ficar no passado.
+  const past = new Date(`${day}T${start}:00-03:00`).getTime() < Date.now() - 60000;
+  const canConfirm = title.trim().length > 0 && !past && (!conflict || chosen !== null);
 
   async function confirm() {
     setSaving(true);
@@ -57,6 +61,14 @@ function NewReservation({ rooms, defaults, onClose, onCreated }: {
     const result = await createReservation(profile!.id, rid, d, s, e, title.trim(), account || null);
     setSaving(false);
     if (result.ok) {
+      // F2-03: reserva vira evento na agenda Google conectada (silencioso sem conexão)
+      void syncReservationToAgenda({
+        reservationId: result.id,
+        title: title.trim(),
+        roomName: rooms.find((r) => r.id === rid)?.name ?? roomName,
+        day: d, start: s, end: e,
+        account: account || null,
+      });
       onCreated();
       onClose();
       return;
@@ -89,10 +101,10 @@ function NewReservation({ rooms, defaults, onClose, onCreated }: {
               <i className="ph ph-caret-down field__caret" aria-hidden />
             </div>
           </div>
-          <div className="field">
+          <div className={`field${past ? " field--error" : ""}`}>
             <label className="field__label" htmlFor="res-data" style={{ display: "block" }}>Data</label>
             <div className="field__box" style={{ height: 46 }}>
-              <input id="res-data" className="field__input" type="date" value={day} onChange={(e) => { setDay(e.target.value); setConflict(null); }} style={{ fontVariantNumeric: "tabular-nums" }} />
+              <input id="res-data" className="field__input" type="date" min={todayISO()} value={day} onChange={(e) => { setDay(e.target.value); setConflict(null); }} style={{ fontVariantNumeric: "tabular-nums" }} />
             </div>
           </div>
         </div>
@@ -151,6 +163,15 @@ function NewReservation({ rooms, defaults, onClose, onCreated }: {
           </div>
         </div>
 
+        {past && (
+          <div className="field--error">
+            <div className="field__help">
+              <i className="ph ph-warning-circle" aria-hidden />
+              Não é possível reservar um horário no passado.
+            </div>
+          </div>
+        )}
+
         <div style={{ marginTop: 4 }}>
           <Button block disabled={!canConfirm} loading={saving} onClick={confirm}>
             Confirmar reserva
@@ -170,16 +191,21 @@ function NewReservation({ rooms, defaults, onClose, onCreated }: {
 export default function Rooms() {
   const { profile } = useAuth();
   const { rooms } = useRooms();
+  const [params] = useSearchParams();
   const [day] = useState(todayISO());
   const [roomId, setRoomId] = useState<string | null>(null);
   const activeRoom = roomId ?? rooms?.find((r) => r.is_active)?.id ?? null;
   const { rows: reservations, reload: reloadDay } = useDayReservations(activeRoom, day);
   const { rows: mine, reload: reloadMine } = useMyReservations(profile?.id);
-  const [creating, setCreating] = useState<{ start: string } | null>(null);
+  const [creating, setCreating] = useState<{ start: string; account?: string } | null>(
+    params.get("novo") !== null ? { start: "10:00", account: params.get("cliente") ?? undefined } : null
+  );
 
+  // F2-07: cada reserva aparece UMA vez, na hora em que começa; as horas seguintes
+  // que ela ainda ocupa viram continuação discreta ("ocupada até HH:MM"), nunca um segundo cartão.
   const slots = useMemo(() => {
     const list = reservations ?? [];
-    return HOURS.slice(0, 5).map((hour) => {
+    return HOURS.map((hour) => {
       const hourStart = new Date(`${day}T${hour}:00-03:00`).getTime();
       const hourEnd = hourStart + 3600000;
       const hit = list.find((r) => {
@@ -189,6 +215,8 @@ export default function Rooms() {
       if (!hit) return { hour, kind: "free" as const };
       const p = parsePeriod(hit.period);
       const mineFlag = hit.owner === profile?.id;
+      const startsHere = p.start.getTime() >= hourStart || hour === HOURS[0];
+      if (!startsHere) return { hour, kind: "cont" as const, until: fmtHM(p.end) };
       return {
         hour,
         kind: "busy" as const,
@@ -248,6 +276,13 @@ export default function Rooms() {
                       livre
                     </button>
                   </div>
+                ) : slot.kind === "cont" ? (
+                  <div key={slot.hour} className="agenda__row">
+                    <span className="agenda__hour">{slot.hour}</span>
+                    <span className="agenda__free" style={{ borderStyle: "solid", color: "var(--text-3)" }}>
+                      ocupada até {slot.until}
+                    </span>
+                  </div>
                 ) : (
                   <div key={slot.hour} className="agenda__row">
                     <span className="agenda__hour">{slot.hour}</span>
@@ -286,6 +321,7 @@ export default function Rooms() {
                     icon="ph-prohibit"
                     onClick={async () => {
                       await cancelReservation(r.id);
+                      void unsyncReservation(r.id);
                       reloadAll();
                     }}
                   >
@@ -302,7 +338,7 @@ export default function Rooms() {
       {creating && rooms && activeRoom && (
         <NewReservation
           rooms={rooms}
-          defaults={{ roomId: activeRoom, day, start: creating.start }}
+          defaults={{ roomId: activeRoom, day, start: creating.start, account: creating.account }}
           onClose={() => setCreating(null)}
           onCreated={reloadAll}
         />

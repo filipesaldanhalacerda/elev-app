@@ -100,15 +100,17 @@ export function isOverdue(card: CardRow): boolean {
   return card.status !== "concluido" && !!card.due_at && new Date(card.due_at).getTime() < Date.now();
 }
 
-export function useColleagues() {
+/** Lista de colegas para delegação — SÓ o admin usa (F2-09); assessor cria card para si mesmo. */
+export function useColleagues(enabled = true) {
   const [rows, setRows] = useState<{ id: string; name: string }[]>([]);
   useEffect(() => {
+    if (!enabled) return;
     supabase
       .from("profiles")
       .select("id, name")
       .eq("is_active", true)
       .order("name")
       .then(({ data }) => setRows((data ?? []) as { id: string; name: string }[]));
-  }, []);
+  }, [enabled]);
   return rows;
 }

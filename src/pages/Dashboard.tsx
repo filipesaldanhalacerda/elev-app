@@ -292,6 +292,23 @@ export default function Dashboard() {
                 ))}
               </div>
             )}
+            {/* F2-12: criar card/alerta/reserva direto da home — com cliente ou genérico */}
+            {online && (
+              <div className="quick-actions" style={{ marginTop: 10 }} data-home-quick-actions>
+                <button type="button" className="quick-action" onClick={() => navigate("/cards?novo=1")}>
+                  <i className="ph ph-kanban" aria-hidden />
+                  <span>Novo card</span>
+                </button>
+                <button type="button" className="quick-action" onClick={() => navigate("/alertas?novo=1")}>
+                  <i className="ph ph-target" aria-hidden />
+                  <span>Alerta</span>
+                </button>
+                <button type="button" className="quick-action" onClick={() => navigate("/salas?novo=1")}>
+                  <i className="ph ph-door-open" aria-hidden />
+                  <span>Sala</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* offline: estado central da tela 24 */}
