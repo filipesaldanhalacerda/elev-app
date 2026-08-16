@@ -14,18 +14,14 @@ import {
   useRooms, useDayReservations, useMyReservations, createReservation, findAlternatives, cancelReservation,
   parsePeriod, type ConflictInfo, type Alternative, type Room, type Reservation,
 } from "../lib/rooms";
-import { formatDate } from "../lib/format";
+import { formatDate, addMinutes, durationLabel } from "../lib/format";
 import { syncReservationToAgenda, unsyncReservation } from "../lib/google";
 
 const HOURS = ["08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"];
 
 const todayISO = () => new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
 const fmtHM = (d: Date) => d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
-/** Uma hora depois de "HH:MM" (limitado a 23:59) — para o fim acompanhar o início. */
-export function hourAfter(hm: string): string {
-  const [h, m] = hm.split(":").map(Number);
-  return h >= 23 ? "23:59" : `${String(h + 1).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-}
+const DURATIONS = [30, 60, 90, 120];
 
 function NewReservation({ rooms, defaults, onClose, onCreated }: {
   rooms: Room[];
@@ -37,7 +33,9 @@ function NewReservation({ rooms, defaults, onClose, onCreated }: {
   const [roomId, setRoomId] = useState(defaults.roomId);
   const [day, setDay] = useState(defaults.day);
   const [start, setStart] = useState(defaults.start);
-  const [end, setEnd] = useState(() => `${String(Number(defaults.start.slice(0, 2)) + 1).padStart(2, "0")}:00`);
+  // início + DURAÇÃO no lugar de fim separado — o fim é calculado, nunca inverte
+  const [duration, setDuration] = useState(60);
+  const end = addMinutes(start, duration);
   const [title, setTitle] = useState("");
   const [account, setAccount] = useState(defaults.account ?? "");
   const [clients, setClients] = useState<{ account_code: string; name: string | null }[]>([]);
@@ -51,10 +49,9 @@ function NewReservation({ rooms, defaults, onClose, onCreated }: {
   }, []);
 
   const roomName = rooms.find((r) => r.id === roomId)?.name ?? "";
-  // F2-10: reserva não pode ficar no passado, e o fim precisa ser depois do início.
+  // F2-10: reserva não pode ficar no passado.
   const past = new Date(`${day}T${start}:00-03:00`).getTime() < Date.now() - 60000;
-  const badRange = end <= start;
-  const canConfirm = title.trim().length > 0 && !past && !badRange && (!conflict || chosen !== null);
+  const canConfirm = title.trim().length > 0 && !past && (!conflict || chosen !== null);
 
   async function confirm() {
     setSaving(true);
@@ -117,22 +114,26 @@ function NewReservation({ rooms, defaults, onClose, onCreated }: {
                 className="field__input"
                 type="time"
                 value={start}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setStart(v);
-                  // o fim acompanha: nunca deixa o intervalo invertido por causa do início
-                  if (v && end <= v) setEnd(hourAfter(v));
-                  setConflict(null);
-                }}
+                onChange={(e) => { setStart(e.target.value); setConflict(null); }}
                 style={{ fontVariantNumeric: "tabular-nums" }}
               />
             </div>
           </div>
-          <div className={`field${badRange ? " field--error" : ""}`}>
-            <label className="field__label" htmlFor="res-fim" style={{ display: "block" }}>Fim</label>
-            <div className="field__box" style={{ height: 46 }}>
-              <input id="res-fim" className="field__input" type="time" value={end} onChange={(e) => { setEnd(e.target.value); setConflict(null); }} style={{ fontVariantNumeric: "tabular-nums" }} />
+          <div className="field">
+            <span className="field__label" style={{ display: "block" }}>Termina</span>
+            <div className="field__box field__box--tabular" style={{ height: 46 }}>
+              <input className="field__input" value={end} disabled readOnly aria-label="Fim calculado" />
             </div>
+          </div>
+        </div>
+        <div className="field">
+          <span className="field__label" style={{ display: "block" }}>Duração</span>
+          <div className="segmented" style={{ height: 46 }}>
+            {DURATIONS.map((d) => (
+              <button key={d} type="button" className={`segmented__item${duration === d ? " segmented__item--active" : ""}`} onClick={() => { setDuration(d); setConflict(null); }}>
+                {durationLabel(d)}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -186,11 +187,11 @@ function NewReservation({ rooms, defaults, onClose, onCreated }: {
           </div>
         </div>
 
-        {(past || badRange) && (
+        {past && (
           <div className="field--error">
             <div className="field__help">
               <i className="ph ph-warning-circle" aria-hidden />
-              {past ? "Não é possível reservar um horário no passado." : "O fim precisa ser depois do início."}
+              Não é possível reservar um horário no passado.
             </div>
           </div>
         )}

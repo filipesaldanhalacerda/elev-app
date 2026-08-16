@@ -174,16 +174,12 @@ test.describe("fase 2 · mobile", () => {
     await expect(page.getByText("Não é possível reservar um horário no passado.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Confirmar reserva" })).toBeDisabled();
 
-    // fim antes do início: bloqueado com mensagem
+    // não existe mais "fim" para errar: início + duração, com o término calculado
     const amanha = new Date(Date.now() + 86400000).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
     await page.locator("#res-data").fill(amanha);
-    await page.locator("#res-fim").fill("09:00"); // início padrão é 10:00
-    await expect(page.getByText("O fim precisa ser depois do início.")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Confirmar reserva" })).toBeDisabled();
-
-    // mudar o início empurra o fim junto — o intervalo nunca fica invertido
     await page.locator("#res-inicio").fill("14:00");
-    await expect(page.locator("#res-fim")).toHaveValue("15:00");
+    await page.getByRole("button", { name: "1h30" }).click();
+    await expect(page.getByLabel("Fim calculado")).toHaveValue("15:30");
     await expect(page.getByRole("button", { name: "Confirmar reserva" })).toBeEnabled();
   });
 
@@ -314,7 +310,7 @@ test.describe("fase 2 · mobile", () => {
     await page.getByLabel("Título").fill(`Reunião ${RUN}`);
     await page.locator("#ag-data").fill(amanha);
     await page.locator("#ag-inicio").fill("10:00");
-    await page.locator("#ag-fim").fill("11:00");
+    await expect(page.locator("[data-ends-at]")).toHaveText("termina às 11:00"); // duração padrão 1h
     await page.getByRole("button", { name: "Agendar" }).click();
     await expect(page.locator(".reservation-row", { hasText: `Reunião ${RUN}` })).toBeVisible();
     await expect(page.getByText(/Compromissos sincronizados com agenda\./)).toBeVisible();
@@ -342,15 +338,16 @@ test.describe("fase 2 · mobile", () => {
     await page.locator("#res-sala").selectOption({ label: `Sync ${RUN.slice(-6)}` });
     await page.locator("#res-data").fill(amanha);
     await page.locator("#res-inicio").fill("15:00");
-    await page.locator("#res-fim").fill("16:00");
     await page.getByLabel("Título").fill(`Comitê ${RUN}`);
     await page.getByRole("button", { name: "Confirmar reserva" }).click();
     await page.goto("/agenda");
     await expect(page.locator(".reservation-row", { hasText: `Reserva · Comitê ${RUN}` })).toBeVisible();
     await expect(page.getByText("reserva de sala")).toBeVisible();
 
-    // cancelar agendamento some da lista
+    // cancelar agendamento pede confirmação antes de sumir da lista
     await page.getByRole("button", { name: `Cancelar Reunião editada ${RUN}` }).click();
+    await expect(page.locator(".sheet__title")).toHaveText("Cancelar este agendamento?");
+    await page.locator(".sheet").getByRole("button", { name: "Cancelar agendamento" }).click();
     await expect(page.locator(".reservation-row", { hasText: `Reunião editada ${RUN}` })).toHaveCount(0);
   });
 });
