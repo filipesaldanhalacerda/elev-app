@@ -229,27 +229,40 @@ export default function Quotes() {
                   </span>
                   <span className="quote-detail__at">às {formatTimeSeconds(detail.quote.at)}</span>
                 </div>
-                {detail.series && (
+                {detail.series && detail.series.length >= 8 && (
                   <div style={{ marginTop: 16 }}>
                     <LineChart
                       points={detail.series}
                       height={88}
                       stroke={`var(--market-${detail.quote.changePct >= 0 ? "up" : "down"})`}
-                      dashedAt={(detail.quote.open - Math.min(...detail.series)) / (Math.max(...detail.series) - Math.min(...detail.series) || 1)}
+                      dashedAt={(detail.quote.prevClose - Math.min(...detail.series)) / (Math.max(...detail.series) - Math.min(...detail.series) || 1)}
                     />
                   </div>
                 )}
-                <div className="quote-hero__axis">
-                  <span>abertura {detail.quote.open.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-                  <span>agora {formatQuotePrice(detail.quote)}</span>
-                </div>
-                <div className="quote-periods">
-                  {PERIODS.map((p) => (
-                    <button key={p} type="button" className={`quote-period${period === p ? " quote-period--active" : ""}`} onClick={() => setPeriod(p)}>
-                      {p}
-                    </button>
-                  ))}
-                </div>
+                {detail.source === "brapi" ? (
+                  <div className="quote-hero__axis">
+                    <span>um mês atrás {detail.series?.[0]?.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}</span>
+                    <span>agora {formatQuotePrice(detail.quote)}</span>
+                  </div>
+                ) : (
+                  <div className="quote-hero__axis">
+                    <span>abertura {detail.quote.open.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                    <span>agora {formatQuotePrice(detail.quote)}</span>
+                  </div>
+                )}
+                {detail.source === "brapi" ? (
+                  <div style={{ marginTop: 10, font: "400 10.5px/1.4 var(--font-sans)", color: "var(--text-3)" }}>
+                    fechamentos diários do último mês · intraday disponível no plano pago da fonte
+                  </div>
+                ) : (
+                  <div className="quote-periods">
+                    {PERIODS.map((p) => (
+                      <button key={p} type="button" className={`quote-period${period === p ? " quote-period--active" : ""}`} onClick={() => setPeriod(p)}>
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <div className="quote-facts">
                   {([["Abertura", detail.quote.open], ["Máxima", detail.quote.high], ["Mínima", detail.quote.low], ["Fech. ant.", detail.quote.prevClose]] as const).map(([label, v]) => (
                     <span key={label} className="quote-facts__cell">

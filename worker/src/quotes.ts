@@ -141,14 +141,14 @@ async function brapiFetchOne(symbol: string, token: string, withSeries = false):
     return { quote: hit.quote, series: hit.series };
   }
   try {
-    const params = withSeries ? "&range=1d&interval=30m" : "";
+    const params = withSeries ? "&range=1mo" : ""; // intraday não existe no plano grátis; 1mo dá a série diária real
     const res = await fetch(`https://brapi.dev/api/quote/${encodeURIComponent(toBrapiSymbol(symbol))}?token=${token}${params}`);
     if (!res.ok) return hit ? { quote: hit.quote, series: hit.series } : null; // limite/erro: serve o cache velho se houver
     const body = (await res.json()) as { results?: BrapiResult[] };
     const quote = body.results?.[0] ? brapiToQuote(symbol, body.results[0]) : null;
     if (!quote) return null;
     const series = body.results?.[0]?.historicalDataPrice?.map((p) => p.close).filter((v) => typeof v === "number");
-    const entry = { quote, series: series && series.length >= 2 ? series : hit?.series, fetchedAt: Date.now() };
+    const entry = { quote, series: series && series.length >= 8 ? series : hit?.series, fetchedAt: Date.now() };
     brapiCache.set(symbol, entry);
     return { quote: entry.quote, series: entry.series };
   } catch {
@@ -173,7 +173,8 @@ export async function realDetail(symbol: string, token: string, now = new Date()
   }
   const real = await brapiFetchOne(symbol, token, true);
   if (!real) return { quote: fakeQuote(symbol, now), series: fakeSeries(symbol) };
-  return { quote: real.quote, series: real.series ?? fakeSeries(symbol) };
+  // SEM série real não inventamos gráfico: o app mostra a régua do dia (dados reais)
+  return { quote: real.quote, series: real.series ?? [] };
 }
 
 // ---------- Simulador do "Testar conexão" (tela 18) ----------
