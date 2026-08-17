@@ -29,7 +29,7 @@ function cardMeta(card: CardRow, myId: string): string {
 const spDayOf = (iso: string) => new Date(iso).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
 const spTimeOf = (iso: string) => new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/Sao_Paulo" });
 
-export function NewCardSheet({ initialClient = "", editing, onClose, onCreated }: { initialClient?: string; editing?: CardRow | null; onClose: () => void; onCreated: () => void }) {
+export function NewCardSheet({ initialClient = "", editing, onClose, onCreated }: { initialClient?: string; editing?: CardRow | null; onClose: () => void; onCreated: () => void | Promise<void> }) {
   const { profile } = useAuth();
   const [title, setTitle] = useState(editing?.title ?? "");
   const [description, setDescription] = useState(editing?.description ?? "");
@@ -72,8 +72,10 @@ export function NewCardSheet({ initialClient = "", editing, onClose, onCreated }
     };
     if (editing) await updateCard(editing.id, values);
     else await createCard(profile!.id, { ...values, assignee: profile!.id }); // tarefa é sempre sua
+    // o botão só para de carregar quando a lista já está fresca — reabrir a tarefa
+    // logo depois de salvar mostra o texto novo, nunca o antigo
+    await onCreated();
     setSaving(false);
-    onCreated();
     onClose();
   }
 

@@ -109,7 +109,8 @@ test("alertas automáticos: vencimento 30d, movimentação relevante e saldo par
 
 test("editar alerta pelo lápis: sheet pré-preenchido e alteração salva", async ({ page }) => {
   const svc = serviceClient();
-  await svc.from("alerts").insert({ owner: advisorId, ticker: "ITUB4", direction: "alta", target_price: 40, created_price: 33 });
+  // alvo inalcançável: o alerta precisa estar ATIVO para ser editado (alvo real seria disparado pela varredura)
+  await svc.from("alerts").insert({ owner: advisorId, ticker: "ITUB4", direction: "alta", target_price: 940, created_price: 33 });
   await login(page);
   await page.goto("/alertas");
   const card = page.locator(".card", { hasText: "ITUB4" }).first();
@@ -118,12 +119,12 @@ test("editar alerta pelo lápis: sheet pré-preenchido e alteração salva", asy
   await page.getByRole("dialog", { name: "Detalhes do alerta" }).getByText("Editar", { exact: true }).click();
   const sheet = page.getByRole("dialog", { name: "Editar alerta de preço" });
   await expect(sheet.getByLabel("Ativo")).toHaveValue("ITUB4");
-  await expect(sheet.getByLabel("Preço-alvo")).toHaveValue("40,00");
-  await sheet.getByLabel("Preço-alvo").fill("45,50");
+  await expect(sheet.getByLabel("Preço-alvo")).toHaveValue("940,00");
+  await sheet.getByLabel("Preço-alvo").fill("945,50");
   await sheet.getByRole("button", { name: "Salvar alterações" }).click();
-  await expect(page.locator(".card", { hasText: "ITUB4" }).first().locator(".alert-card__target")).toContainText("alvo R$ 45,50");
+  await expect(page.locator(".card", { hasText: "ITUB4" }).first().locator(".alert-card__target")).toContainText("alvo R$ 945,50");
   const { data } = await svc.from("alerts").select("target_price").eq("owner", advisorId).eq("ticker", "ITUB4").single();
-  expect(data!.target_price).toBe(45.5);
+  expect(data!.target_price).toBe(945.5);
 });
 
 test("disparado fica só no histórico e a busca rápida filtra as duas abas", async ({ page }) => {

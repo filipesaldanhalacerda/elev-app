@@ -65,7 +65,7 @@ function progressInfo(a: AlertRow, quote: Quote | undefined) {
   return { price, remainingPct: Number(remainingPct.toFixed(1)), progress: Math.max(0.04, done) };
 }
 
-export function AlertSheet({ initialTicker, initialClient = "", editing, onClose, onSaved }: { initialTicker: string; initialClient?: string; editing?: AlertRow; onClose: () => void; onSaved: () => void }) {
+export function AlertSheet({ initialTicker, initialClient = "", editing, onClose, onSaved }: { initialTicker: string; initialClient?: string; editing?: AlertRow; onClose: () => void; onSaved: () => void | Promise<void> }) {
   const { profile } = useAuth();
   const [ticker, setTicker] = useState(editing?.ticker ?? initialTicker);
   const [direction, setDirection] = useState<"alta" | "baixa">(editing?.direction ?? "alta");
@@ -133,7 +133,7 @@ export function AlertSheet({ initialTicker, initialClient = "", editing, onClose
       : await supabase.from("alerts").insert({ ...values, owner: profile!.id, created_price: detail?.quote?.price ?? null });
     setSaving(false);
     if (!error) {
-      onSaved();
+      await onSaved();
       onClose();
     }
   }

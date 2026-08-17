@@ -32,7 +32,7 @@ const PERIODS = [
 ];
 const minutesOf = (hmStr: string) => Number(hmStr.slice(0, 2)) * 60 + Number(hmStr.slice(3));
 
-function EventSheet({ editing, initialDay, initialStart, onClose, onSaved }: { editing?: GoogleEvent; initialDay?: string; initialStart?: string; onClose: () => void; onSaved: () => void }) {
+function EventSheet({ editing, initialDay, initialStart, onClose, onSaved }: { editing?: GoogleEvent; initialDay?: string; initialStart?: string; onClose: () => void; onSaved: () => void | Promise<void> }) {
   // abre já num horário À FRENTE: hoje sugere a próxima meia hora; dia futuro sugere 10:00
   const suggestion = nextSlotSP();
   const futureDay = !!initialDay && initialDay > todaySP();
@@ -66,7 +66,7 @@ function EventSheet({ editing, initialDay, initialStart, onClose, onSaved }: { e
       const ends_at = `${day}T${end}:00-03:00`;
       if (editing) await updateEvent(editing.id, { title: title.trim(), starts_at, ends_at, account_code: account || null });
       else await createEvent({ title: title.trim(), starts_at, ends_at, account_code: account || null });
-      onSaved();
+      await onSaved();
       onClose();
     } catch (e) {
       setError((e as Error).message);

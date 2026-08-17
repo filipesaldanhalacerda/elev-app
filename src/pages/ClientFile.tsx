@@ -544,7 +544,7 @@ function ExtrasTab({ account, advisorCode }: { account: string; advisorCode: str
 // ---------- Aba 10 · Notas ----------
 const noteWhen = (at: string) => `${formatDate(at)} às ${new Date(at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" })}`;
 
-function NoteSheet({ account, advisorCode, editing, onClose, onSaved }: { account: string; advisorCode: string; editing: TimelineNote | null; onClose: () => void; onSaved: () => void }) {
+function NoteSheet({ account, advisorCode, editing, onClose, onSaved }: { account: string; advisorCode: string; editing: TimelineNote | null; onClose: () => void; onSaved: () => void | Promise<void> }) {
   const [body, setBody] = useState(editing?.body ?? "");
   const [saving, setSaving] = useState(false);
 
@@ -555,7 +555,7 @@ function NoteSheet({ account, advisorCode, editing, onClose, onSaved }: { accoun
       if (!navigator.onLine) throw new Error("offline");
       if (editing) await updateTimelineNote(editing.id, body.trim());
       else await addTimelineNote(account, advisorCode, body.trim());
-      onSaved();
+      await onSaved();
     } catch {
       // sem rede: nota NOVA entra na fila e sincroniza quando a rede voltar (tela 24)
       if (!editing) enqueueNote({ account, advisorCode, body: body.trim(), at: Date.now() });

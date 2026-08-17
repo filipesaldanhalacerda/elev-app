@@ -12,6 +12,7 @@ export default defineConfig({
   workers: 4,
   retries: 1,
   reporter: [["list"]],
+  globalTeardown: "./tests/helpers/global-teardown.ts",
   timeout: 45_000,
   expect: { timeout: 10_000 },
   use: {
@@ -23,6 +24,9 @@ export default defineConfig({
   projects: [
     {
       name: "assessor",
+      // o projeto mt derruba a conexão MetaTrader (singleton): rodar depois dele evita
+      // que /api/quotes volte "pausado" no meio destes testes
+      dependencies: ["mt"],
       testIgnore: [/e3-rls/, /e5-importacao/, /e7-cotacoes/, /e16-fluxos/, /e17-qa/, /e20-garantia/],
       use: {
         ...devices["iPhone 12"],
@@ -32,6 +36,7 @@ export default defineConfig({
     },
     {
       name: "admin",
+      dependencies: ["mt"],
       testIgnore: [/e3-rls/, /e5-importacao/, /e7-cotacoes/, /e16-fluxos/, /e17-qa/, /e20-garantia/],
       use: {
         ...devices["Desktop Chrome"],
@@ -67,6 +72,7 @@ export default defineConfig({
       // E20: garantia transversal (console/rede/dado real) — serial, viewports próprios
       name: "garantia",
       testMatch: /e20-garantia/,
+      dependencies: ["mt"],
       workers: 1,
     },
     {
@@ -85,7 +91,9 @@ export default defineConfig({
       timeout: 60_000,
     },
     {
-      command: "npx wrangler dev --config worker/wrangler.toml --port 8787",
+      // roda DENTRO de worker/ para o wrangler achar o .dev.vars (sem ele as cotações caem no simulador)
+      command: "npx wrangler dev --port 8787",
+      cwd: "worker",
       url: "http://127.0.0.1:8787/health",
       reuseExistingServer: true,
       timeout: 90_000,

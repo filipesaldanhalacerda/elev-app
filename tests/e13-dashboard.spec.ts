@@ -28,7 +28,9 @@ test.beforeAll(async () => {
   ]);
   await svc.from("client_extras").upsert({ account_code: ANA.replace("7", "9"), phone: "(11) 97744-2010" });
   await svc.from("alerts").delete().eq("owner", advId);
-  await svc.from("alerts").insert({ owner: advId, ticker: "PETR4", direction: "alta", target_price: 41, created_price: 38.42 });
+  // alvo inalcançável de propósito: com cotação REAL, um alvo plausível é atingido e a
+  // varredura dispara o alerta no meio do teste (ele sai do radar). Aqui ele precisa ficar ativo.
+  await svc.from("alerts").insert({ owner: advId, ticker: "PETR4", direction: "alta", target_price: 999.99, created_price: 38.42 });
   await svc.from("cards").insert({ title: `Rebalancear carteira ${RUN}`, creator: advId, assignee: advId, account_code: ANA, priority: "alta", status: "pendente", due_at: new Date(Date.now() - 86400000).toISOString() });
   await svc.from("notifications").insert({ user_id: advId, kind: "alerta_atingido", title: "Alerta disparado — PETR4 atingiu R$ 41,00" });
 });
@@ -114,7 +116,8 @@ test("home espelha os fixados das Cotações (vazio é vazio) e conta TODOS os a
   // personalizou e removeu tudo
   await svc.from("profiles").update({ quotes_customized: true }).eq("id", id);
   // 8 alertas ativos
-  const alerts = Array.from({ length: 8 }, (_, i) => ({ owner: id, ticker: `PETR${i + 3}`, direction: "alta", target_price: 40 + i, created_price: 38, status: "ativo" }));
+  // alvos inalcançáveis: os 8 precisam continuar ativos para o contador bater
+  const alerts = Array.from({ length: 8 }, (_, i) => ({ owner: id, ticker: `PETR${i + 3}`, direction: "alta", target_price: 900 + i, created_price: 38, status: "ativo" }));
   await svc.from("alerts").insert(alerts);
   await page.goto("/login");
   await page.getByLabel("E-mail").fill(SOLO.email);

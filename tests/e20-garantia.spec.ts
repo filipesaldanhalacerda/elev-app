@@ -51,6 +51,9 @@ test.beforeAll(async () => {
   advId = await createUser(svc, { email: ADV.email, password: ADV.password, name: ADV.name, role: "advisor", advisor_code: ADV.code });
   await createUser(svc, { email: ADMIN.email, password: ADMIN.password, name: ADMIN.name, role: "admin" });
   await svc.from("clients").upsert({ account_code: CLI, advisor_code: ADV.code, name: `Helena Garantia ${RUN.slice(-4)}`, status: "ATIVO" });
+  // conexão no ar: com ela caída (estado que o projeto mt deixa) /api/quotes responde
+  // "pausado" e a prova de dado real não teria o que conferir
+  await svc.from("mt_connection").update({ status: "ativa", last_quote_at: new Date().toISOString() }).eq("id", 1);
   await svc.from("alerts").insert({ owner: advId, ticker: "PETR4", direction: "alta", target_price: 999.99, created_price: 40, status: "ativo" });
   await svc.from("cards").insert({ title: `Conferir garantia ${RUN}`, creator: advId, assignee: advId, priority: "media", status: "pendente", due_at: new Date(new Date().setHours(17, 0, 0, 0)).toISOString() });
   await svc.from("notifications").insert([
