@@ -13,6 +13,7 @@ export interface Quote {
   changePct: number;
   unit: "preco" | "pp";
   at: string;
+  series?: number[];
 }
 
 export interface QuotesResponse {
@@ -79,7 +80,7 @@ export function useQuotes(symbols: string[], refreshMs = 15000) {
 }
 
 export function useQuoteDetail(symbol: string | null) {
-  const [data, setData] = useState<{ paused: boolean; source?: "brapi" | "simulado"; quote?: Quote; series?: number[] } | null>(null);
+  const [data, setData] = useState<{ paused: boolean; source?: "brapi" | "simulado"; unavailable?: boolean; quote?: Quote; series?: number[] } | null>(null);
   useEffect(() => {
     if (!symbol) {
       setData(null);
@@ -88,7 +89,7 @@ export function useQuoteDetail(symbol: string | null) {
     let alive = true;
     setData(null);
     workerFetch(`/api/quotes/detail?symbol=${encodeURIComponent(symbol)}`)
-      .then((body) => alive && setData(body as { paused: boolean; source?: "brapi" | "simulado"; quote?: Quote; series?: number[] }))
+      .then((body) => alive && setData(body as { paused: boolean; source?: "brapi" | "simulado"; unavailable?: boolean; quote?: Quote; series?: number[] }))
       .catch(() => alive && setData({ paused: true }));
     return () => {
       alive = false;

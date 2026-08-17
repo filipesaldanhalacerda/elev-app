@@ -150,7 +150,7 @@ export default function Dashboard() {
       supabase.from("profiles").select("quotes_customized").eq("id", profile.id).single(),
     ]).then(([{ data: favs }, { data: prof }]) => {
       const saved = [...new Set((favs ?? []).map((r) => r.ticker))];
-      setFavSymbols(saved.length > 0 ? saved : prof?.quotes_customized ? [] : ["WDOU26", "PETR4", "VALE3"]);
+      setFavSymbols(saved.length > 0 ? saved : prof?.quotes_customized ? [] : ["DOLAR", "PETR4", "VALE3"]);
     });
   }, [profile?.id]);
   // limite da home: IBOV + 4 fixados — o restante vive em Cotações ("Ver todos")

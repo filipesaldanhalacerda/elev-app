@@ -109,14 +109,14 @@ test.describe("tela 11 · cotações", () => {
     await expect(page.locator(".quote-hero__label")).toHaveCount(0);
     await expect(page.locator(".fav-section").first()).toHaveText("Índice");
     await expect(page.locator(".fav-row__ticker", { hasText: "IBOV" })).toBeVisible();
-    await expect(page.locator(".fav-section").nth(1)).toHaveText("Futuros");
-    await expect(page.locator(".fav-row__ticker", { hasText: "WDOU26" })).toBeVisible();
+    await expect(page.locator(".fav-section").nth(1)).toHaveText("Moeda");
+    await expect(page.locator(".fav-row__ticker", { hasText: "DOLAR" })).toBeVisible();
     await expect(page.locator(".fav-section").nth(2)).toHaveText("Ações");
     // Editar entra no modo de remoção e Concluir sai dele
     await page.getByRole("button", { name: "Editar lista" }).click();
-    await expect(page.getByRole("button", { name: "Desafixar WDOU26" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Desafixar DOLAR" })).toBeVisible();
     await page.getByRole("button", { name: "Concluir" }).click();
-    await expect(page.getByRole("button", { name: "Desafixar WDOU26" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Desafixar DOLAR" })).toHaveCount(0);
   });
 
   test("fixar e desafixar persistem — inclusive partindo da seleção padrão", async ({ page }) => {
@@ -129,8 +129,8 @@ test.describe("tela 11 · cotações", () => {
 
     // desafixar pelo modo Editar, partindo dos PADRÕES (nada salvo ainda)
     await page.getByRole("button", { name: "Editar lista" }).click();
-    await page.getByRole("button", { name: "Desafixar WDOU26" }).click();
-    await expect(page.locator(".fav-row__ticker", { hasText: "WDOU26" })).toHaveCount(0);
+    await page.getByRole("button", { name: "Desafixar DOLAR" }).click();
+    await expect(page.locator(".fav-row__ticker", { hasText: "DOLAR" })).toHaveCount(0);
     await page.getByRole("button", { name: "Concluir" }).click();
 
     // pelo detalhe: PETR4 segue fixado → Desafixar funciona; Fixar de novo também
@@ -146,11 +146,11 @@ test.describe("tela 11 · cotações", () => {
     await page.reload();
     await page.waitForSelector(".fav-row");
     await expect(page.locator(".fav-row__ticker", { hasText: "PETR4" })).toBeVisible();
-    await expect(page.locator(".fav-row__ticker", { hasText: "WDOU26" })).toHaveCount(0);
+    await expect(page.locator(".fav-row__ticker", { hasText: "DOLAR" })).toHaveCount(0);
 
     // desafixar TODOS não ressuscita a seleção padrão (nem após recarregar)
     await page.getByRole("button", { name: "Editar lista" }).click();
-    for (const t of ["DI1F27", "VALE3", "PETR4"]) {
+    for (const t of ["ITUB4", "VALE3", "PETR4"]) {
       await page.getByRole("button", { name: `Desafixar ${t}` }).click();
       await expect(page.locator(".fav-row__ticker", { hasText: t })).toHaveCount(0);
     }

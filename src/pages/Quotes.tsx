@@ -16,11 +16,10 @@ import { useAuth } from "../lib/auth";
 import {
   useQuotes, useQuoteDetail, pushRecent, getRecents, isFuture, formatQuotePrice, formatQuoteChange, type Quote,
 } from "../lib/quotes";
-import { fakeSeriesLocal } from "../lib/sparkSeries";
 import { QuoteSource } from "../components/QuoteSource";
 import { formatBRL, formatTimeSeconds } from "../lib/format";
 
-const DEFAULT_FAVORITES = ["WDOU26", "DI1F27", "PETR4", "VALE3"];
+const DEFAULT_FAVORITES = ["DOLAR", "PETR4", "VALE3", "ITUB4"];
 
 function useFavorites(userId: string | undefined) {
   const [favorites, setFavorites] = useState<string[] | null>(null);
@@ -141,8 +140,9 @@ export default function Quotes() {
   }
 
   const favQuotes = (favorites ?? []).map((t) => byTicker.get(t)).filter(Boolean) as Quote[];
-  const futures = favQuotes.filter((q) => isFuture(q.symbol));
-  const stocks = favQuotes.filter((q) => !isFuture(q.symbol));
+  const currencies = favQuotes.filter((q) => q.symbol === "DOLAR");
+  const futures = favQuotes.filter((q) => q.symbol !== "DOLAR" && isFuture(q.symbol));
+  const stocks = favQuotes.filter((q) => q.symbol !== "DOLAR" && !isFuture(q.symbol));
 
   const flashClass = (symbol: string) => {
     const f = flashes.get(symbol);
@@ -208,6 +208,8 @@ export default function Quotes() {
         <div style={{ flex: 1, padding: "0 16px", display: "flex", flexDirection: "column", gap: 14 }}>
           {detail === null ? (
             <div className="skeleton" style={{ height: 200, borderRadius: 14 }} />
+          ) : detail.unavailable ? (
+            <Banner kind="warning">Não encontramos {selected} na fonte de dados atual. Confira o código do ativo — derivativos (WDO, WIN, DI) entram quando houver provedor contratado.</Banner>
           ) : detail.paused || !detail.quote ? (
             <Banner kind="warning">Cotações pausadas — não foi possível buscar {selected}.</Banner>
           ) : (
@@ -321,7 +323,11 @@ export default function Quotes() {
                 {ibov && (
                   <FavRow quote={ibov} flash={flashClass("IBOV")} onOpen={() => { setSelected("IBOV"); setSearch("IBOV"); pushRecent("IBOV"); }} />
                 )}
-                {futures.length > 0 && <div className="fav-section" style={{ borderTop: ibov ? "1px solid var(--border)" : undefined }}>Futuros</div>}
+                {currencies.length > 0 && <div className="fav-section" style={{ borderTop: ibov ? "1px solid var(--border)" : undefined }}>Moeda</div>}
+                {currencies.map((q) => (
+                  <FavRow key={q.symbol} quote={q} flash={flashClass(q.symbol)} editing={editingFavs} onRemove={() => void toggle(q.symbol)} onOpen={() => { setSelected(q.symbol); setSearch(q.symbol); pushRecent(q.symbol); }} />
+                ))}
+                {futures.length > 0 && <div className="fav-section" style={{ borderTop: "1px solid var(--border)" }}>Futuros</div>}
                 {futures.map((q) => (
                   <FavRow key={q.symbol} quote={q} flash={flashClass(q.symbol)} editing={editingFavs} onRemove={() => void toggle(q.symbol)} onOpen={() => { setSelected(q.symbol); setSearch(q.symbol); pushRecent(q.symbol); }} />
                 ))}
@@ -405,7 +411,7 @@ function FavRow({ quote, flash, onOpen, editing, onRemove }: { quote: Quote; fla
         <span className="fav-row__ticker">{quote.symbol}</span>
         <span className="fav-row__name">{quote.name}</span>
       </span>
-      <Sparkline points={fakeSeriesLocal(quote.symbol, 9)} up={up} />
+      {quote.series && quote.series.length >= 8 && <Sparkline points={quote.series.slice(-10)} up={up} />}
       <span className="fav-row__right">
         <span className={`fav-row__price${flash}`}>{formatQuotePrice(quote)}</span>
         <span

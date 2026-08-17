@@ -115,7 +115,7 @@ app.get("/api/quotes", async (c) => {
   const now = new Date();
   await auth.svc.from("mt_connection").update({ last_quote_at: now.toISOString() }).eq("id", 1);
   // com BRAPI_TOKEN os preços são reais (B3, ~15 min de atraso); sem, simulador de dev
-  const quotes = c.env.BRAPI_TOKEN ? await realQuotes(symbols, c.env.BRAPI_TOKEN, now) : symbols.map((s) => fakeQuote(s, now));
+  const quotes = c.env.BRAPI_TOKEN ? await realQuotes(symbols, c.env.BRAPI_TOKEN) : symbols.map((s) => fakeQuote(s, now));
   return c.json({ paused: false, source: c.env.BRAPI_TOKEN ? "brapi" : "simulado", quotes });
 });
 
@@ -130,6 +130,7 @@ app.get("/api/quotes/detail", async (c) => {
   }
   if (c.env.BRAPI_TOKEN) {
     const d = await realDetail(symbol, c.env.BRAPI_TOKEN);
+    if (!d) return c.json({ paused: false, source: "brapi", unavailable: true });
     return c.json({ paused: false, source: "brapi", ...d });
   }
   return c.json({ paused: false, source: "simulado", quote: fakeQuote(symbol), series: fakeSeries(symbol) });
@@ -589,9 +590,10 @@ app.post("/api/cron/alerts", async (c) => {
   // 1) alertas de preço ativos — mesma fonte de preço da tela (brapi quando configurada)
   const { data: alerts } = await svc.from("alerts").select("*").eq("status", "ativo");
   const tickers = [...new Set((alerts ?? []).map((a) => String(a.ticker)))];
-  const quoteBy = new Map((c.env.BRAPI_TOKEN ? await realQuotes(tickers, c.env.BRAPI_TOKEN, now) : tickers.map((t) => fakeQuote(t, now))).map((q) => [q.symbol, q]));
+  const quoteBy = new Map((c.env.BRAPI_TOKEN ? await realQuotes(tickers, c.env.BRAPI_TOKEN) : tickers.map((t) => fakeQuote(t, now))).map((q) => [q.symbol, q]));
   for (const a of alerts ?? []) {
-    const q = quoteBy.get(String(a.ticker)) ?? fakeQuote(a.ticker, now);
+    const q = quoteBy.get(String(a.ticker));
+    if (!q) continue; // sem preço REAL não se dispara alerta
     let hit = false;
     if (a.target_price !== null) {
       hit = a.direction === "alta" ? q.price >= a.target_price : q.price <= a.target_price;
