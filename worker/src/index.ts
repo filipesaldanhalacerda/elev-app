@@ -515,11 +515,14 @@ app.post("/api/admin/imports/commit", async (c) => {
         for (const [code, n] of byAdvisor) {
           const userId = users.get(code);
           if (!userId) continue;
+          // dedupe por arquivo: reimportar o mesmo arquivo não re-notifica
+          const { data: already } = await svc.from("notifications").select("id").eq("user_id", userId).eq("kind", "movimentacao").eq("ref->>import", p.file_hash).limit(1);
+          if ((already ?? []).length > 0) continue;
           const parts: string[] = [];
           if (n.aportes > 0) parts.push(`${n.aportes} aporte${n.aportes > 1 ? "s" : ""}`);
           if (n.resgates > 0) parts.push(`${n.resgates} resgate${n.resgates > 1 ? "s" : ""}`);
           await notifyUser(svc, userId, "movimentacao", "Movimentações relevantes na sua carteira",
-            `${parts.join(" e ")} acima de R$ 100 mil chegaram na importação de Captação.`, {}, c.env);
+            `${parts.join(" e ")} acima de R$ 100 mil chegaram na importação de Captação.`, { import: p.file_hash }, c.env);
         }
       }
     } else {
@@ -619,7 +622,14 @@ async function runAlertSweep(env: Env) {
       hit = a.direction === "alta" ? q.changePct >= a.target_day_pct : q.changePct <= -Math.abs(a.target_day_pct);
     }
     if (!hit) continue;
-    await svc.from("alerts").update({ status: "disparado", triggered_at: now.toISOString(), triggered_price: q.price }).eq("id", a.id);
+    // claim atômico: se outra varredura (cron × oportunista) chegou antes, esta desiste — ZERO duplicata
+    const { data: claimed } = await svc
+      .from("alerts")
+      .update({ status: "disparado", triggered_at: now.toISOString(), triggered_price: q.price })
+      .eq("id", a.id)
+      .eq("status", "ativo")
+      .select("id");
+    if (!claimed || claimed.length === 0) continue;
     await svc.from("alert_events").insert({
       alert_id: a.id, owner: a.owner, kind: "preco", account_code: a.account_code,
       detail: { ticker: a.ticker, target: a.target_price, price: q.price, direction: a.direction },
@@ -657,10 +667,13 @@ async function runAlertSweep(env: Env) {
     if (!owner) continue;
     const refKey = `${p.asset}:${p.maturity_date}`;
     if (await dedupe("vencimento", p.account_code, refKey)) continue;
-    await svc.from("alert_events").insert({
+    {
+      const { error: evErr } = await svc.from("alert_events").insert({
       owner, kind: "vencimento", account_code: p.account_code,
       detail: { ref: refKey, asset: p.asset, maturity: p.maturity_date, value: p.value },
     });
+      if (evErr) continue; // índice único: outra varredura já registrou este evento
+    }
     await notifyUser(svc, owner, "alerta_atingido", `${p.asset} vence em breve`,
       `Vencimento em ${p.maturity_date!.split("-").reverse().join("/")} — cliente ${p.account_code}.`, { account: p.account_code }, env);
     results.vencimento++;
@@ -684,10 +697,13 @@ async function runAlertSweep(env: Env) {
     if (!owner) continue;
     const refKey = `mov:${m.id}`;
     if (await dedupe("movimentacao", m.account_code, refKey)) continue;
-    await svc.from("alert_events").insert({
+    {
+      const { error: evErr } = await svc.from("alert_events").insert({
       owner, kind: "movimentacao", account_code: m.account_code,
       detail: { ref: refKey, amount: m.amount, date: m.mov_date, tipo: m.kind },
     });
+      if (evErr) continue; // índice único: outra varredura já registrou este evento
+    }
     await notifyUser(svc, owner, "alerta_atingido",
       `${m.amount >= 0 ? "Aporte" : "Resgate"} relevante — cliente ${m.account_code}`,
       `${m.amount >= 0 ? "+" : "−"}R$ ${Math.abs(m.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })} em ${m.mov_date.split("-").reverse().join("/")}.`,
@@ -709,10 +725,13 @@ async function runAlertSweep(env: Env) {
     if (!owner) continue;
     const refKey = `saldo:${b.ref_date}`;
     if (await dedupe("saldo_parado", b.account_code, refKey)) continue;
-    await svc.from("alert_events").insert({
+    {
+      const { error: evErr } = await svc.from("alert_events").insert({
       owner, kind: "saldo_parado", account_code: b.account_code,
       detail: { ref: refKey, total: b.total, date: b.ref_date },
     });
+      if (evErr) continue; // índice único: outra varredura já registrou este evento
+    }
     await notifyUser(svc, owner, "alerta_atingido", `Dinheiro parado — cliente ${b.account_code}`,
       `R$ ${b.total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} em conta sem aplicação.`, { account: b.account_code }, env);
     results.saldo++;
