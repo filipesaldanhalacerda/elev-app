@@ -35,6 +35,12 @@ test.beforeAll(async () => {
   ]);
 });
 
+// as salas criadas aqui somem no fim: a base fica só com as salas do escritório
+test.afterAll(async () => {
+  // sala é recurso do escritório, não sobra de teste — reservas caem por cascade
+  await serviceClient().from("rooms").delete().in("name", [IPE, JACA, `Aroeira ${RUN.slice(-4)}`]);
+});
+
 async function login(page: import("@playwright/test").Page, email: string, password: string) {
   await page.goto("/login");
   await page.getByLabel("E-mail").fill(email);
@@ -83,9 +89,34 @@ test.describe("tela 14 · fluxo (f)", () => {
     await login(page, RAFA.email, RAFA.password);
     await page.goto("/salas");
     await expect(page.locator(".page-header__title")).toHaveText("Sala de reunião");
+
+    // seletor de salas: a PRIMEIRA sala começa na borda esquerda, inteira — nunca cortada
+    const scroller = page.locator("[data-salas-seletor]");
+    await expect(scroller).toBeVisible();
+    const box = await scroller.boundingBox();
+    const first = await scroller.locator(".room-chip").first().boundingBox();
+    expect(first!.x).toBeGreaterThanOrEqual(box!.x - 1);
+    expect(first!.x + first!.width).toBeLessThanOrEqual(box!.x + box!.width + 1);
+
     await page.locator(".room-chip", { hasText: IPE }).click();
     await expect(page.locator(".cal-event--other", { hasText: `Onboarding — Bruno${RUN.slice(-3)}` })).toBeVisible();
     await expect(page.getByRole("button", { name: "Reservar às 08:00" })).toBeVisible();
+  });
+
+  test("uma sala só: sem seletor para rolar — o nome, a lotação e os recursos ficam na grade", async ({ page }) => {
+    const svc = serviceClient();
+    // deixa só a Sala 1 visível para este assessor (as de teste ficam inativas por um instante)
+    await svc.from("rooms").update({ is_active: false }).in("name", [IPE, JACA]);
+    try {
+      await login(page, RAFA.email, RAFA.password);
+      await page.goto("/salas");
+      await expect(page.locator("[data-salas-sala]")).toBeVisible();
+      await expect(page.locator("[data-salas-seletor]")).toHaveCount(0);
+      await expect(page.locator("[data-salas-sala]")).toContainText("Sala 1");
+      await expect(page.locator("[data-salas-sala]")).toContainText("lugares");
+    } finally {
+      await svc.from("rooms").update({ is_active: true }).in("name", [IPE, JACA]);
+    }
   });
 
   test("conflito → alternativas em um toque → confirmada em Minhas reservas + notificação", async ({ page }) => {

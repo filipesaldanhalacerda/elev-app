@@ -109,7 +109,8 @@ test.beforeAll(async () => {
   await svc.from("timeline_notes").insert({ account_code: ANA, advisor_code: ADV.code, author: advId, body: "Nota QA da linha do tempo." });
   await svc.from("alerts").delete().eq("owner", advId);
   await svc.from("alerts").insert([
-    { owner: advId, ticker: "PETR4", direction: "alta", target_price: 41, created_price: 38.42, account_code: ANA, status: "ativo", triggered_at: null, triggered_price: null },
+    // alvo inalcançável: com cotação real um alvo plausível dispara e o alerta sai da aba Ativos
+    { owner: advId, ticker: "PETR4", direction: "alta", target_price: 999.99, created_price: 38.42, account_code: ANA, status: "ativo", triggered_at: null, triggered_price: null },
     { owner: advId, ticker: "VALE3", direction: "baixa", target_price: 58, created_price: 61, status: "disparado", triggered_at: new Date().toISOString(), triggered_price: 58 },
   ]);
   await svc.from("cards").delete().eq("assignee", advId);
@@ -126,6 +127,12 @@ test.beforeAll(async () => {
     { user_id: advId, kind: "alerta_atingido", title: "VALE3 atingiu R$ 58,00", body: "Alvo de baixa alcançado", read_at: null, created_at: new Date().toISOString() },
     { user_id: advId, kind: "reserva_confirmada", title: "Reserva confirmada — QA Ipê", body: null, read_at: new Date().toISOString(), created_at: new Date(Date.now() - 86400000).toISOString() },
   ]);
+});
+
+// as salas criadas aqui somem no fim: a base fica só com as salas do escritório
+test.afterAll(async () => {
+  // sala é recurso do escritório, não sobra de teste — reservas caem por cascade
+  await serviceClient().from("rooms").delete().in("name", [`QA Ipê ${RUN.slice(-4)}`]);
 });
 
 async function login(page: import("@playwright/test").Page, email: string, password: string) {

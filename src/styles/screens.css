@@ -472,9 +472,12 @@
 .swipe-hint__close i { font-size: 15px; }
 
 /* ---------- Tela 14 · Sala de reunião ---------- */
-.room-toolbar { flex: none; padding: 12px 16px 0; background: var(--surface); border-bottom: 1px solid var(--border); }
-.room-toolbar__row { display: flex; gap: 6px; align-items: center; padding-bottom: 12px; overflow-x: auto; scrollbar-width: none; }
+.room-toolbar { flex: none; }
+/* salas roláveis com fade à direita — mesmo padrão das abas da ficha do cliente */
+.room-toolbar__row { display: flex; gap: 6px; align-items: center; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; scroll-padding-left: 2px; position: relative; }
 .room-toolbar__row::-webkit-scrollbar { display: none; }
+.room-toolbar__row > .room-chip { scroll-snap-align: start; }
+.room-toolbar__fade { position: sticky; right: 0; top: 0; bottom: 0; width: 36px; margin-left: -36px; background: linear-gradient(90deg, transparent 0%, var(--bg) 72%); pointer-events: none; flex: none; }
 .date-chip { height: 36px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border-field); color: var(--text-1); font: 600 12px/1 var(--font-sans); font-variant-numeric: tabular-nums; flex: none; }
 [data-theme="dark"] .date-chip { background: var(--surface-2); }
 .date-chip i { font-size: 15px; color: var(--text-2); }
@@ -483,7 +486,7 @@
 [data-theme="dark"] .room-chip { color: var(--text-body); }
 .room-chip--active { background: var(--brand-800); border: none; color: var(--brand-50); font-weight: 600; }
 [data-theme="dark"] .room-chip--active { background: var(--action); color: var(--on-action); }
-.room-chip:first-of-type { margin-left: auto; }
+.room-chip--active { box-shadow: var(--elev-1); }
 
 /* bloco de outra pessoa: neutro com barra lateral neutra */
 .agenda__block--other { background: var(--chip-pill-bg); border-left-color: var(--neutral-dot); }

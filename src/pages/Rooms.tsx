@@ -2,7 +2,7 @@
  * Tela 14 · Sala de reunião — quadros "14 Sala de reuniao claro" e
  * "14 Reserva conflito escuro" (#3f). Conflito impedido com alternativas em um toque.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
 import { Sheet } from "../components/Sheet";
@@ -41,7 +41,7 @@ export function NewReservation({ rooms, defaults, onClose, onCreated }: {
   rooms: Room[];
   defaults: { roomId: string; day: string; start: string; account?: string };
   onClose: () => void;
-  onCreated: () => void;
+  onCreated: () => void | Promise<void>;
 }) {
   const { profile } = useAuth();
   const [roomId, setRoomId] = useState(defaults.roomId);
@@ -87,7 +87,7 @@ export function NewReservation({ rooms, defaults, onClose, onCreated }: {
     const result = await createReservation(profile!.id, rid, d, s, e, title.trim(), account || null);
     setSaving(false);
     if (result.ok) {
-      onCreated();
+      await onCreated();
       onClose();
       return;
     }
@@ -266,7 +266,15 @@ export default function Rooms() {
   const [stripStart, setStripStart] = useState(todayISO());
   const [roomId, setRoomId] = useState<string | null>(null);
   const activeRoom = roomId ?? rooms?.find((r) => r.is_active)?.id ?? null;
-  const activeRoomName = rooms?.find((r) => r.id === activeRoom)?.name ?? "";
+  const activeRoomData = rooms?.find((r) => r.id === activeRoom);
+  const activeRoomName = activeRoomData?.name ?? "";
+  // só sala em uso pode ser escolhida — a inativa não aceita reserva (mesma regra do sheet)
+  const selectableRooms = (rooms ?? []).filter((r) => r.is_active);
+  // a sala escolhida nunca fica escondida fora da área visível da lista
+  const activeChipRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    activeChipRef.current?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  }, [activeRoom]);
   const { rows: allReservations, reload: reloadDay } = useRoomReservations(activeRoom);
   const { rows: mine, reload: reloadMine } = useMyReservations(profile?.id);
   const [creating, setCreating] = useState<{ start: string; account?: string } | null>(
@@ -412,15 +420,25 @@ export default function Rooms() {
           </div>
         </div>
 
-        <div className="room-toolbar" style={{ padding: 0 }}>
-          <div className="room-toolbar__row">
-            {(rooms ?? []).map((r) => (
-              <button key={r.id} type="button" className={`room-chip${activeRoom === r.id ? " room-chip--active" : ""}`} onClick={() => setRoomId(r.id)}>
-                {r.name} · {r.capacity} lug.
-              </button>
-            ))}
+        {/* escolher sala só faz sentido com mais de uma: com uma só, o nome fica no cabeçalho da grade */}
+        {selectableRooms.length > 1 && (
+          <div className="room-toolbar">
+            <div className="room-toolbar__row" data-salas-seletor>
+              {selectableRooms.map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  ref={activeRoom === r.id ? activeChipRef : undefined}
+                  className={`room-chip${activeRoom === r.id ? " room-chip--active" : ""}`}
+                  onClick={() => setRoomId(r.id)}
+                >
+                  {r.name} · {r.capacity} lug.
+                </button>
+              ))}
+              <span className="room-toolbar__fade" aria-hidden />
+            </div>
           </div>
-        </div>
+        )}
 
         {rooms !== null && rooms.length === 0 && (
           <div className="empty-state" style={{ borderRadius: 14 }}>
@@ -433,6 +451,20 @@ export default function Rooms() {
         {/* grade proporcional da sala — toque no vazio reserva naquela hora */}
         {activeRoom && (
           <div className="card" style={{ padding: "16px 14px" }}>
+            {selectableRooms.length <= 1 && activeRoomData && (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }} data-salas-sala>
+                <span style={{ width: 30, height: 30, flex: "none", borderRadius: 9, background: "var(--brand-tint)", color: "var(--ghost-text)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <i className="icon-presentation" style={{ fontSize: 16 }} aria-hidden />
+                </span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: "block", font: "600 13px/1.2 var(--font-sans)", color: "var(--text-1)" }}>{activeRoomData.name}</span>
+                  <span style={{ display: "block", marginTop: 2, font: "400 11px/1.2 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-2)" }}>
+                    {activeRoomData.capacity} lugares
+                    {activeRoomData.resources.length > 0 ? ` · ${activeRoomData.resources.join(", ")}` : ""}
+                  </span>
+                </span>
+              </div>
+            )}
             <div className="cal-grid" style={{ height: (DAY_END - DAY_START) * HOUR_H + 1 }}>
               {gridHours.map((h) => (
                 <div key={h} className="cal-grid__row" style={{ top: (h - DAY_START) * HOUR_H, height: HOUR_H }}>

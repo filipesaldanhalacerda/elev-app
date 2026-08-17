@@ -116,6 +116,12 @@ test.beforeAll(async () => {
   asAdmin = await login(EMAILS.admin);
 });
 
+// as salas criadas aqui somem no fim: a base fica só com as salas do escritório
+test.afterAll(async () => {
+  // sala é recurso do escritório, não sobra de teste — reservas caem por cascade
+  await svc.from("rooms").delete().in("name", [`Ipê ${RUN}`]);
+});
+
 test("normalize_advisor_code: A31342 = 31342 no banco", async () => {
   const { data } = await svc.rpc("normalize_advisor_code", { raw: "A31342" });
   expect(data).toBe("31342");

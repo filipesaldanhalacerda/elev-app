@@ -31,3 +31,8 @@ on conflict (id) do nothing;
 update public.mt_connection
 set status = 'ativa', login = '50191', server = 'XPMT5-Real02', connected_at = now(), last_quote_at = now()
 where id = 1;
+
+-- Sala de reunião única do escritório (o PO mantém só a Sala 1).
+insert into public.rooms (name, capacity, resources) values
+  ('Sala 1', 6, array['TV', 'Videoconferência', 'Quadro'])
+on conflict (name) do nothing;

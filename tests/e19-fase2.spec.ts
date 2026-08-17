@@ -33,6 +33,12 @@ test.beforeAll(async () => {
   await svc.from("reservations").delete().eq("owner", advId);
 });
 
+// as salas criadas aqui somem no fim: a base fica só com as salas do escritório
+test.afterAll(async () => {
+  // sala é recurso do escritório, não sobra de teste — reservas caem por cascade
+  await serviceClient().from("rooms").delete().in("name", [`A0 Quebrada ${RUN.slice(-4)}`, `Canc ${RUN.slice(-6)}`]);
+});
+
 async function login(page: import("@playwright/test").Page, email = ADV.email, password = ADV.password) {
   await page.goto("/login");
   await page.getByLabel("E-mail").fill(email);
