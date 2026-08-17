@@ -8,6 +8,7 @@ import { useSearchParams } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
 import { Sheet } from "../components/Sheet";
 import { Button } from "../components/Button";
+import { Filters } from "../components/Filters";
 import { AlertCard } from "../components/cards";
 import { usePagedList, InfiniteSentinel } from "../components/infinite";
 import { supabase } from "../lib/supabase";
@@ -204,10 +205,16 @@ export default function Alerts() {
     return () => clearTimeout(t);
   }, [searchInput]);
 
+  const [dir, setDir] = useState<"todas" | "alta" | "baixa">("todas");
+  const [vinculo, setVinculo] = useState<"todos" | "com" | "sem">("todos");
+  const matches = (a: AlertRow) =>
+    (dir === "todas" || a.direction === dir) &&
+    (vinculo === "todos" || (vinculo === "com" ? !!a.account_code : !a.account_code));
+
   const activeList = useAlertList("ativo", search);
   const historyList = useAlertList("disparado", search);
-  const active = activeList.items;
-  const triggered = historyList.items;
+  const active = activeList.items === null ? null : activeList.items.filter(matches);
+  const triggered = historyList.items === null ? null : historyList.items.filter(matches);
 
   const activeSymbols = useMemo(() => [...new Set((active ?? []).map((a) => a.ticker))], [active]);
   useEffect(() => {
@@ -217,6 +224,7 @@ export default function Alerts() {
       .catch(() => {});
   }, [activeSymbols.join(",")]);
 
+  const [cancelling, setCancelling] = useState<AlertRow | null>(null);
   async function cancel(id: string) {
     await supabase.from("alerts").update({ status: "cancelado" }).eq("id", id);
     await activeList.reload();
@@ -262,6 +270,20 @@ export default function Alerts() {
           )}
         </div>
 
+        <Filters
+          label="Filtros de alertas"
+          sections={[
+            { key: "dir", label: "Direção", options: [{ value: "todas", label: "Todas" }, { value: "alta", label: "Alta" }, { value: "baixa", label: "Baixa" }] },
+            { key: "vinculo", label: "Cliente", options: [{ value: "todos", label: "Todos" }, { value: "com", label: "Com cliente" }, { value: "sem", label: "Sem cliente" }] },
+          ]}
+          values={{ dir, vinculo }}
+          onChange={(key, value) => {
+            if (key === "dir") setDir(value as typeof dir);
+            else setVinculo(value as typeof vinculo);
+          }}
+          onClear={() => { setDir("todas"); setVinculo("todos"); }}
+        />
+
         {tab === "ativos" && (
           <>
             {active === null && <div className="skeleton" style={{ height: 140, borderRadius: 14 }} />}
@@ -287,7 +309,7 @@ export default function Alerts() {
                         <button type="button" className="alert-foot__btn" aria-label={`Editar alerta de ${a.ticker}`} onClick={() => { setEditing(a); setSheet(true); }}>
                           <i className="icon-pencil" aria-hidden />
                         </button>
-                        <button type="button" className="alert-foot__btn alert-foot__btn--danger" aria-label={`Cancelar alerta de ${a.ticker}`} onClick={() => cancel(a.id)}>
+                        <button type="button" className="alert-foot__btn alert-foot__btn--danger" aria-label={`Cancelar alerta de ${a.ticker}`} onClick={() => setCancelling(a)}>
                           <i className="icon-ban" aria-hidden />
                         </button>
                       </span>
@@ -355,6 +377,22 @@ export default function Alerts() {
           onClose={() => { setSheet(false); setEditing(undefined); }}
           onSaved={reloadAll}
         />
+      )}
+
+      {cancelling && (
+        <Sheet label="Cancelar alerta" onClose={() => setCancelling(null)}>
+          <div className="sheet__title">Cancelar este alerta?</div>
+          <div style={{ marginTop: 8, font: "400 12.5px/1.55 var(--font-sans)", color: "var(--text-2)" }}>
+            O alerta de <strong style={{ font: "600 12.5px var(--font-mono)", color: "var(--text-1)" }}>{cancelling.ticker}</strong>
+            {cancelling.target_price !== null ? ` em ${formatBRL(cancelling.target_price)}` : cancelling.target_day_pct !== null ? ` em ${cancelling.target_day_pct}% no dia` : ""} sai dos ativos e não dispara mais.
+          </div>
+          <div className="sheet__footer" style={{ marginTop: 16 }}>
+            <Button variant="secondary" onClick={() => setCancelling(null)}>Voltar</Button>
+            <Button variant="destructive" onClick={async () => { await cancel(cancelling.id); setCancelling(null); }}>
+              Cancelar alerta
+            </Button>
+          </div>
+        </Sheet>
       )}
     </MobileShell>
   );

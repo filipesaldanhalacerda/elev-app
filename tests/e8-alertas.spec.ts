@@ -172,13 +172,17 @@ test("rolagem infinita: a lista pagina e carrega mais ao rolar", async ({ page }
   }).toPass();
 });
 
-test("cancelar alerta pelo ícone de proibido", async ({ page }) => {
+test("cancelar alerta pede confirmação no padrão do sistema", async ({ page }) => {
   const svc = serviceClient();
   await svc.from("alerts").insert({ owner: advisorId, ticker: "HGLG11", direction: "baixa", target_price: 1, created_price: 158 });
   await login(page);
   await page.goto("/alertas");
   const card = page.locator(".card", { hasText: "HGLG11" }).first();
   await card.getByRole("button", { name: "Cancelar alerta de HGLG11" }).click();
+  // padrão do sistema: cancelar exige confirmação
+  const confirm = page.getByRole("dialog", { name: "Cancelar alerta" });
+  await expect(confirm.getByText("Cancelar este alerta?")).toBeVisible();
+  await confirm.getByRole("button", { name: "Cancelar alerta" }).click();
   await expect(page.locator(".card", { hasText: "HGLG11" })).toHaveCount(0);
   const { data } = await svc.from("alerts").select("status").eq("ticker", "HGLG11").eq("owner", advisorId).single();
   expect(data!.status).toBe("cancelado");

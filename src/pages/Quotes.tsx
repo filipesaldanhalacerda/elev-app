@@ -105,6 +105,7 @@ export default function Quotes() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
   const [period, setPeriod] = useState<(typeof PERIODS)[number]>("1D");
+  const [editingFavs, setEditingFavs] = useState(false);
   const { favorites, isPinned, toggle } = useFavorites(profile?.id);
   const recents = getRecents();
 
@@ -261,47 +262,29 @@ export default function Quotes() {
       ) : (
         // -------- estado padrão (quadro claro) --------
         <>
-          {ibov && (
-            <div className="quote-hero" style={{ padding: "2px 18px 0" }}>
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-                <span>
-                  <span className="quote-hero__label">IBOV · IBOVESPA</span>
-                  <span className={`quote-hero__value${flashClass("IBOV")}`}>{formatQuotePrice(ibov)}</span>
-                </span>
-                <MarketChip up={ibov.changePct >= 0}>{formatQuoteChange(ibov)}</MarketChip>
-              </div>
-              <div style={{ marginTop: 12 }}>
-                <LineChart
-                  points={fakeSeriesLocal("IBOV")}
-                  height={60}
-                  stroke={`var(--market-${ibov.changePct >= 0 ? "up" : "down"})`}
-                  dashedAt={0.3}
-                />
-              </div>
-              <div className="quote-hero__axis">
-                <span>abertura {ibov.open.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}</span>
-                <span>máx {ibov.high.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}</span>
-              </div>
-            </div>
-          )}
-
           <div style={{ flex: 1, padding: "14px 16px 0", display: "flex", flexDirection: "column", gap: 14 }}>
             <div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                <span style={{ font: "600 15px/1.2 var(--font-sans)", letterSpacing: "-0.01em", color: "var(--text-1)" }}>Favoritos</span>
-                <span style={{ display: "flex", alignItems: "center", gap: 5, font: "500 12px/1 var(--font-sans)", color: "var(--ghost-text)" }}>
-                  <i className="icon-sliders-horizontal" style={{ fontSize: 14 }} aria-hidden />
-                  Editar
-                </span>
+                <span style={{ font: "600 15px/1.2 var(--font-sans)", letterSpacing: "-0.01em", color: "var(--text-1)" }}>Fixados</span>
+                {favQuotes.length > 0 && (
+                  <button type="button" style={{ display: "flex", alignItems: "center", gap: 5, height: 44, padding: "0 8px", marginRight: -8, font: "600 12px/1 var(--font-sans)", color: "var(--ghost-text)" }} onClick={() => setEditingFavs((v) => !v)}>
+                    <i className={editingFavs ? "icon-check" : "icon-sliders-horizontal"} style={{ fontSize: 14 }} aria-hidden />
+                    {editingFavs ? "Concluir" : "Editar"}
+                  </button>
+                )}
               </div>
               <div className="client-list">
-                {futures.length > 0 && <div className="fav-section">Futuros</div>}
+                {ibov && <div className="fav-section">Índice</div>}
+                {ibov && (
+                  <FavRow quote={ibov} flash={flashClass("IBOV")} onOpen={() => { setSelected("IBOV"); setSearch("IBOV"); pushRecent("IBOV"); }} />
+                )}
+                {futures.length > 0 && <div className="fav-section" style={{ borderTop: ibov ? "1px solid var(--border)" : undefined }}>Futuros</div>}
                 {futures.map((q) => (
-                  <FavRow key={q.symbol} quote={q} flash={flashClass(q.symbol)} onOpen={() => { setSelected(q.symbol); setSearch(q.symbol); pushRecent(q.symbol); }} />
+                  <FavRow key={q.symbol} quote={q} flash={flashClass(q.symbol)} editing={editingFavs} onRemove={() => void toggle(q.symbol)} onOpen={() => { setSelected(q.symbol); setSearch(q.symbol); pushRecent(q.symbol); }} />
                 ))}
                 {stocks.length > 0 && <div className="fav-section" style={{ borderTop: futures.length ? "1px solid var(--border)" : undefined }}>Ações</div>}
                 {stocks.map((q) => (
-                  <FavRow key={q.symbol} quote={q} flash={flashClass(q.symbol)} onOpen={() => { setSelected(q.symbol); setSearch(q.symbol); pushRecent(q.symbol); }} />
+                  <FavRow key={q.symbol} quote={q} flash={flashClass(q.symbol)} editing={editingFavs} onRemove={() => void toggle(q.symbol)} onOpen={() => { setSelected(q.symbol); setSearch(q.symbol); pushRecent(q.symbol); }} />
                 ))}
                 {favQuotes.length === 0 && (
                   <div style={{ padding: "20px 14px", font: "400 12px/1.5 var(--font-sans)", color: "var(--text-2)" }}>
@@ -323,7 +306,11 @@ export default function Quotes() {
                       <button key={t} type="button" className="recent-row" onClick={() => { setSelected(t); setSearch(t); }}>
                         <span className="recent-row__ticker">{t}</span>
                         {q && <span className={`recent-row__price${flashClass(t)}`}>{formatQuotePrice(q)}</span>}
-                        {q && <span className={`recent-row__pct ${q.changePct >= 0 ? "market-up" : "market-down"}`}>{formatQuoteChange(q)}</span>}
+                        {q && (
+                          <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 60, height: 22, padding: "0 8px", borderRadius: 7, background: `color-mix(in srgb, ${q.changePct >= 0 ? "var(--market-up)" : "var(--market-down)"} 12%, transparent)`, color: q.changePct >= 0 ? "var(--market-up)" : "var(--market-down)", font: "600 11px/1 var(--font-sans)", fontVariantNumeric: "tabular-nums" }}>
+                            {formatQuoteChange(q)}
+                          </span>
+                        )}
                       </button>
                     );
                   })}
@@ -331,7 +318,7 @@ export default function Quotes() {
               </div>
             )}
             <div style={{ font: "400 11px/1.5 var(--font-sans)", color: "var(--text-3)", padding: "0 2px 14px" }}>
-              Preço que muda pisca uma vez em verde ou vermelho a 20% e volta ao neutro em 400ms.
+              Toque num ativo para ver o detalhe. Fixados aparecem também na home (os 4 primeiros).
             </div>
           </div>
         </>
@@ -340,17 +327,33 @@ export default function Quotes() {
   );
 }
 
-function FavRow({ quote, flash, onOpen }: { quote: Quote; flash: string; onOpen: () => void }) {
+function FavRow({ quote, flash, onOpen, editing, onRemove }: { quote: Quote; flash: string; onOpen: () => void; editing?: boolean; onRemove?: () => void }) {
+  const up = quote.changePct >= 0;
   return (
-    <button type="button" className="fav-row" onClick={onOpen}>
+    <button type="button" className="fav-row" onClick={editing && onRemove ? onRemove : onOpen} aria-label={editing ? `Desafixar ${quote.symbol}` : undefined}>
+      {editing && onRemove && (
+        <span aria-hidden style={{ width: 28, height: 28, flex: "none", borderRadius: 999, background: "var(--danger-action-hover-bg)", color: "var(--danger-action-text)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <i className="icon-pin-off" style={{ fontSize: 14 }} />
+        </span>
+      )}
       <span style={{ flex: 1, minWidth: 0 }}>
         <span className="fav-row__ticker">{quote.symbol}</span>
         <span className="fav-row__name">{quote.name}</span>
       </span>
-      <Sparkline points={fakeSeriesLocal(quote.symbol, 9)} up={quote.changePct >= 0} />
+      {!editing && <Sparkline points={fakeSeriesLocal(quote.symbol, 9)} up={up} />}
       <span className="fav-row__right">
         <span className={`fav-row__price${flash}`}>{formatQuotePrice(quote)}</span>
-        <span className={`fav-row__pct ${quote.changePct >= 0 ? "market-up" : "market-down"}`}>{formatQuoteChange(quote)}</span>
+        <span
+          style={{
+            display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 64, height: 22,
+            padding: "0 8px", borderRadius: 7,
+            background: `color-mix(in srgb, ${up ? "var(--market-up)" : "var(--market-down)"} 12%, transparent)`,
+            color: up ? "var(--market-up)" : "var(--market-down)",
+            font: "600 11px/1 var(--font-sans)", fontVariantNumeric: "tabular-nums",
+          }}
+        >
+          {formatQuoteChange(quote)}
+        </span>
       </span>
     </button>
   );

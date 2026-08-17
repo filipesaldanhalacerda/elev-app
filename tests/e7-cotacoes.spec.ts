@@ -100,17 +100,23 @@ test.describe("tela 11 · cotações", () => {
     await svc.from("mt_connection").update({ status: "ativa", connected_at: new Date().toISOString(), last_quote_at: new Date().toISOString() }).eq("id", 1);
   });
 
-  test("ao vivo, favoritos padrão com seções e regra do flash exibida", async ({ page }) => {
+  test("ao vivo, fixados com seções (Índice primeiro) e Editar funcional", async ({ page }) => {
     await login(page, ADV.email, ADV.password);
     await page.goto("/cotacoes");
     await expect(page.locator(".page-header__title")).toHaveText("Cotações");
     await expect(page.locator('[data-live="on"]')).toContainText("ao vivo ·");
-    await expect(page.locator(".quote-hero__label")).toHaveText("IBOV · IBOVESPA");
-    await expect(page.locator(".fav-section").first()).toHaveText("Futuros");
+    // sem herói fixo: o IBOV é a primeira linha da lista de Fixados
+    await expect(page.locator(".quote-hero__label")).toHaveCount(0);
+    await expect(page.locator(".fav-section").first()).toHaveText("Índice");
+    await expect(page.locator(".fav-row__ticker", { hasText: "IBOV" })).toBeVisible();
+    await expect(page.locator(".fav-section").nth(1)).toHaveText("Futuros");
     await expect(page.locator(".fav-row__ticker", { hasText: "WDOU26" })).toBeVisible();
-    await expect(page.locator(".fav-row", { hasText: "DI1F27" }).locator(".fav-row__pct")).toContainText("pp");
-    await expect(page.locator(".fav-section").nth(1)).toHaveText("Ações");
-    await expect(page.getByText("pisca uma vez em verde ou vermelho a 20% e volta ao neutro em 400ms")).toBeVisible();
+    await expect(page.locator(".fav-section").nth(2)).toHaveText("Ações");
+    // Editar entra no modo de remoção e Concluir sai dele
+    await page.getByRole("button", { name: "Editar" }).click();
+    await expect(page.getByRole("button", { name: "Desafixar WDOU26" })).toBeVisible();
+    await page.getByRole("button", { name: "Concluir" }).click();
+    await expect(page.getByRole("button", { name: "Desafixar WDOU26" })).toHaveCount(0);
   });
 
   test("resultado da busca: herói, fios, ações e 'quem tem este ativo' sob RLS", async ({ page }) => {
