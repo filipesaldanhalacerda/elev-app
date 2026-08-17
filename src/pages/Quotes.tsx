@@ -4,7 +4,7 @@
  * "quem tem este ativo" restrito à carteira (RLS).
  */
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
 import { Card } from "../components/cards";
 import { LineChart, Sparkline } from "../components/charts";
@@ -116,12 +116,19 @@ const PERIODS = ["1D", "5D", "1M", "6M", "12M"] as const;
 
 export default function Quotes() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [params] = useSearchParams();
   const { profile } = useAuth();
   // vindo da home com ?ativo=X, o detalhe já abre no ativo tocado
   const initialAtivo = params.get("ativo")?.toUpperCase() ?? null;
   const [search, setSearch] = useState(initialAtivo ?? "");
   const [selected, setSelected] = useState<string | null>(initialAtivo);
+  // toda NAVEGAÇÃO para /cotacoes ressincroniza: com ?ativo abre o detalhe, sem ele volta à lista
+  useEffect(() => {
+    const a = new URLSearchParams(location.search).get("ativo")?.toUpperCase() ?? null;
+    setSelected(a);
+    setSearch(a ?? "");
+  }, [location.key]); // eslint-disable-line react-hooks/exhaustive-deps
   const [period, setPeriod] = useState<(typeof PERIODS)[number]>("1D");
   const [editingFavs, setEditingFavs] = useState(false);
   const { favorites, isPinned, toggle } = useFavorites(profile?.id);
@@ -266,7 +273,7 @@ export default function Quotes() {
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
                   <span>
                     <span className="quote-detail__ticker">{detail.quote.symbol}</span>
-                    <span className="quote-detail__name">{detail.quote.name} · B3</span>
+                    <span className="quote-detail__name">{detail.quote.name} · {detail.quote.symbol === "DOLAR" ? "câmbio" : "B3"}</span>
                   </span>
                   <MarketChip up={detail.quote.changePct >= 0}>{formatQuoteChange(detail.quote)}</MarketChip>
                 </div>
