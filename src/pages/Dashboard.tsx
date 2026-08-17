@@ -47,7 +47,7 @@ function useHomeData(userId: string | undefined) {
       const [clients, notif, alerts, cards, birth, notices] = await Promise.all([
         supabase.from("client_overview").select("*", { count: "exact", head: true }),
         supabase.from("notifications").select("*", { count: "exact", head: true }).is("read_at", null),
-        supabase.from("alerts").select("id, ticker, direction, target_price, created_price").eq("status", "ativo").order("created_at", { ascending: false }).limit(2),
+        supabase.from("alerts").select("id, ticker, direction, target_price, created_price", { count: "exact" }).eq("status", "ativo").order("created_at", { ascending: false }).limit(2),
         supabase.from("cards").select("id, title, due_at, priority, status, clients(name)").eq("assignee", userId).neq("status", "concluido").order("due_at", { ascending: true, nullsFirst: false }).limit(20),
         supabase.from("client_overview").select("account_code, name, birth_date").not("birth_date", "is", null).limit(2000),
         supabase.from("notifications").select("id, kind, title, created_at").order("created_at", { ascending: false }).limit(4),
@@ -89,7 +89,8 @@ function useHomeData(userId: string | undefined) {
         clientCount: clients.count ?? 0,
         unread: notif.count ?? 0,
         alerts: (alerts.data ?? []) as HomeData["alerts"],
-        activeAlerts: (alerts.data ?? []).length,
+        // total REAL de ativos — a lista acima é só o preview de 2
+        activeAlerts: alerts.count ?? (alerts.data ?? []).length,
         tasksToday: todayCards.slice(0, 2),
         pendingCount: cardsAll.length,
         overdueCount: cardsAll.filter((c) => c.overdue).length,
@@ -138,17 +139,21 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const data = useHomeData(profile?.id);
-  // o mercado da home espelha os FAVORITOS do assessor (tela de Cotações);
-  // sem favoritos salvos, vale a seleção padrão — e com a API real ligada, tudo vem dela
-  const [favSymbols, setFavSymbols] = useState<string[]>(["WDOU26", "PETR4", "VALE3"]);
+  // o mercado da home espelha EXATAMENTE os fixados das Cotações:
+  // padrões só valem enquanto o assessor nunca personalizou (quotes_customized)
+  const [favSymbols, setFavSymbols] = useState<string[] | null>(null);
   useEffect(() => {
     if (!profile?.id) return;
-    supabase.from("quote_favorites").select("ticker").order("sort_order").then(({ data: favs }) => {
-      if (favs && favs.length > 0) setFavSymbols(favs.map((r) => r.ticker));
+    Promise.all([
+      supabase.from("quote_favorites").select("ticker").order("sort_order"),
+      supabase.from("profiles").select("quotes_customized").eq("id", profile.id).single(),
+    ]).then(([{ data: favs }, { data: prof }]) => {
+      const saved = [...new Set((favs ?? []).map((r) => r.ticker))];
+      setFavSymbols(saved.length > 0 ? saved : prof?.quotes_customized ? [] : ["WDOU26", "PETR4", "VALE3"]);
     });
   }, [profile?.id]);
-  // limite da home: IBOV + 4 favoritos — o restante vive em Cotações ("Ver todos")
-  const symbols = useMemo(() => ["IBOV", ...favSymbols.filter((s) => s !== "IBOV")].slice(0, 5), [favSymbols.join(",")]);
+  // limite da home: IBOV + 4 fixados — o restante vive em Cotações ("Ver todos")
+  const symbols = useMemo(() => ["IBOV", ...(favSymbols ?? []).filter((s) => s !== "IBOV")].slice(0, 5), [(favSymbols ?? []).join(",")]);
   const { data: quotesData, flashes } = useQuotes(symbols);
 
   const online = useOnline();

@@ -106,3 +106,25 @@ test.describe("tela 04 · carregando", () => {
     await expect(page.locator(".skeleton").first()).toBeVisible();
   });
 });
+
+test("home espelha os fixados das Cotações (vazio é vazio) e conta TODOS os alertas ativos", async ({ page }) => {
+  const svc = serviceClient();
+  const SOLO = { email: `solo.e13.${RUN}@elev.test`, password: "Senha@2026!z", name: "Solo Home", code: `15${RUN.slice(-4)}` };
+  const id = await createUser(svc, { email: SOLO.email, password: SOLO.password, name: SOLO.name, role: "advisor", advisor_code: SOLO.code });
+  // personalizou e removeu tudo
+  await svc.from("profiles").update({ quotes_customized: true }).eq("id", id);
+  // 8 alertas ativos
+  const alerts = Array.from({ length: 8 }, (_, i) => ({ owner: id, ticker: `PETR${i + 3}`, direction: "alta", target_price: 40 + i, created_price: 38, status: "ativo" }));
+  await svc.from("alerts").insert(alerts);
+  await page.goto("/login");
+  await page.getByLabel("E-mail").fill(SOLO.email);
+  await page.locator('input[type="password"]').fill(SOLO.password);
+  await page.getByRole("button", { name: "Entrar", exact: true }).click();
+  await page.waitForSelector("[data-home]");
+  await page.waitForSelector("[data-ticker]");
+  // fixados vazios: só o IBOV na home
+  await expect(page.locator("[data-ticker] .ticker-strip__code")).toHaveCount(1);
+  await expect(page.locator("[data-ticker] .ticker-strip__code").first()).toHaveText("IBOV");
+  // contador de alertas mostra o TOTAL (8), não o preview (2)
+  await expect(page.getByRole("button", { name: "8 ativos" })).toBeVisible();
+});
