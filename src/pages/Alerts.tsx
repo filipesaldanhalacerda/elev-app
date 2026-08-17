@@ -40,16 +40,18 @@ function mapRows(data: unknown[] | null): AlertRow[] {
   }));
 }
 
-function useAlertList(status: "ativo" | "disparado", search: string) {
+function useAlertList(status: "ativo" | "disparado", search: string, ownerId?: string) {
   return usePagedList<AlertRow>(
     async (from, to) => {
+      // tela PESSOAL: mesmo o admin vê só os próprios alertas aqui
       let q = supabase.from("alerts").select("*, clients(name)", { count: "exact" }).eq("status", status);
+      if (ownerId) q = q.eq("owner", ownerId);
       if (search.trim()) q = q.ilike("ticker", `%${search.trim()}%`);
       q = status === "ativo" ? q.order("created_at", { ascending: false }) : q.order("triggered_at", { ascending: false, nullsFirst: false });
       const { data, count } = await q.range(from, to);
       return { rows: mapRows(data), total: count };
     },
-    [status, search]
+    [status, search, ownerId]
   );
 }
 
@@ -235,6 +237,7 @@ export function AlertSheet({ initialTicker, initialClient = "", editing, onClose
 
 export default function Alerts() {
   const [params] = useSearchParams();
+  const { profile } = useAuth();
   const [tab, setTab] = useState<"ativos" | "historico">("ativos");
   const [sheet, setSheet] = useState(params.get("novo") !== null);
   const [editing, setEditing] = useState<AlertRow | undefined>(undefined);
@@ -254,8 +257,8 @@ export default function Alerts() {
     (dir === "todas" || a.direction === dir) &&
     (vinculo === "todos" || (vinculo === "com" ? !!a.account_code : !a.account_code));
 
-  const activeList = useAlertList("ativo", search);
-  const historyList = useAlertList("disparado", search);
+  const activeList = useAlertList("ativo", search, profile?.id);
+  const historyList = useAlertList("disparado", search, profile?.id);
   const active = activeList.items === null ? null : activeList.items.filter(matches);
   const triggered = historyList.items === null ? null : historyList.items.filter(matches);
 

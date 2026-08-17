@@ -48,7 +48,7 @@ function useHomeData(userId: string | undefined) {
       const [clients, notif, alerts, cards, birth, notices] = await Promise.all([
         supabase.from("client_overview").select("*", { count: "exact", head: true }),
         supabase.from("notifications").select("*", { count: "exact", head: true }).is("read_at", null),
-        supabase.from("alerts").select("id, ticker, direction, target_price, created_price", { count: "exact" }).eq("status", "ativo").order("created_at", { ascending: false }).limit(2),
+        supabase.from("alerts").select("id, ticker, direction, target_price, created_price", { count: "exact" }).eq("status", "ativo").eq("owner", userId).order("created_at", { ascending: false }).limit(2),
         supabase.from("cards").select("id, title, due_at, priority, status, clients(name)").eq("assignee", userId).neq("status", "concluido").order("due_at", { ascending: true, nullsFirst: false }).limit(20),
         supabase.from("client_overview").select("account_code, name, birth_date").not("birth_date", "is", null).limit(2000),
         supabase.from("notifications").select("id, kind, title, created_at").order("created_at", { ascending: false }).limit(4),
