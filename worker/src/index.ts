@@ -116,7 +116,7 @@ app.get("/api/quotes", async (c) => {
   await auth.svc.from("mt_connection").update({ last_quote_at: now.toISOString() }).eq("id", 1);
   // com BRAPI_TOKEN os preços são reais (B3, ~15 min de atraso); sem, simulador de dev
   const quotes = c.env.BRAPI_TOKEN ? await realQuotes(symbols, c.env.BRAPI_TOKEN, now) : symbols.map((s) => fakeQuote(s, now));
-  return c.json({ paused: false, quotes });
+  return c.json({ paused: false, source: c.env.BRAPI_TOKEN ? "brapi" : "simulado", quotes });
 });
 
 app.get("/api/quotes/detail", async (c) => {
@@ -130,9 +130,9 @@ app.get("/api/quotes/detail", async (c) => {
   }
   if (c.env.BRAPI_TOKEN) {
     const d = await realDetail(symbol, c.env.BRAPI_TOKEN);
-    return c.json({ paused: false, ...d });
+    return c.json({ paused: false, source: "brapi", ...d });
   }
-  return c.json({ paused: false, quote: fakeQuote(symbol), series: fakeSeries(symbol) });
+  return c.json({ paused: false, source: "simulado", quote: fakeQuote(symbol), series: fakeSeries(symbol) });
 });
 
 // ---------- Rotas administrativas (JWT de admin obrigatório) ----------

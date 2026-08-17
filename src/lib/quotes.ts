@@ -17,6 +17,7 @@ export interface Quote {
 
 export interface QuotesResponse {
   paused: boolean;
+  source?: "brapi" | "simulado";
   last_quote_at: string | null;
   quotes: Quote[];
 }

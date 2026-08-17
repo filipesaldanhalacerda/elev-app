@@ -12,6 +12,7 @@ import { useAuth } from "../lib/auth";
 import { useQuotes, formatQuotePrice, formatQuoteChange, type Quote } from "../lib/quotes";
 import { useOnline, lastDataAt } from "../lib/offline";
 import { initials, formatInt, formatTime, formatDate } from "../lib/format";
+import { QuoteSource } from "../components/QuoteSource";
 
 const RECENT_CLIENTS_KEY = "elev.clientes.visitados";
 
@@ -280,6 +281,7 @@ export default function Dashboard() {
               ) : (
                 <EmptyBlock icon="icon-pin" title="Nada fixado ainda" desc="Fixe ativos em Cotações para acompanhá-los aqui." onAdd={() => navigate("/cotacoes")} />
               )}
+              <QuoteSource quotes={ticker} source={quotesData?.source} compact />
             </div>
           )}
 

@@ -17,6 +17,7 @@ import {
   useQuotes, useQuoteDetail, pushRecent, getRecents, isFuture, formatQuotePrice, formatQuoteChange, type Quote,
 } from "../lib/quotes";
 import { fakeSeriesLocal } from "../lib/sparkSeries";
+import { QuoteSource } from "../components/QuoteSource";
 import { formatBRL, formatTimeSeconds } from "../lib/format";
 
 const DEFAULT_FAVORITES = ["WDOU26", "DI1F27", "PETR4", "VALE3"];
@@ -270,6 +271,7 @@ export default function Quotes() {
               </div>
 
               <Holders ticker={detail.quote.symbol} />
+              <QuoteSource quotes={detail.quote ? [detail.quote] : []} source={data?.source} />
             </>
           )}
           <div style={{ height: 8 }} />
@@ -348,8 +350,11 @@ export default function Quotes() {
                 </div>
               </div>
             )}
-            <div style={{ font: "400 11px/1.5 var(--font-sans)", color: "var(--text-3)", padding: "0 2px 14px" }}>
+            <div style={{ font: "400 11px/1.5 var(--font-sans)", color: "var(--text-3)", padding: "0 2px 2px" }}>
               Toque num ativo para ver o detalhe. Fixados aparecem também na home (os 4 primeiros).
+            </div>
+            <div style={{ paddingBottom: 14 }}>
+              <QuoteSource quotes={data?.quotes ?? []} source={data?.source} />
             </div>
           </div>
         </>
