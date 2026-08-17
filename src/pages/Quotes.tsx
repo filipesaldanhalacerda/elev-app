@@ -4,7 +4,7 @@
  * "quem tem este ativo" restrito à carteira (RLS).
  */
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
 import { Card } from "../components/cards";
 import { LineChart, Sparkline } from "../components/charts";
@@ -116,9 +116,12 @@ const PERIODS = ["1D", "5D", "1M", "6M", "12M"] as const;
 
 export default function Quotes() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const { profile } = useAuth();
-  const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<string | null>(null);
+  // vindo da home com ?ativo=X, o detalhe já abre no ativo tocado
+  const initialAtivo = params.get("ativo")?.toUpperCase() ?? null;
+  const [search, setSearch] = useState(initialAtivo ?? "");
+  const [selected, setSelected] = useState<string | null>(initialAtivo);
   const [period, setPeriod] = useState<(typeof PERIODS)[number]>("1D");
   const [editingFavs, setEditingFavs] = useState(false);
   const { favorites, isPinned, toggle } = useFavorites(profile?.id);
@@ -274,12 +277,16 @@ export default function Quotes() {
 
               <div className="quote-actions">
                 <Button icon="icon-target" onClick={() => navigate(`/alertas?novo&ativo=${detail.quote!.symbol}`)}>Criar alerta</Button>
-                <Button variant="secondary" icon="icon-pin" onClick={() => toggle(detail.quote!.symbol)}>
-                  {isPinned(detail.quote.symbol) ? "Desafixar" : "Fixar"}
-                </Button>
+                {detail.quote.symbol !== "IBOV" && (
+                  <Button variant="secondary" icon="icon-pin" onClick={() => toggle(detail.quote!.symbol)}>
+                    {isPinned(detail.quote.symbol) ? "Desafixar" : "Fixar"}
+                  </Button>
+                )}
               </div>
               <div style={{ marginTop: 8, font: "400 11px/1.5 var(--font-sans)", color: "var(--text-2)" }}>
-                Ativos fixados ficam na sua lista de Cotações e aparecem no bloco Fixados da home (os 4 primeiros).
+                {detail.quote.symbol === "IBOV"
+                  ? "O IBOV é o índice de referência — está sempre presente nas Cotações e na home."
+                  : "Ativos fixados ficam na sua lista de Cotações e aparecem no bloco Cotações da home (os 4 primeiros)."}
               </div>
 
               <Holders ticker={detail.quote.symbol} />

@@ -228,7 +228,7 @@ export default function Dashboard() {
                   </button>
                 }
               >
-                Fixados
+                Cotações
               </SectionTitle>
               {loading || !data ? (
                 <div className="card" style={{ padding: "4px 14px" }}>
@@ -247,7 +247,7 @@ export default function Dashboard() {
                       <button
                         key={q.symbol}
                         type="button"
-                        onClick={() => navigate("/cotacoes")}
+                        onClick={() => navigate(`/cotacoes?ativo=${q.symbol}`)}
                         className={flashClass(q.symbol) || undefined}
                         style={{ width: "100%", height: 46, display: "flex", alignItems: "center", gap: 12, padding: "0 14px", textAlign: "left", borderTop: i > 0 ? "1px solid var(--divider)" : undefined }}
                       >
