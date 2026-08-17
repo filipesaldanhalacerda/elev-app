@@ -51,7 +51,7 @@ test("fluxo (c): criar no sheet → progresso → disparo → histórico + notif
   const sheet = page.getByRole("dialog", { name: "Novo alerta de preço" });
   await expect(sheet.locator(".sheet__title")).toHaveText("Novo alerta de preço");
   await sheet.getByLabel("Ativo").fill("PETR4");
-  await expect(sheet.getByText("agora")).toBeVisible(); // preço atual ao lado do ativo
+  await expect(sheet.getByText(/[0-9],[0-9]{2}/).first()).toBeVisible(); // preço real ao lado do ativo, com pílula de variação
   const criar = sheet.getByRole("button", { name: "Criar alerta" });
   await sheet.getByLabel("Preço-alvo").fill("999,00");
   await expect(sheet.locator(".alert-summary__text")).toContainText("Você recebe push quando");

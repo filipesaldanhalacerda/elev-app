@@ -14,9 +14,9 @@ import { AlertCard } from "../components/cards";
 import { usePagedList, InfiniteSentinel } from "../components/infinite";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
-import { useQuoteDetail, formatQuotePrice, type Quote } from "../lib/quotes";
+import { useQuoteDetail, formatQuotePrice, formatQuoteChange, type Quote } from "../lib/quotes";
 import { workerFetch } from "../lib/auth";
-import { formatBRL, formatDate, formatDateAtTime } from "../lib/format";
+import { formatBRL, formatDate, formatDateAtTime, maskMoneyBR, parseMoneyBR } from "../lib/format";
 
 interface AlertRow {
   id: string;
@@ -63,20 +63,38 @@ function progressInfo(a: AlertRow, quote: Quote | undefined) {
   return { price, remainingPct: Number(remainingPct.toFixed(1)), progress: Math.max(0.04, done) };
 }
 
-function moneyText(n: number | null): string {
-  return n === null ? "" : n.toFixed(2).replace(".", ",");
-}
-
 export function AlertSheet({ initialTicker, initialClient = "", editing, onClose, onSaved }: { initialTicker: string; initialClient?: string; editing?: AlertRow; onClose: () => void; onSaved: () => void }) {
   const { profile } = useAuth();
   const [ticker, setTicker] = useState(editing?.ticker ?? initialTicker);
   const [direction, setDirection] = useState<"alta" | "baixa">(editing?.direction ?? "alta");
-  const [target, setTarget] = useState(editing ? moneyText(editing.target_price) : "");
+  const [target, setTarget] = useState(editing && editing.target_price !== null ? maskMoneyBR(editing.target_price.toFixed(2)) : "");
   const [dayPct, setDayPct] = useState(editing?.target_day_pct != null ? String(editing.target_day_pct).replace(".", ",") : "");
   const [client, setClient] = useState<string>(editing?.account_code ?? initialClient);
   const [clients, setClients] = useState<{ account_code: string; name: string | null }[]>([]);
   const [saving, setSaving] = useState(false);
   const detail = useQuoteDetail(ticker.length >= 4 ? ticker.toUpperCase() : null);
+  // sugestões da fonte enquanto digita — alerta só nasce de ativo que EXISTE
+  const [tickerSugs, setTickerSugs] = useState<string[]>([]);
+  useEffect(() => {
+    const term = ticker.trim().toUpperCase();
+    if (term.length < 2 || term === editing?.ticker || detail?.quote?.symbol === term) {
+      setTickerSugs([]);
+      return;
+    }
+    let alive = true;
+    const t = setTimeout(async () => {
+      try {
+        const body = (await workerFetch(`/api/quotes/search?q=${encodeURIComponent(term)}`)) as { tickers: string[] };
+        if (alive) setTickerSugs((body.tickers ?? []).filter((s) => s !== term));
+      } catch {
+        if (alive) setTickerSugs([]);
+      }
+    }, 300);
+    return () => {
+      alive = false;
+      clearTimeout(t);
+    };
+  }, [ticker, detail?.quote?.symbol, editing?.ticker]);
 
   useEffect(() => {
     supabase
@@ -87,9 +105,10 @@ export function AlertSheet({ initialTicker, initialClient = "", editing, onClose
       .then(({ data }) => setClients(data ?? []));
   }, []);
 
-  const targetNum = Number(target.replace(/\./g, "").replace(",", "."));
+  const targetNum = parseMoneyBR(target);
   const dayPctNum = Number(dayPct.replace(",", "."));
-  const valid = ticker.trim().length >= 4 && ((target && targetNum > 0) || (dayPct && dayPctNum > 0));
+  const tickerOk = !!detail?.quote && detail.quote.symbol === ticker.trim().toUpperCase();
+  const valid = tickerOk && ((target && targetNum > 0) || (dayPct && dayPctNum > 0));
 
   async function save() {
     setSaving(true);
@@ -126,8 +145,31 @@ export function AlertSheet({ initialTicker, initialClient = "", editing, onClose
             <label className="field__label" htmlFor="alerta-ativo" style={{ display: "block" }}>Ativo</label>
             <div className="field__box">
               <input id="alerta-ativo" className="field__input field__input--mono" style={{ fontWeight: 600, textTransform: "uppercase" }} placeholder="PETR4" value={ticker} onChange={(e) => setTicker(e.target.value)} />
-              {detail?.quote && <span style={{ font: "400 11.5px/1 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-2)" }}>{formatQuotePrice(detail.quote)} agora</span>}
+              {detail?.quote && (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flex: "none" }}>
+                  <span style={{ font: "600 13px/1 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-1)" }}>{formatQuotePrice(detail.quote)}</span>
+                  <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", height: 20, padding: "0 7px", borderRadius: 6, background: `color-mix(in srgb, ${detail.quote.changePct >= 0 ? "var(--market-up)" : "var(--market-down)"} 12%, transparent)`, color: detail.quote.changePct >= 0 ? "var(--market-up)" : "var(--market-down)", font: "600 10.5px/1 var(--font-sans)", fontVariantNumeric: "tabular-nums" }}>
+                    {formatQuoteChange(detail.quote)}
+                  </span>
+                </span>
+              )}
             </div>
+            {tickerSugs.length > 0 && (
+              <div className="card" style={{ marginTop: 8, padding: 0, overflow: "hidden" }} data-alert-sugs>
+                {tickerSugs.map((t, i) => (
+                  <button key={t} type="button" style={{ width: "100%", minHeight: 44, display: "flex", alignItems: "center", gap: 10, padding: "0 13px", textAlign: "left", borderTop: i > 0 ? "1px solid var(--divider)" : undefined }} onClick={() => { setTicker(t); setTickerSugs([]); }}>
+                    <i className="icon-search" style={{ fontSize: 13, color: "var(--icon-decor)", flex: "none" }} aria-hidden />
+                    <span style={{ flex: 1, font: "600 12.5px/1 var(--font-mono)", color: "var(--text-1)" }}>{t}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {ticker.trim().length >= 4 && !tickerOk && detail !== null && tickerSugs.length === 0 && (
+              <div className="field__help" style={{ marginTop: 6 }}>
+                <i className="icon-circle-alert" aria-hidden />
+                Ativo não encontrado na fonte — o alerta só pode ser criado para ativos que existem.
+              </div>
+            )}
           </div>
           <div className="field">
             <span className="field__label" style={{ display: "block" }}>Direção</span>
@@ -145,7 +187,7 @@ export function AlertSheet({ initialTicker, initialClient = "", editing, onClose
               <label className="field__label" htmlFor="alerta-alvo" style={{ display: "block" }}>Preço-alvo</label>
               <div className="field__box">
                 <span className="field__prefix">R$</span>
-                <input id="alerta-alvo" className="field__input field__money" inputMode="decimal" value={target} onChange={(e) => { setTarget(e.target.value); if (e.target.value) setDayPct(""); }} />
+                <input id="alerta-alvo" className="field__input field__money" inputMode="decimal" value={target} onChange={(e) => { setTarget(maskMoneyBR(e.target.value)); if (e.target.value) setDayPct(""); }} />
               </div>
             </div>
             <div className="field">

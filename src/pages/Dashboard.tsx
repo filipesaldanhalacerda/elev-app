@@ -143,6 +143,23 @@ export default function Dashboard() {
   // o mercado da home espelha EXATAMENTE os fixados das Cotações:
   // padrões só valem enquanto o assessor nunca personalizou (quotes_customized)
   const [favSymbols, setFavSymbols] = useState<string[] | null>(null);
+  // alertas disparados NÃO lidos ficam na home até o assessor fechar (marcar lido)
+  const [firedAlerts, setFiredAlerts] = useState<{ id: string; title: string; body: string | null; created_at: string }[]>([]);
+  useEffect(() => {
+    if (!profile?.id) return;
+    supabase
+      .from("notifications")
+      .select("id, title, body, created_at")
+      .eq("kind", "alerta_atingido")
+      .is("read_at", null)
+      .order("created_at", { ascending: false })
+      .limit(4)
+      .then(({ data: fired }) => setFiredAlerts((fired ?? []) as typeof firedAlerts));
+  }, [profile?.id]);
+  async function dismissFired(id: string) {
+    setFiredAlerts((l) => l.filter((n) => n.id !== id));
+    await supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("id", id);
+  }
   useEffect(() => {
     if (!profile?.id) return;
     Promise.all([
@@ -203,6 +220,28 @@ export default function Dashboard() {
 
 
         <div style={{ flex: 1, padding: "16px 16px 22px", display: "flex", flexDirection: "column", gap: 22 }}>
+          {/* alerta disparado: aviso persistente até ser fechado */}
+          {firedAlerts.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: -8 }} data-fired-alerts>
+              {firedAlerts.map((n) => (
+                <div key={n.id} className="card" style={{ display: "flex", alignItems: "center", gap: 11, padding: "11px 6px 11px 13px", borderColor: "var(--border-strong)", boxShadow: "var(--elev-2)" }}>
+                  <span style={{ width: 34, height: 34, borderRadius: 10, background: "var(--brand-tint)", color: "var(--ghost-text)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+                    <i className="icon-bell-ring" style={{ fontSize: 17 }} aria-hidden />
+                  </span>
+                  <button type="button" style={{ flex: 1, minWidth: 0, textAlign: "left" }} onClick={() => navigate("/alertas")}>
+                    <span style={{ display: "block", font: "600 13px/1.35 var(--font-sans)", color: "var(--text-1)" }}>{n.title}</span>
+                    <span style={{ display: "block", marginTop: 2, font: "400 11px/1.35 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {n.body ?? ""}
+                    </span>
+                  </button>
+                  <button type="button" aria-label={`Fechar aviso ${n.title}`} onClick={() => void dismissFired(n.id)} style={{ width: 40, height: 40, flex: "none", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-2)" }}>
+                    <i className="icon-x" style={{ fontSize: 17 }} aria-hidden />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* atalhos rápidos: Alertas e Sala (o resto vive no menu principal) */}
           {online && (
             <div className="quick-actions" data-home-quick-actions>

@@ -173,3 +173,18 @@ export function nextSlotSP(marginMin = 5): { day: string; start: string } {
   }
   return { day, start: `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}` };
 }
+
+/** Máscara de moeda BR enquanto digita: só dígitos → centavos → "1.234,56". */
+export function maskMoneyBR(raw: string): string {
+  const digits = raw.replace(/\D/g, "").replace(/^0+(?=\d)/, "");
+  if (!digits) return "";
+  const cents = digits.padStart(3, "0");
+  const int = cents.slice(0, -2);
+  const dec = cents.slice(-2);
+  return `${Number(int).toLocaleString("pt-BR")},${dec}`;
+}
+
+/** Valor numérico de um texto mascarado em BR ("1.234,56" → 1234.56). */
+export function parseMoneyBR(masked: string): number {
+  return Number(masked.replace(/\./g, "").replace(",", "."));
+}
