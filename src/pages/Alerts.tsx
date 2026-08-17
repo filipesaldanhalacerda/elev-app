@@ -238,14 +238,14 @@ export function AlertSheet({ initialTicker, initialClient = "", editing, onClose
 export default function Alerts() {
   const [params] = useSearchParams();
   const { profile } = useAuth();
-  const [tab, setTab] = useState<"ativos" | "historico">("ativos");
+  const [tab, setTab] = useState<"ativos" | "historico">(params.get("aba") === "historico" ? "historico" : "ativos");
   const [sheet, setSheet] = useState(params.get("novo") !== null);
   const [editing, setEditing] = useState<AlertRow | undefined>(undefined);
   const [quotes, setQuotes] = useState<Map<string, Quote>>(new Map());
 
   // busca rápida por ativo, com debounce, vale para as duas abas
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState(params.get("busca")?.toUpperCase() ?? "");
+  const [search, setSearch] = useState(params.get("busca")?.toUpperCase() ?? "");
   useEffect(() => {
     const t = setTimeout(() => setSearch(searchInput), 300);
     return () => clearTimeout(t);

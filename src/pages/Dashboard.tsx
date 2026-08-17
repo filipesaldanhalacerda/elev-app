@@ -144,12 +144,12 @@ export default function Dashboard() {
   // padrões só valem enquanto o assessor nunca personalizou (quotes_customized)
   const [favSymbols, setFavSymbols] = useState<string[] | null>(null);
   // alertas disparados NÃO lidos ficam na home até o assessor fechar (marcar lido)
-  const [firedAlerts, setFiredAlerts] = useState<{ id: string; title: string; body: string | null; created_at: string }[]>([]);
+  const [firedAlerts, setFiredAlerts] = useState<{ id: string; title: string; body: string | null; created_at: string; ref: { ticker?: string } | null }[]>([]);
   useEffect(() => {
     if (!profile?.id) return;
     supabase
       .from("notifications")
-      .select("id, title, body, created_at")
+      .select("id, title, body, created_at, ref")
       .eq("kind", "alerta_atingido")
       .is("read_at", null)
       .order("created_at", { ascending: false })
@@ -234,7 +234,12 @@ export default function Dashboard() {
                 <button
                   type="button"
                   style={{ flex: 1, minWidth: 0, textAlign: "left" }}
-                  onClick={() => (stacked ? setFiredStackOpen(true) : navigate("/alertas"))}
+                  onClick={() => {
+                    if (stacked) return setFiredStackOpen(true);
+                    // direto no alerta que disparou: histórico filtrado pelo ativo
+                    const t = n.ref?.ticker ?? n.title.split(" ")[0];
+                    navigate(`/alertas?aba=historico&busca=${encodeURIComponent(t)}`);
+                  }}
                 >
                   <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", font: "600 13px/1.35 var(--font-sans)", color: "var(--text-1)" }}>{n.title}</span>
