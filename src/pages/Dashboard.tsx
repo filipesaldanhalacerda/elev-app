@@ -156,6 +156,7 @@ export default function Dashboard() {
       .limit(4)
       .then(({ data: fired }) => setFiredAlerts((fired ?? []) as typeof firedAlerts));
   }, [profile?.id]);
+  const [firedStackOpen, setFiredStackOpen] = useState(false);
   async function dismissFired(id: string) {
     setFiredAlerts((l) => l.filter((n) => n.id !== id));
     await supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("id", id);
@@ -220,27 +221,63 @@ export default function Dashboard() {
 
 
         <div style={{ flex: 1, padding: "16px 16px 22px", display: "flex", flexDirection: "column", gap: 22 }}>
-          {/* alerta disparado: aviso persistente até ser fechado */}
-          {firedAlerts.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: -8 }} data-fired-alerts>
-              {firedAlerts.map((n) => (
-                <div key={n.id} className="card" style={{ display: "flex", alignItems: "center", gap: 11, padding: "11px 6px 11px 13px", borderColor: "var(--border-strong)", boxShadow: "var(--elev-2)" }}>
-                  <span style={{ width: 34, height: 34, borderRadius: 10, background: "var(--brand-tint)", color: "var(--ghost-text)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
-                    <i className="icon-bell-ring" style={{ fontSize: 17 }} aria-hidden />
+          {/* alertas disparados: pilha estilo notificação — expande no toque, some só no X */}
+          {firedAlerts.length > 0 && (() => {
+            const stacked = firedAlerts.length > 1 && !firedStackOpen;
+            const shown = stacked ? firedAlerts.slice(0, 1) : firedAlerts;
+            const behind = stacked ? Math.min(firedAlerts.length - 1, 2) : 0;
+            const cardOf = (n: (typeof firedAlerts)[number], extra?: React.CSSProperties) => (
+              <div key={n.id} className="card" style={{ display: "flex", alignItems: "center", gap: 11, padding: "11px 6px 11px 13px", borderColor: "var(--border-strong)", boxShadow: "var(--elev-2)", position: "relative", zIndex: 3, ...extra }}>
+                <span style={{ width: 34, height: 34, borderRadius: 10, background: "var(--brand-tint)", color: "var(--ghost-text)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+                  <i className="icon-bell-ring" style={{ fontSize: 17 }} aria-hidden />
+                </span>
+                <button
+                  type="button"
+                  style={{ flex: 1, minWidth: 0, textAlign: "left" }}
+                  onClick={() => (stacked ? setFiredStackOpen(true) : navigate("/alertas"))}
+                >
+                  <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", font: "600 13px/1.35 var(--font-sans)", color: "var(--text-1)" }}>{n.title}</span>
+                    {stacked && (
+                      <span style={{ flex: "none", display: "inline-flex", alignItems: "center", padding: "3px 8px", borderRadius: 999, background: "var(--brand-tint)", font: "600 10px/1 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--ghost-text)" }}>
+                        +{firedAlerts.length - 1}
+                      </span>
+                    )}
                   </span>
-                  <button type="button" style={{ flex: 1, minWidth: 0, textAlign: "left" }} onClick={() => navigate("/alertas")}>
-                    <span style={{ display: "block", font: "600 13px/1.35 var(--font-sans)", color: "var(--text-1)" }}>{n.title}</span>
-                    <span style={{ display: "block", marginTop: 2, font: "400 11px/1.35 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {n.body ?? ""}
-                    </span>
-                  </button>
-                  <button type="button" aria-label={`Fechar aviso ${n.title}`} onClick={() => void dismissFired(n.id)} style={{ width: 40, height: 40, flex: "none", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-2)" }}>
-                    <i className="icon-x" style={{ fontSize: 17 }} aria-hidden />
-                  </button>
+                  <span style={{ display: "block", marginTop: 2, font: "400 11px/1.35 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {stacked ? "toque para ver todos os disparos" : n.body ?? ""}
+                  </span>
+                </button>
+                <button type="button" aria-label={`Fechar aviso ${n.title}`} onClick={() => void dismissFired(n.id)} style={{ width: 40, height: 40, flex: "none", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-2)" }}>
+                  <i className="icon-x" style={{ fontSize: 17 }} aria-hidden />
+                </button>
+              </div>
+            );
+            return (
+              <div style={{ marginBottom: -8 }} data-fired-alerts>
+                {firedAlerts.length > 1 && firedStackOpen && (
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 6, padding: "0 2px 8px", font: "600 11px/1 var(--font-mono)", letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--text-2)" }}>
+                    Alertas disparados
+                    <span style={{ color: "var(--text-3)", fontWeight: 400 }}>· {firedAlerts.length}</span>
+                    <button type="button" onClick={() => setFiredStackOpen(false)} style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4, font: "600 11px/1 var(--font-sans)", textTransform: "none", letterSpacing: 0, color: "var(--ghost-text)", padding: "4px 2px" }}>
+                      Empilhar
+                      <i className="icon-chevron-up" style={{ fontSize: 13 }} aria-hidden />
+                    </button>
+                  </div>
+                )}
+                <div style={{ position: "relative", display: "flex", flexDirection: "column", gap: 8, paddingBottom: behind * 7 }}>
+                  {shown.map((n) => cardOf(n))}
+                  {/* cartas de trás "espiando" — profundidade real da pilha */}
+                  {behind >= 1 && (
+                    <div aria-hidden className="card" style={{ position: "absolute", left: 10, right: 10, bottom: behind === 2 ? 7 : 0, height: 14, zIndex: 2, borderColor: "var(--border-strong)", boxShadow: "var(--elev-1)", padding: 0 }} />
+                  )}
+                  {behind === 2 && (
+                    <div aria-hidden className="card" style={{ position: "absolute", left: 20, right: 20, bottom: 0, height: 14, zIndex: 1, boxShadow: "var(--elev-1)", padding: 0 }} />
+                  )}
                 </div>
-              ))}
-            </div>
-          )}
+              </div>
+            );
+          })()}
 
           {/* atalhos rápidos: Alertas e Sala (o resto vive no menu principal) */}
           {online && (
