@@ -52,6 +52,37 @@ test("tela 15: grupos por dia, não lida destacada, contador e marcar lidas", as
   await expect(page.locator(".tab-42__count")).toHaveCount(0);
 });
 
+test("tela 15: modo Selecionar apaga notificações em lote com confirmação e persiste", async ({ page }) => {
+  await login(page);
+  await page.goto("/notificacoes");
+  await expect(page.locator(".notif")).toHaveCount(3);
+
+  // entra no modo seleção, escolhe 2 e apaga com confirmação
+  await page.getByRole("button", { name: "Selecionar", exact: true }).click();
+  await page.locator(".notif").nth(0).click();
+  await page.locator(".notif").nth(1).click();
+  await expect(page.getByText("2 selecionadas")).toBeVisible();
+  await page.getByRole("button", { name: "Apagar", exact: true }).click();
+  await expect(page.getByText("Apagar 2 notificações?")).toBeVisible();
+  await page.locator(".sheet__footer").getByRole("button", { name: "Apagar" }).click();
+  await expect(page.locator(".notif")).toHaveCount(1);
+
+  // some do banco de verdade (RLS de delete do dono) — recarregar não ressuscita
+  await page.reload();
+  await page.waitForSelector(".notif");
+  await expect(page.locator(".notif")).toHaveCount(1);
+  const svc = serviceClient();
+  const { data: left } = await svc.from("notifications").select("id").eq("user_id", advId);
+  expect(left!.length).toBe(1);
+
+  // selecionar no modo seleção não marca como lida nem apaga sem confirmação
+  await page.getByRole("button", { name: "Selecionar", exact: true }).click();
+  await page.locator(".notif").first().click();
+  await expect(page.getByText("1 selecionada", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Sair da seleção" }).click();
+  await expect(page.locator(".notif")).toHaveCount(1);
+});
+
 test("lembrete diário (cron): resumo dos cards com atrasado; respeita preferência", async ({ request }) => {
   const svc = serviceClient();
   await svc.from("cards").insert([

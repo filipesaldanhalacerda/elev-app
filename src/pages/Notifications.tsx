@@ -1,6 +1,8 @@
 /** Tela 15 · Central de notificações — quadro "15 Notificacoes claro" (#3g). */
 import { useEffect, useMemo, useState } from "react";
 import { MobileShell } from "../components/MobileShell";
+import { Sheet } from "../components/Sheet";
+import { Button } from "../components/Button";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 import { formatDate, formatTime } from "../lib/format";
@@ -63,6 +65,24 @@ export default function Notifications() {
     await load();
   }
 
+  const [selecting, setSelecting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchConfirm, setBatchConfirm] = useState(false);
+  const toggleSel = (id: string) =>
+    setSelectedIds((s) => {
+      const nx = new Set(s);
+      if (nx.has(id)) nx.delete(id);
+      else nx.add(id);
+      return nx;
+    });
+  async function batchDelete() {
+    await supabase.from("notifications").delete().in("id", [...selectedIds]);
+    setBatchConfirm(false);
+    setSelecting(false);
+    setSelectedIds(new Set());
+    await load();
+  }
+
   async function markRead(n: NotifRow) {
     if (n.read_at) return;
     setRows((r) => (r ?? []).map((x) => (x.id === n.id ? { ...x, read_at: new Date().toISOString() } : x)));
@@ -93,6 +113,25 @@ export default function Notifications() {
       </header>
 
       <div style={{ flex: 1, padding: "14px 16px 0", display: "flex", flexDirection: "column", gap: 14 }}>
+        {rows !== null && rows.length > 0 && (
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <button
+              type="button"
+              onClick={() => { setSelecting((v) => !v); setSelectedIds(new Set()); }}
+              style={{
+                display: "flex", alignItems: "center", gap: 7, height: 40, padding: "0 13px", borderRadius: 10,
+                background: selecting ? "var(--action)" : "var(--surface)",
+                border: selecting ? "1px solid var(--action)" : "1px solid var(--border)",
+                color: selecting ? "var(--on-action)" : "var(--text-1)",
+                font: "600 12.5px/1 var(--font-sans)", boxShadow: "var(--elev-1)",
+              }}
+            >
+              <i className={selecting ? "icon-x" : "icon-list-checks"} style={{ fontSize: 15 }} aria-hidden />
+              {selecting ? "Sair da seleção" : "Selecionar"}
+            </button>
+          </div>
+        )}
+
         {rows === null && <div className="skeleton" style={{ height: 160, borderRadius: 14 }} />}
 
         {rows !== null && rows.length === 0 && (
@@ -119,8 +158,14 @@ export default function Notifications() {
                     type="button"
                     className={`notif${unread ? " notif--unread" : ""}`}
                     style={{ minHeight: 66, width: "100%", textAlign: "left" }}
-                    onClick={() => void markRead(n)}
+                    aria-label={selecting ? `Selecionar notificação ${n.title}` : undefined}
+                    onClick={() => (selecting ? toggleSel(n.id) : void markRead(n))}
                   >
+                    {selecting && (
+                      <span aria-hidden style={{ width: 24, height: 24, flex: "none", borderRadius: 999, border: selectedIds.has(n.id) ? "none" : "2px solid var(--border-strong)", background: selectedIds.has(n.id) ? "var(--action)" : "transparent", color: "var(--on-action)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {selectedIds.has(n.id) && <i className="icon-check" style={{ fontSize: 13 }} />}
+                      </span>
+                    )}
                     <span className="notif__dot" aria-hidden />
                     <span
                       style={{
@@ -151,6 +196,32 @@ export default function Notifications() {
           </div>
         )}
       </div>
+
+      {selecting && selectedIds.size > 0 && (
+        <div style={{ position: "fixed", left: 16, right: 16, bottom: 96, zIndex: 60, maxWidth: 488, margin: "0 auto" }}>
+          <div className="card" style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 10px 10px 14px", boxShadow: "var(--elev-2)" }}>
+            <span style={{ flex: 1, font: "600 12.5px/1.35 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-1)" }}>
+              {selectedIds.size} selecionada{selectedIds.size > 1 ? "s" : ""}
+            </span>
+            <Button variant="destructive" style={{ height: 44, fontSize: 12.5 }} onClick={() => setBatchConfirm(true)}>
+              Apagar
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {batchConfirm && (
+        <Sheet label="Apagar notificações" onClose={() => setBatchConfirm(false)}>
+          <div className="sheet__title">Apagar {selectedIds.size} notificaç{selectedIds.size > 1 ? "ões" : "ão"}?</div>
+          <div style={{ marginTop: 8, font: "400 12.5px/1.55 var(--font-sans)", color: "var(--text-2)" }}>
+            Elas saem da central de vez. Alertas e histórico de disparos não são afetados.
+          </div>
+          <div className="sheet__footer" style={{ marginTop: 16 }}>
+            <Button variant="secondary" onClick={() => setBatchConfirm(false)}>Voltar</Button>
+            <Button variant="destructive" onClick={batchDelete}>Apagar</Button>
+          </div>
+        </Sheet>
+      )}
     </MobileShell>
   );
 }
