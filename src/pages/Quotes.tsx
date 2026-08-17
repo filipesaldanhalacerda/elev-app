@@ -163,9 +163,6 @@ export default function Quotes() {
             </span>
           )}
         </span>
-        <button type="button" className="page-header__action" aria-label="Atualizar" onClick={() => window.location.reload()}>
-          <i className="icon-rotate-cw" aria-hidden />
-        </button>
       </header>
 
       <div style={{ padding: "6px 16px 12px" }}>
