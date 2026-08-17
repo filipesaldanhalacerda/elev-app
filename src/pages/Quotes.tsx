@@ -326,7 +326,7 @@ export default function Quotes() {
                   Toque em “Desafixar” para tirar o ativo da sua lista e da home.
                 </div>
               )}
-              <div className="client-list">
+              <div className="client-list" data-fixados>
                 {ibov && <div className="fav-section">Índice</div>}
                 {ibov && (
                   <FavRow quote={ibov} flash={flashClass("IBOV")} onOpen={() => { setSelected("IBOV"); setSearch("IBOV"); pushRecent("IBOV"); }} />
@@ -352,7 +352,8 @@ export default function Quotes() {
             </div>
 
             {(() => {
-              const recentQuotes = recents.map((t) => byTicker.get(t)).filter(Boolean) as Quote[];
+              // sem duplicar o que já está fixado (nem o IBOV, sempre presente)
+              const recentQuotes = recents.filter((t) => t !== "IBOV" && !(favorites ?? []).includes(t)).map((t) => byTicker.get(t)).filter(Boolean) as Quote[];
               if (recentQuotes.length === 0) return null;
               return (
                 <div>

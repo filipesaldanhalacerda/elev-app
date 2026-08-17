@@ -130,7 +130,7 @@ test.describe("tela 11 · cotações", () => {
     // desafixar pelo modo Editar, partindo dos PADRÕES (nada salvo ainda)
     await page.getByRole("button", { name: "Editar lista" }).click();
     await page.getByRole("button", { name: "Desafixar DOLAR" }).click();
-    await expect(page.locator(".fav-row__ticker", { hasText: "DOLAR" })).toHaveCount(0);
+    await expect(page.locator("[data-fixados] .fav-row__ticker", { hasText: "DOLAR" })).toHaveCount(0);
     await page.getByRole("button", { name: "Concluir" }).click();
 
     // pelo detalhe: PETR4 segue fixado → Desafixar funciona; Fixar de novo também
@@ -145,19 +145,19 @@ test.describe("tela 11 · cotações", () => {
     // a lista reflete e persiste após recarregar
     await page.reload();
     await page.waitForSelector(".fav-row");
-    await expect(page.locator(".fav-row__ticker", { hasText: "PETR4" })).toBeVisible();
-    await expect(page.locator(".fav-row__ticker", { hasText: "DOLAR" })).toHaveCount(0);
+    await expect(page.locator("[data-fixados] .fav-row__ticker", { hasText: "PETR4" })).toBeVisible();
+    await expect(page.locator("[data-fixados] .fav-row__ticker", { hasText: "DOLAR" })).toHaveCount(0);
 
     // desafixar TODOS não ressuscita a seleção padrão (nem após recarregar)
     await page.getByRole("button", { name: "Editar lista" }).click();
     for (const t of ["ITUB4", "VALE3", "PETR4"]) {
       await page.getByRole("button", { name: `Desafixar ${t}` }).click();
-      await expect(page.locator(".fav-row__ticker", { hasText: t })).toHaveCount(0);
+      await expect(page.locator("[data-fixados] .fav-row__ticker", { hasText: t })).toHaveCount(0);
     }
-    await expect(page.locator(".fav-row")).toHaveCount(1); // só o IBOV (Índice)
+    await expect(page.locator("[data-fixados] .fav-row")).toHaveCount(1); // só o IBOV (Índice)
     await page.reload();
     await page.waitForSelector(".fav-row");
-    await expect(page.locator(".fav-row")).toHaveCount(1);
+    await expect(page.locator("[data-fixados] .fav-row")).toHaveCount(1);
   });
 
   test("resultado da busca: herói, fios, ações e 'quem tem este ativo' sob RLS", async ({ page }) => {
