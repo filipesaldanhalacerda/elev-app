@@ -113,7 +113,7 @@ test.describe("tela 11 · cotações", () => {
     await expect(page.locator(".fav-row__ticker", { hasText: "WDOU26" })).toBeVisible();
     await expect(page.locator(".fav-section").nth(2)).toHaveText("Ações");
     // Editar entra no modo de remoção e Concluir sai dele
-    await page.getByRole("button", { name: "Editar" }).click();
+    await page.getByRole("button", { name: "Editar lista" }).click();
     await expect(page.getByRole("button", { name: "Desafixar WDOU26" })).toBeVisible();
     await page.getByRole("button", { name: "Concluir" }).click();
     await expect(page.getByRole("button", { name: "Desafixar WDOU26" })).toHaveCount(0);
@@ -128,7 +128,7 @@ test.describe("tela 11 · cotações", () => {
     await page.waitForSelector(".fav-row");
 
     // desafixar pelo modo Editar, partindo dos PADRÕES (nada salvo ainda)
-    await page.getByRole("button", { name: "Editar" }).click();
+    await page.getByRole("button", { name: "Editar lista" }).click();
     await page.getByRole("button", { name: "Desafixar WDOU26" }).click();
     await expect(page.locator(".fav-row__ticker", { hasText: "WDOU26" })).toHaveCount(0);
     await page.getByRole("button", { name: "Concluir" }).click();
@@ -149,7 +149,7 @@ test.describe("tela 11 · cotações", () => {
     await expect(page.locator(".fav-row__ticker", { hasText: "WDOU26" })).toHaveCount(0);
 
     // desafixar TODOS não ressuscita a seleção padrão (nem após recarregar)
-    await page.getByRole("button", { name: "Editar" }).click();
+    await page.getByRole("button", { name: "Editar lista" }).click();
     for (const t of ["DI1F27", "VALE3", "PETR4"]) {
       await page.getByRole("button", { name: `Desafixar ${t}` }).click();
       await expect(page.locator(".fav-row__ticker", { hasText: t })).toHaveCount(0);

@@ -282,12 +282,28 @@ export default function Quotes() {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                 <span style={{ font: "600 15px/1.2 var(--font-sans)", letterSpacing: "-0.01em", color: "var(--text-1)" }}>Fixados</span>
                 {favQuotes.length > 0 && (
-                  <button type="button" style={{ display: "flex", alignItems: "center", gap: 5, height: 44, padding: "0 8px", marginRight: -8, font: "600 12px/1 var(--font-sans)", color: "var(--ghost-text)" }} onClick={() => setEditingFavs((v) => !v)}>
-                    <i className={editingFavs ? "icon-check" : "icon-sliders-horizontal"} style={{ fontSize: 14 }} aria-hidden />
-                    {editingFavs ? "Concluir" : "Editar"}
+                  <button
+                    type="button"
+                    onClick={() => setEditingFavs((v) => !v)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 6, height: 40, padding: "0 14px", borderRadius: 999,
+                      background: editingFavs ? "var(--action)" : "var(--surface)",
+                      border: editingFavs ? "1px solid var(--action)" : "1px solid var(--border-strong)",
+                      color: editingFavs ? "var(--on-action)" : "var(--text-1)",
+                      font: "600 12.5px/1 var(--font-sans)", boxShadow: "var(--elev-1)",
+                    }}
+                  >
+                    <i className={editingFavs ? "icon-check" : "icon-pencil"} style={{ fontSize: 14 }} aria-hidden />
+                    {editingFavs ? "Concluir" : "Editar lista"}
                   </button>
                 )}
               </div>
+              {editingFavs && (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", marginBottom: 10, borderRadius: 12, background: "var(--brand-tint)", font: "400 12px/1.45 var(--font-sans)", color: "var(--ghost-text)" }}>
+                  <i className="icon-pin-off" style={{ fontSize: 15, flex: "none" }} aria-hidden />
+                  Toque em “Desafixar” para tirar o ativo da sua lista e da home.
+                </div>
+              )}
               <div className="client-list">
                 {ibov && <div className="fav-section">Índice</div>}
                 {ibov && (
@@ -344,18 +360,37 @@ export default function Quotes() {
 
 function FavRow({ quote, flash, onOpen, editing, onRemove }: { quote: Quote; flash: string; onOpen: () => void; editing?: boolean; onRemove?: () => void }) {
   const up = quote.changePct >= 0;
-  return (
-    <button type="button" className="fav-row" onClick={editing && onRemove ? onRemove : onOpen} aria-label={editing ? `Desafixar ${quote.symbol}` : undefined}>
-      {editing && onRemove && (
-        <span aria-hidden style={{ width: 28, height: 28, flex: "none", borderRadius: 999, background: "var(--danger-action-hover-bg)", color: "var(--danger-action-text)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <i className="icon-pin-off" style={{ fontSize: 14 }} />
+  if (editing && onRemove) {
+    // modo edição: a linha inteira vira "ativo + botão Desafixar" explícito
+    return (
+      <div className="fav-row" style={{ cursor: "default" }}>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span className="fav-row__ticker">{quote.symbol}</span>
+          <span className="fav-row__name">{quote.name}</span>
         </span>
-      )}
+        <button
+          type="button"
+          aria-label={`Desafixar ${quote.symbol}`}
+          onClick={onRemove}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 6, height: 40, padding: "0 14px", borderRadius: 999,
+            background: "var(--danger-action-hover-bg)", color: "var(--danger-action-text)",
+            font: "600 12.5px/1 var(--font-sans)", flex: "none",
+          }}
+        >
+          <i className="icon-pin-off" style={{ fontSize: 14 }} aria-hidden />
+          Desafixar
+        </button>
+      </div>
+    );
+  }
+  return (
+    <button type="button" className="fav-row" onClick={onOpen}>
       <span style={{ flex: 1, minWidth: 0 }}>
         <span className="fav-row__ticker">{quote.symbol}</span>
         <span className="fav-row__name">{quote.name}</span>
       </span>
-      {!editing && <Sparkline points={fakeSeriesLocal(quote.symbol, 9)} up={up} />}
+      <Sparkline points={fakeSeriesLocal(quote.symbol, 9)} up={up} />
       <span className="fav-row__right">
         <span className={`fav-row__price${flash}`}>{formatQuotePrice(quote)}</span>
         <span
