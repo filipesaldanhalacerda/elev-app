@@ -12,7 +12,7 @@ import { MarketChip, Banner } from "../components/feedback";
 import { Button } from "../components/Button";
 import { Avatar } from "../components/Avatar";
 import { supabase } from "../lib/supabase";
-import { useAuth } from "../lib/auth";
+import { useAuth, workerFetch } from "../lib/auth";
 import {
   useQuotes, useQuoteDetail, pushRecent, getRecents, clearRecents, isFuture, formatQuotePrice, formatQuoteChange, type Quote,
 } from "../lib/quotes";
@@ -127,6 +127,35 @@ export default function Quotes() {
   const { favorites, isPinned, toggle } = useFavorites(profile?.id);
   const [, recentsBump] = useState(0);
   const recents = getRecents(); // relido a cada render — pushRecent reflete na hora
+  // busca enquanto digita: sugestões da fonte com debounce
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  useEffect(() => {
+    const term = search.trim().toUpperCase();
+    if (term.length < 2 || term === selected) {
+      setSuggestions([]);
+      return;
+    }
+    let alive = true;
+    const t = setTimeout(async () => {
+      try {
+        const body = (await workerFetch(`/api/quotes/search?q=${encodeURIComponent(term)}`)) as { tickers: string[] };
+        if (alive) setSuggestions(body.tickers ?? []);
+      } catch {
+        if (alive) setSuggestions([]);
+      }
+    }, 300);
+    return () => {
+      alive = false;
+      clearTimeout(t);
+    };
+  }, [search, selected]);
+
+  function openSymbol(t: string) {
+    setSelected(t);
+    setSearch(t);
+    setSuggestions([]);
+    pushRecent(t);
+  }
 
   const listSymbols = useMemo(() => ["IBOV", ...(favorites ?? []), ...recents], [favorites, recents]);
   const { data, flashes } = useQuotes(listSymbols);
@@ -139,8 +168,7 @@ export default function Quotes() {
   function submitSearch() {
     const t = search.trim().toUpperCase();
     if (!t) return;
-    setSelected(t);
-    pushRecent(t);
+    openSymbol(suggestions.length > 0 && !suggestions.includes(t) ? suggestions[0] : t);
   }
 
   const favQuotes = (favorites ?? []).map((t) => byTicker.get(t)).filter(Boolean) as Quote[];
@@ -196,6 +224,22 @@ export default function Quotes() {
               </button>
             )}
           </div>
+          {suggestions.length > 0 && (
+            <div className="csearch__results" data-quote-suggestions>
+              {suggestions.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  style={{ width: "100%", minHeight: 48, display: "flex", alignItems: "center", gap: 10, padding: "0 14px", textAlign: "left", borderTop: t !== suggestions[0] ? "1px solid var(--divider)" : undefined }}
+                  onClick={() => openSymbol(t)}
+                >
+                  <i className="icon-search" style={{ fontSize: 14, color: "var(--icon-decor)", flex: "none" }} aria-hidden />
+                  <span style={{ flex: 1, font: "600 13px/1 var(--font-mono)", color: "var(--text-1)" }}>{t}</span>
+                  <i className="icon-chevron-right" style={{ fontSize: 15, color: "var(--icon-decor)" }} aria-hidden />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

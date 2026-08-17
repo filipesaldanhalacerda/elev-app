@@ -195,6 +195,36 @@ async function dolarFetch(): Promise<Quote | null> {
   }
 }
 
+const searchCache = new Map<string, { tickers: string[]; fetchedAt: number }>();
+const SEARCH_TTL_MS = 60 * 60 * 1000;
+
+/** Sugestões de ticker enquanto digita (brapi /available, cache de 1h). */
+export async function searchTickers(q: string, token: string): Promise<string[]> {
+  const key = q.toUpperCase();
+  const hit = searchCache.get(key);
+  if (hit && Date.now() - hit.fetchedAt < SEARCH_TTL_MS) return hit.tickers;
+  let tickers: string[] = [];
+  try {
+    const res = await fetch(`https://brapi.dev/api/available?search=${encodeURIComponent(key)}&token=${token}`);
+    if (res.ok) {
+      const body = (await res.json()) as { stocks?: string[]; indexes?: string[] };
+      // sem o fracionário (sufixo F) — o assessor fala do papel cheio
+      tickers = [...(body.stocks ?? []).filter((t) => !/[0-9]F$/.test(t)), ...(body.indexes ?? [])].slice(0, 8);
+    }
+  } catch { /* rede: devolve vazio */ }
+  if ("DOLAR".startsWith(key) || key.startsWith("USD") || key.startsWith("DÓLAR")) tickers.unshift("DOLAR");
+  if ("IBOV".startsWith(key)) tickers.unshift("IBOV");
+  const out = [...new Set(tickers)].slice(0, 8);
+  searchCache.set(key, { tickers: out, fetchedAt: Date.now() });
+  return out;
+}
+
+/** Sugestões no modo simulado: dicionário local. */
+export function searchTickersFake(q: string): string[] {
+  const key = q.toUpperCase();
+  return Object.keys(KNOWN).filter((t) => t.startsWith(key)).slice(0, 8);
+}
+
 const isDerivative = (s: string) => KNOWN[s]?.unit === "pp" || /^(WDO|WIN|DI1|DOL[FGHJKMNQUVXZ]|IND)/.test(s);
 
 /**

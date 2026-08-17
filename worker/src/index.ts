@@ -5,7 +5,7 @@
  */
 import { Hono } from "hono";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { fakeQuote, fakeSeries, fakeMtTest, realQuotes, realDetail } from "./quotes";
+import { fakeQuote, fakeSeries, fakeMtTest, realQuotes, realDetail, searchTickers, searchTickersFake } from "./quotes";
 import { sendWebPush, type PushSubscriptionRecord, type PushEnv } from "./webpush";
 import { googleMode, signedState, verifyState, authUrl, exchangeCode, userEmail, pushToGoogle, listFromGoogle, type GoogleEnv } from "./google";
 
@@ -117,6 +117,15 @@ app.get("/api/quotes", async (c) => {
   // com BRAPI_TOKEN os preços são reais (B3, ~15 min de atraso); sem, simulador de dev
   const quotes = c.env.BRAPI_TOKEN ? await realQuotes(symbols, c.env.BRAPI_TOKEN) : symbols.map((s) => fakeQuote(s, now));
   return c.json({ paused: false, source: c.env.BRAPI_TOKEN ? "brapi" : "simulado", quotes });
+});
+
+app.get("/api/quotes/search", async (c) => {
+  const auth = await requireUser(c);
+  if (!auth) return c.json({ error: "Não autenticado." }, 401);
+  const q = (c.req.query("q") ?? "").trim();
+  if (q.length < 2) return c.json({ tickers: [] });
+  const tickers = c.env.BRAPI_TOKEN ? await searchTickers(q, c.env.BRAPI_TOKEN) : searchTickersFake(q);
+  return c.json({ tickers });
 });
 
 app.get("/api/quotes/detail", async (c) => {
