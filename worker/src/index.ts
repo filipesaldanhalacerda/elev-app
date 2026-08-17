@@ -5,11 +5,11 @@
  */
 import { Hono } from "hono";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { fakeQuote, fakeSeries, fakeMtTest } from "./quotes";
+import { fakeQuote, fakeSeries, fakeMtTest, realQuotes, realDetail } from "./quotes";
 import { sendWebPush, type PushSubscriptionRecord, type PushEnv } from "./webpush";
 import { googleMode, signedState, verifyState, authUrl, exchangeCode, userEmail, pushToGoogle, listFromGoogle, type GoogleEnv } from "./google";
 
-type Env = { SUPABASE_URL: string; SERVICE_ROLE_KEY: string; METAAPI_TOKEN?: string } & PushEnv & GoogleEnv;
+type Env = { SUPABASE_URL: string; SERVICE_ROLE_KEY: string; METAAPI_TOKEN?: string; BRAPI_TOKEN?: string } & PushEnv & GoogleEnv;
 type Ctx = { Bindings: Env; Variables: { svc: SupabaseClient; admin: { id: string; name: string } } };
 
 const app = new Hono<Ctx>();
@@ -114,7 +114,9 @@ app.get("/api/quotes", async (c) => {
   }
   const now = new Date();
   await auth.svc.from("mt_connection").update({ last_quote_at: now.toISOString() }).eq("id", 1);
-  return c.json({ paused: false, quotes: symbols.map((s) => fakeQuote(s, now)) });
+  // com BRAPI_TOKEN os preços são reais (B3, ~15 min de atraso); sem, simulador de dev
+  const quotes = c.env.BRAPI_TOKEN ? await realQuotes(symbols, c.env.BRAPI_TOKEN, now) : symbols.map((s) => fakeQuote(s, now));
+  return c.json({ paused: false, quotes });
 });
 
 app.get("/api/quotes/detail", async (c) => {
@@ -125,6 +127,10 @@ app.get("/api/quotes/detail", async (c) => {
   const mt = await mtStatus(auth.svc);
   if (!mt || mt.status === "desconectada" || mt.status === "caida") {
     return c.json({ paused: true, last_quote_at: mt?.last_quote_at ?? null }, 200);
+  }
+  if (c.env.BRAPI_TOKEN) {
+    const d = await realDetail(symbol, c.env.BRAPI_TOKEN);
+    return c.json({ paused: false, ...d });
   }
   return c.json({ paused: false, quote: fakeQuote(symbol), series: fakeSeries(symbol) });
 });
@@ -580,10 +586,12 @@ app.post("/api/cron/alerts", async (c) => {
   const now = new Date();
   const results = { price: 0, vencimento: 0, movimentacao: 0, saldo: 0 };
 
-  // 1) alertas de preço ativos
+  // 1) alertas de preço ativos — mesma fonte de preço da tela (brapi quando configurada)
   const { data: alerts } = await svc.from("alerts").select("*").eq("status", "ativo");
+  const tickers = [...new Set((alerts ?? []).map((a) => String(a.ticker)))];
+  const quoteBy = new Map((c.env.BRAPI_TOKEN ? await realQuotes(tickers, c.env.BRAPI_TOKEN, now) : tickers.map((t) => fakeQuote(t, now))).map((q) => [q.symbol, q]));
   for (const a of alerts ?? []) {
-    const q = fakeQuote(a.ticker, now);
+    const q = quoteBy.get(String(a.ticker)) ?? fakeQuote(a.ticker, now);
     let hit = false;
     if (a.target_price !== null) {
       hit = a.direction === "alta" ? q.price >= a.target_price : q.price <= a.target_price;
