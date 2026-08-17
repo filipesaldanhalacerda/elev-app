@@ -23,7 +23,7 @@ export default defineConfig({
   projects: [
     {
       name: "assessor",
-      testIgnore: [/e3-rls/, /e5-importacao/, /e7-cotacoes/, /e16-fluxos/, /e17-qa/],
+      testIgnore: [/e3-rls/, /e5-importacao/, /e7-cotacoes/, /e16-fluxos/, /e17-qa/, /e20-garantia/],
       use: {
         ...devices["iPhone 12"],
         viewport: { width: 390, height: 844 },
@@ -32,7 +32,7 @@ export default defineConfig({
     },
     {
       name: "admin",
-      testIgnore: [/e3-rls/, /e5-importacao/, /e7-cotacoes/, /e16-fluxos/, /e17-qa/],
+      testIgnore: [/e3-rls/, /e5-importacao/, /e7-cotacoes/, /e16-fluxos/, /e17-qa/, /e20-garantia/],
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width: 1440, height: 900 },
@@ -61,6 +61,12 @@ export default defineConfig({
       // E17: varredura de QA — serial, cria os próprios contexts
       name: "qa",
       testMatch: /e17-qa/,
+      workers: 1,
+    },
+    {
+      // E20: garantia transversal (console/rede/dado real) — serial, viewports próprios
+      name: "garantia",
+      testMatch: /e20-garantia/,
       workers: 1,
     },
     {
