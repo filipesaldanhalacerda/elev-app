@@ -4,3 +4,7 @@ compatibility_date = "2026-05-01"
 
 # Variáveis locais em worker/.dev.vars (gerado por scripts/gen-env.mjs, fora do git).
 # Em produção: wrangler secret put SUPABASE_URL / SERVICE_ROLE_KEY.
+
+# Alertas a cada 5 min; lembrete diário verificado a cada hora cheia.
+[triggers]
+crons = ["*/5 * * * *", "0 * * * *"]

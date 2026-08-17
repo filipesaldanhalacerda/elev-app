@@ -104,6 +104,8 @@ async function mtStatus(svc: SupabaseClient) {
   return data;
 }
 
+let lastSweepAt = 0;
+
 app.get("/api/quotes", async (c) => {
   const auth = await requireUser(c);
   if (!auth) return c.json({ error: "Não autenticado." }, 401);
@@ -116,6 +118,11 @@ app.get("/api/quotes", async (c) => {
   await auth.svc.from("mt_connection").update({ last_quote_at: now.toISOString() }).eq("id", 1);
   // com BRAPI_TOKEN os preços são reais (B3, ~15 min de atraso); sem, simulador de dev
   const quotes = c.env.BRAPI_TOKEN ? await realQuotes(symbols, c.env.BRAPI_TOKEN) : symbols.map((s) => fakeQuote(s, now));
+  // qualquer app aberto mantém os ALERTAS vivos: varredura em segundo plano, no máx. 1×/min
+  if (Date.now() - lastSweepAt > 60_000) {
+    lastSweepAt = Date.now();
+    c.executionCtx.waitUntil(runAlertSweep(c.env).catch(() => {}));
+  }
   return c.json({ paused: false, source: c.env.BRAPI_TOKEN ? "brapi" : "simulado", quotes });
 });
 
@@ -591,15 +598,17 @@ async function fetchAll<T>(build: (from: number, to: number) => PromiseLike<{ da
   }
 }
 
-app.post("/api/cron/alerts", async (c) => {
-  const svc = svcOf(c.env);
+/** Varredura de alertas — chamada pelo cron de produção, pela rota de testes e
+ * oportunisticamente pelo tráfego de cotações (o app aberto mantém os alertas vivos). */
+async function runAlertSweep(env: Env) {
+  const svc = svcOf(env);
   const now = new Date();
   const results = { price: 0, vencimento: 0, movimentacao: 0, saldo: 0 };
 
   // 1) alertas de preço ativos — mesma fonte de preço da tela (brapi quando configurada)
   const { data: alerts } = await svc.from("alerts").select("*").eq("status", "ativo");
   const tickers = [...new Set((alerts ?? []).map((a) => String(a.ticker)))];
-  const quoteBy = new Map((c.env.BRAPI_TOKEN ? await realQuotes(tickers, c.env.BRAPI_TOKEN) : tickers.map((t) => fakeQuote(t, now))).map((q) => [q.symbol, q]));
+  const quoteBy = new Map((env.BRAPI_TOKEN ? await realQuotes(tickers, env.BRAPI_TOKEN) : tickers.map((t) => fakeQuote(t, now))).map((q) => [q.symbol, q]));
   for (const a of alerts ?? []) {
     const q = quoteBy.get(String(a.ticker));
     if (!q) continue; // sem preço REAL não se dispara alerta
@@ -620,7 +629,7 @@ app.post("/api/cron/alerts", async (c) => {
       : `${a.target_day_pct}% no dia`;
     await notifyUser(svc, a.owner, "alerta_atingido", `${a.ticker} atingiu ${alvo}`,
       `Alvo de ${a.direction} alcançado às ${new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }).format(now)}. O alerta foi para o histórico.`,
-      { ticker: a.ticker }, c.env);
+      { ticker: a.ticker }, env);
     results.price++;
   }
 
@@ -653,7 +662,7 @@ app.post("/api/cron/alerts", async (c) => {
       detail: { ref: refKey, asset: p.asset, maturity: p.maturity_date, value: p.value },
     });
     await notifyUser(svc, owner, "alerta_atingido", `${p.asset} vence em breve`,
-      `Vencimento em ${p.maturity_date!.split("-").reverse().join("/")} — cliente ${p.account_code}.`, { account: p.account_code }, c.env);
+      `Vencimento em ${p.maturity_date!.split("-").reverse().join("/")} — cliente ${p.account_code}.`, { account: p.account_code }, env);
     results.vencimento++;
   }
 
@@ -682,7 +691,7 @@ app.post("/api/cron/alerts", async (c) => {
     await notifyUser(svc, owner, "alerta_atingido",
       `${m.amount >= 0 ? "Aporte" : "Resgate"} relevante — cliente ${m.account_code}`,
       `${m.amount >= 0 ? "+" : "−"}R$ ${Math.abs(m.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })} em ${m.mov_date.split("-").reverse().join("/")}.`,
-      { account: m.account_code }, c.env);
+      { account: m.account_code }, env);
     results.movimentacao++;
   }
 
@@ -705,11 +714,15 @@ app.post("/api/cron/alerts", async (c) => {
       detail: { ref: refKey, total: b.total, date: b.ref_date },
     });
     await notifyUser(svc, owner, "alerta_atingido", `Dinheiro parado — cliente ${b.account_code}`,
-      `R$ ${b.total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} em conta sem aplicação.`, { account: b.account_code }, c.env);
+      `R$ ${b.total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} em conta sem aplicação.`, { account: b.account_code }, env);
     results.saldo++;
   }
 
-  return c.json({ ok: true, results });
+  return results;
+}
+
+app.post("/api/cron/alerts", async (c) => {
+  return c.json({ ok: true, results: await runAlertSweep(c.env) });
 });
 
 // ---------- Push (telas 25/16) ----------
@@ -729,11 +742,10 @@ app.post("/api/push/subscribe", async (c) => {
 });
 
 // Lembrete diário 08:00 (tela 25 modelo 2): resumo dos cards do dia
-app.post("/api/cron/daily-reminder", async (c) => {
-  const svc = svcOf(c.env);
+async function runDailyReminder(env: Env, force = false) {
+  const svc = svcOf(env);
   // cada assessor escolhe a hora do próprio lembrete; o agendador roda de hora em hora
   // e só dispara para quem escolheu a hora atual. ?force=1 (testes) ignora a hora.
-  const force = c.req.query("force") === "1";
   const currentHourSP = Number(
     new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", hour12: false, timeZone: "America/Sao_Paulo" })
   );
@@ -774,10 +786,14 @@ app.post("/api/cron/daily-reminder", async (c) => {
     const plural = withReminder.length > 1 ? "s" : "";
     const title = `Seu dia: ${withReminder.length} tarefa${plural} pendente${plural}${overdue.length > 0 ? `, ${overdue.length} atrasada${overdue.length > 1 ? "s" : ""}` : ""}`;
     const body = overdue.length > 0 ? `${first.title} venceu.` : `Próximo: ${first.title}.`;
-    await notifyUser(svc, u.id, "lembrete_diario", title, body, {}, c.env);
+    await notifyUser(svc, u.id, "lembrete_diario", title, body, {}, env);
     sent++;
   }
-  return c.json({ ok: true, sent });
+  return sent;
+}
+
+app.post("/api/cron/daily-reminder", async (c) => {
+  return c.json({ ok: true, sent: await runDailyReminder(c.env, c.req.query("force") === "1") });
 });
 
 // ---------- Google Agenda (F2-03) — usuário autenticado ----------
@@ -977,4 +993,12 @@ app.delete("/api/google/events/:id", async (c) => {
 });
 
 
-export default app;
+// Produção (Cloudflare Cron Triggers — wrangler.toml [triggers]):
+// */5 min: alertas de preço e automáticos · hora cheia: lembrete diário.
+export default {
+  fetch: app.fetch,
+  scheduled: async (controller: { cron: string }, env: Env, ctx: { waitUntil: (p: Promise<unknown>) => void }) => {
+    if (controller.cron === "0 * * * *") ctx.waitUntil(runDailyReminder(env));
+    else ctx.waitUntil(runAlertSweep(env));
+  },
+};
