@@ -820,7 +820,8 @@ async function runDailyReminder(env: Env, force = false) {
     if (!force && Number(String(u.reminder_time ?? "08:00").slice(0, 2)) !== currentHourSP) continue;
     const withReminder = byAssignee.get(u.id) ?? [];
     if (withReminder.length === 0) continue;
-    // um lembrete por dia, mesmo com o agendador rodando de hora em hora
+    // um lembrete por dia SEMPRE — force só ignora a hora escolhida, nunca o dedupe
+    // (testes rodando force=1 não podem reenviar para quem já recebeu hoje)
     const { data: already } = await svc
       .from("notifications")
       .select("id")
@@ -828,7 +829,7 @@ async function runDailyReminder(env: Env, force = false) {
       .eq("kind", "lembrete_diario")
       .gte("created_at", startOfDaySP)
       .limit(1);
-    if (!force && (already ?? []).length > 0) continue;
+    if ((already ?? []).length > 0) continue;
     const overdue = withReminder.filter((k) => k.due_at && new Date(k.due_at).getTime() < Date.now());
     const first = overdue[0] ?? withReminder[0];
     const plural = withReminder.length > 1 ? "s" : "";
