@@ -171,7 +171,8 @@ test.describe("tela 11 · cotações", () => {
     await expect(page.locator(".quote-detail__at")).toContainText("às ");
     await expect(page.locator(".quote-facts__label").nth(0)).toHaveText("Abertura");
     await expect(page.locator(".quote-facts__label").nth(3)).toHaveText("Fech. ant.");
-    await expect(page.locator(".quote-period--active")).toHaveText("1D");
+    // com a fonte real (brapi) o gráfico é a série diária do mês — chips de período saem de cena
+    await expect(page.getByText("fechamentos diários do último mês")).toBeVisible();
     await expect(page.getByRole("button", { name: "Criar alerta" })).toBeVisible();
 
     // quem tem este ativo: só a carteira do assessor (Ana sim, cliente do B não)
