@@ -49,11 +49,15 @@ test("fluxo (e): importação real → ficha do cliente atualizada com fonte Pos
   }
 
   // assessor real abre a ficha de um cliente vindo do arquivo (mobile)
+  // cliente real COM patrimônio: parte da base real não tem posição no Positivador e a
+  // ficha mostra "—" com honestidade — a prova do fluxo precisa de quem tem valor
   const { data: cliente } = await svc
-    .from("clients")
-    .select("account_code, name")
+    .from("client_overview")
+    .select("account_code, name, patrimony")
     .eq("advisor_code", "31392")
     .not("name", "is", null)
+    .not("patrimony", "is", null)
+    .order("patrimony", { ascending: false })
     .limit(1);
   const conta = cliente?.[0]?.account_code ?? (await svc.from("clients").select("account_code").eq("advisor_code", "31392").limit(1)).data![0].account_code;
 

@@ -27,7 +27,7 @@ export default defineConfig({
       // o projeto mt derruba a conexão MetaTrader (singleton): rodar depois dele evita
       // que /api/quotes volte "pausado" no meio destes testes
       dependencies: ["mt"],
-      testIgnore: [/e3-rls/, /e5-importacao/, /e7-cotacoes/, /e16-fluxos/, /e17-qa/, /e20-garantia/],
+      testIgnore: [/e3-rls/, /e5-importacao/, /e7-cotacoes/, /e16-fluxos/, /e17-qa/, /e20-garantia/, /dados-reais/],
       use: {
         ...devices["iPhone 12"],
         viewport: { width: 390, height: 844 },
@@ -37,7 +37,7 @@ export default defineConfig({
     {
       name: "admin",
       dependencies: ["mt"],
-      testIgnore: [/e3-rls/, /e5-importacao/, /e7-cotacoes/, /e16-fluxos/, /e17-qa/, /e20-garantia/],
+      testIgnore: [/e3-rls/, /e5-importacao/, /e7-cotacoes/, /e16-fluxos/, /e17-qa/, /e20-garantia/, /dados-reais/],
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width: 1440, height: 900 },
@@ -67,6 +67,13 @@ export default defineConfig({
       name: "qa",
       testMatch: /e17-qa/,
       workers: 1,
+    },
+    {
+      // carga de dados reais para o PO (npm run dados:reais) — nunca roda na bateria
+      name: "dados-reais",
+      testMatch: /dados-reais/,
+      workers: 1,
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
     },
     {
       // E20: garantia transversal (console/rede/dado real) — serial, viewports próprios
