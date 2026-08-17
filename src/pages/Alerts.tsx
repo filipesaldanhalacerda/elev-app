@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
 import { Sheet } from "../components/Sheet";
+import { DetailSheet } from "../components/DetailSheet";
 import { Button } from "../components/Button";
 import { Filters } from "../components/Filters";
 import { AlertCard } from "../components/cards";
@@ -225,6 +226,35 @@ export default function Alerts() {
   }, [activeSymbols.join(",")]);
 
   const [cancelling, setCancelling] = useState<AlertRow | null>(null);
+  const [viewing, setViewing] = useState<AlertRow | null>(null);
+  const [removingHist, setRemovingHist] = useState<AlertRow | null>(null);
+  const [selecting, setSelecting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchConfirm, setBatchConfirm] = useState(false);
+  useEffect(() => {
+    setSelecting(false);
+    setSelectedIds(new Set());
+  }, [tab]);
+  const toggleSel = (id: string) =>
+    setSelectedIds((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  async function batchApply() {
+    const ids = [...selectedIds];
+    if (tab === "ativos") await supabase.from("alerts").update({ status: "cancelado" }).in("id", ids);
+    else await supabase.from("alerts").delete().in("id", ids);
+    setBatchConfirm(false);
+    setSelecting(false);
+    setSelectedIds(new Set());
+    reloadAll();
+  }
+  async function deleteFromHistory(id: string) {
+    await supabase.from("alerts").delete().eq("id", id);
+    reloadAll();
+  }
   async function cancel(id: string) {
     await supabase.from("alerts").update({ status: "cancelado" }).eq("id", id);
     await activeList.reload();
@@ -284,38 +314,73 @@ export default function Alerts() {
           onClear={() => { setDir("todas"); setVinculo("todos"); }}
         />
 
+        {((tab === "ativos" && (active ?? []).length > 0) || (tab === "historico" && (triggered ?? []).length > 0)) && (
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <button
+              type="button"
+              onClick={() => { setSelecting((v) => !v); setSelectedIds(new Set()); }}
+              style={{
+                display: "flex", alignItems: "center", gap: 7, height: 40, padding: "0 13px", borderRadius: 10,
+                background: selecting ? "var(--action)" : "var(--surface)",
+                border: selecting ? "1px solid var(--action)" : "1px solid var(--border)",
+                color: selecting ? "var(--on-action)" : "var(--text-1)",
+                font: "600 12.5px/1 var(--font-sans)", boxShadow: "var(--elev-1)",
+              }}
+            >
+              <i className={selecting ? "icon-x" : "icon-list-checks"} style={{ fontSize: 15 }} aria-hidden />
+              {selecting ? "Sair da seleção" : "Selecionar"}
+            </button>
+          </div>
+        )}
+
         {tab === "ativos" && (
           <>
             {active === null && <div className="skeleton" style={{ height: 140, borderRadius: 14 }} />}
             {(active ?? []).map((a) => {
               const q = quotes.get(a.ticker);
               const info = progressInfo(a, q);
+              const sel = selectedIds.has(a.id);
               return (
-                <AlertCard
-                  key={a.id}
-                  ticker={a.ticker}
-                  direction={a.direction}
-                  currentPrice={info.price}
-                  dayChangePct={q?.changePct ?? 0}
-                  targetPrice={a.target_price ?? 0}
-                  progress={info.progress}
-                  remainingPct={info.remainingPct}
-                  footer={
-                    <div className="alert-foot">
-                      <span className="alert-foot__meta">
-                        criado {formatDate(a.created_at).slice(0, 5)} · {a.client_name ? `vinculado a ${a.client_name}` : "sem cliente vinculado"}
+                <div key={a.id} style={{ display: "flex", alignItems: "stretch", gap: 10 }}>
+                  {selecting && (
+                    <button
+                      type="button"
+                      aria-label={`Selecionar alerta de ${a.ticker}`}
+                      onClick={() => toggleSel(a.id)}
+                      style={{ width: 34, flex: "none", display: "flex", alignItems: "center", justifyContent: "center" }}
+                    >
+                      <span style={{ width: 24, height: 24, borderRadius: 999, border: sel ? "none" : "2px solid var(--border-strong)", background: sel ? "var(--action)" : "transparent", color: "var(--on-action)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {sel && <i className="icon-check" style={{ fontSize: 13 }} aria-hidden />}
                       </span>
-                      <span className="alert-foot__actions">
-                        <button type="button" className="alert-foot__btn" aria-label={`Editar alerta de ${a.ticker}`} onClick={() => { setEditing(a); setSheet(true); }}>
-                          <i className="icon-pencil" aria-hidden />
-                        </button>
-                        <button type="button" className="alert-foot__btn alert-foot__btn--danger" aria-label={`Cancelar alerta de ${a.ticker}`} onClick={() => setCancelling(a)}>
-                          <i className="icon-ban" aria-hidden />
-                        </button>
-                      </span>
-                    </div>
-                  }
-                />
+                    </button>
+                  )}
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Detalhes do alerta de ${a.ticker}`}
+                    style={{ flex: 1, minWidth: 0, cursor: "pointer" }}
+                    onClick={() => (selecting ? toggleSel(a.id) : setViewing(a))}
+                    onKeyDown={(e) => e.key === "Enter" && (selecting ? toggleSel(a.id) : setViewing(a))}
+                  >
+                    <AlertCard
+                      ticker={a.ticker}
+                      direction={a.direction}
+                      currentPrice={info.price}
+                      dayChangePct={q?.changePct ?? 0}
+                      targetPrice={a.target_price ?? 0}
+                      progress={info.progress}
+                      remainingPct={info.remainingPct}
+                      footer={
+                        <div className="alert-foot">
+                          <span className="alert-foot__meta">
+                            criado {formatDate(a.created_at).slice(0, 5)} · {a.client_name ? `vinculado a ${a.client_name}` : "sem cliente vinculado"}
+                          </span>
+                          <i className="icon-chevron-right" style={{ fontSize: 16, color: "var(--icon-decor)" }} aria-hidden />
+                        </div>
+                      }
+                    />
+                  </div>
+                </div>
               );
             })}
             <InfiniteSentinel hasMore={activeList.hasMore} loading={activeList.loadingMore} onMore={activeList.loadMore} />
@@ -353,17 +418,41 @@ export default function Alerts() {
                 </span>
               </div>
             )}
-            {(triggered ?? []).map((t) => (
-              <div key={t.id} className="card triggered-row" style={{ opacity: 1 }}>
-                <span className="triggered-row__icon"><i className="icon-check" aria-hidden /></span>
-                <span style={{ flex: 1 }}>
-                  <span className="triggered-row__title">
-                    {t.ticker} atingiu {t.target_price !== null ? formatBRL(t.target_price) : `${t.target_day_pct}%`}
-                  </span>
-                  <span className="triggered-row__meta">disparado {t.triggered_at ? formatDateAtTime(t.triggered_at) : ""}</span>
-                </span>
-              </div>
-            ))}
+            {(triggered ?? []).map((t) => {
+              const sel = selectedIds.has(t.id);
+              return (
+                <div key={t.id} style={{ display: "flex", alignItems: "stretch", gap: 10 }}>
+                  {selecting && (
+                    <button
+                      type="button"
+                      aria-label={`Selecionar disparo de ${t.ticker}`}
+                      onClick={() => toggleSel(t.id)}
+                      style={{ width: 34, flex: "none", display: "flex", alignItems: "center", justifyContent: "center" }}
+                    >
+                      <span style={{ width: 24, height: 24, borderRadius: 999, border: sel ? "none" : "2px solid var(--border-strong)", background: sel ? "var(--action)" : "transparent", color: "var(--on-action)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {sel && <i className="icon-check" style={{ fontSize: 13 }} aria-hidden />}
+                      </span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="card triggered-row"
+                    style={{ opacity: 1, flex: 1, minWidth: 0, textAlign: "left" }}
+                    aria-label={`Detalhes do disparo de ${t.ticker}`}
+                    onClick={() => (selecting ? toggleSel(t.id) : setViewing(t))}
+                  >
+                    <span className="triggered-row__icon"><i className="icon-check" aria-hidden /></span>
+                    <span style={{ flex: 1 }}>
+                      <span className="triggered-row__title">
+                        {t.ticker} atingiu {t.target_price !== null ? formatBRL(t.target_price) : `${t.target_day_pct}%`}
+                      </span>
+                      <span className="triggered-row__meta">disparado {t.triggered_at ? formatDateAtTime(t.triggered_at) : ""}</span>
+                    </span>
+                    <i className="icon-chevron-right" style={{ fontSize: 16, color: "var(--icon-decor)", flex: "none" }} aria-hidden />
+                  </button>
+                </div>
+              );
+            })}
             <InfiniteSentinel hasMore={historyList.hasMore} loading={historyList.loadingMore} onMore={historyList.loadMore} />
           </>
         )}
@@ -377,6 +466,74 @@ export default function Alerts() {
           onClose={() => { setSheet(false); setEditing(undefined); }}
           onSaved={reloadAll}
         />
+      )}
+
+      {viewing && (
+        <DetailSheet
+          label="Detalhes do alerta"
+          icon="icon-radar"
+          title={viewing.ticker}
+          chip={viewing.status === "ativo" ? "Ativo" : "Disparado"}
+          chipKind={viewing.status === "ativo" ? "success" : "neutral"}
+          rows={[
+            { icon: viewing.direction === "alta" ? "icon-arrow-up-right" : "icon-arrow-down-right", label: "Direção", value: viewing.direction === "alta" ? "Alvo de alta" : "Alvo de baixa" },
+            { icon: "icon-target", label: "Alvo", value: viewing.target_price !== null ? formatBRL(viewing.target_price) : `${viewing.target_day_pct}% no dia` },
+            { icon: "icon-calendar", label: "Criado", value: formatDate(viewing.created_at) },
+            { icon: "icon-user", label: "Cliente", value: viewing.client_name ?? "sem vínculo" },
+            ...(viewing.status === "disparado" && viewing.triggered_at ? [
+              { icon: "icon-bell-ring", label: "Disparado", value: formatDateAtTime(viewing.triggered_at) },
+              { icon: "icon-banknote", label: "Preço no disparo", value: viewing.triggered_price !== null ? formatBRL(viewing.triggered_price) : "—" },
+            ] : []),
+          ]}
+          actions={viewing.status === "ativo" ? [
+            { icon: "icon-pencil", label: "Editar", onClick: () => { setEditing(viewing); setSheet(true); setViewing(null); } },
+            { icon: "icon-ban", label: "Cancelar alerta", danger: true, onClick: () => { setCancelling(viewing); setViewing(null); } },
+          ] : [
+            { icon: "icon-trash", label: "Apagar do histórico", danger: true, onClick: () => { setRemovingHist(viewing); setViewing(null); } },
+          ]}
+          onClose={() => setViewing(null)}
+        />
+      )}
+
+      {removingHist && (
+        <Sheet label="Apagar do histórico" onClose={() => setRemovingHist(null)}>
+          <div className="sheet__title">Apagar este registro?</div>
+          <div style={{ marginTop: 8, font: "400 12.5px/1.55 var(--font-sans)", color: "var(--text-2)" }}>
+            O disparo de <strong style={{ font: "600 12.5px var(--font-mono)", color: "var(--text-1)" }}>{removingHist.ticker}</strong> sai do histórico de vez.
+          </div>
+          <div className="sheet__footer" style={{ marginTop: 16 }}>
+            <Button variant="secondary" onClick={() => setRemovingHist(null)}>Voltar</Button>
+            <Button variant="destructive" onClick={async () => { await deleteFromHistory(removingHist.id); setRemovingHist(null); }}>
+              Apagar
+            </Button>
+          </div>
+        </Sheet>
+      )}
+
+      {selecting && selectedIds.size > 0 && (
+        <div style={{ position: "fixed", left: 16, right: 16, bottom: 96, zIndex: 60, maxWidth: 488, margin: "0 auto" }}>
+          <div className="card" style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 10px 10px 14px", boxShadow: "var(--elev-2)" }}>
+            <span style={{ flex: 1, font: "600 12.5px/1.35 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-1)" }}>
+              {selectedIds.size} selecionado{selectedIds.size > 1 ? "s" : ""}
+            </span>
+            <Button variant="destructive" style={{ height: 44, fontSize: 12.5 }} onClick={() => setBatchConfirm(true)}>
+              {tab === "ativos" ? "Cancelar alertas" : "Apagar do histórico"}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {batchConfirm && (
+        <Sheet label={tab === "ativos" ? "Cancelar alertas" : "Apagar do histórico"} onClose={() => setBatchConfirm(false)}>
+          <div className="sheet__title">{tab === "ativos" ? `Cancelar ${selectedIds.size} alerta${selectedIds.size > 1 ? "s" : ""}?` : `Apagar ${selectedIds.size} registro${selectedIds.size > 1 ? "s" : ""}?`}</div>
+          <div style={{ marginTop: 8, font: "400 12.5px/1.55 var(--font-sans)", color: "var(--text-2)" }}>
+            {tab === "ativos" ? "Os alertas selecionados saem dos ativos e não disparam mais." : "Os registros selecionados saem do histórico de vez."}
+          </div>
+          <div className="sheet__footer" style={{ marginTop: 16 }}>
+            <Button variant="secondary" onClick={() => setBatchConfirm(false)}>Voltar</Button>
+            <Button variant="destructive" onClick={batchApply}>{tab === "ativos" ? "Cancelar alertas" : "Apagar"}</Button>
+          </div>
+        </Sheet>
       )}
 
       {cancelling && (

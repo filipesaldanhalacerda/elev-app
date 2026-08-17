@@ -113,7 +113,9 @@ test("editar alerta pelo lápis: sheet pré-preenchido e alteração salva", asy
   await login(page);
   await page.goto("/alertas");
   const card = page.locator(".card", { hasText: "ITUB4" }).first();
-  await card.getByRole("button", { name: "Editar alerta de ITUB4" }).click();
+  // padrão do sistema: toque no card abre os detalhes, e de lá se edita
+  await page.getByRole("button", { name: "Detalhes do alerta de ITUB4" }).click();
+  await page.getByRole("dialog", { name: "Detalhes do alerta" }).getByText("Editar", { exact: true }).click();
   const sheet = page.getByRole("dialog", { name: "Editar alerta de preço" });
   await expect(sheet.getByLabel("Ativo")).toHaveValue("ITUB4");
   await expect(sheet.getByLabel("Preço-alvo")).toHaveValue("40,00");
@@ -178,7 +180,8 @@ test("cancelar alerta pede confirmação no padrão do sistema", async ({ page }
   await login(page);
   await page.goto("/alertas");
   const card = page.locator(".card", { hasText: "HGLG11" }).first();
-  await card.getByRole("button", { name: "Cancelar alerta de HGLG11" }).click();
+  await page.getByRole("button", { name: "Detalhes do alerta de HGLG11" }).click();
+  await page.getByRole("dialog", { name: "Detalhes do alerta" }).getByText("Cancelar alerta", { exact: true }).click();
   // padrão do sistema: cancelar exige confirmação
   const confirm = page.getByRole("dialog", { name: "Cancelar alerta" });
   await expect(confirm.getByText("Cancelar este alerta?")).toBeVisible();
