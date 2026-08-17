@@ -23,41 +23,37 @@ const DEFAULT_FAVORITES = ["WDOU26", "DI1F27", "PETR4", "VALE3"];
 
 function useFavorites(userId: string | undefined) {
   const [favorites, setFavorites] = useState<string[] | null>(null);
+  const [customized, setCustomized] = useState(false);
   const load = async () => {
     if (!userId) return;
-    const { data } = await supabase.from("quote_favorites").select("ticker").order("sort_order");
-    setFavorites((data ?? []).map((r) => r.ticker));
+    const [{ data }, { data: prof }] = await Promise.all([
+      supabase.from("quote_favorites").select("ticker").order("sort_order"),
+      supabase.from("profiles").select("quotes_customized").eq("id", userId).single(),
+    ]);
+    // dedupe defensivo (limpa restos de versões antigas)
+    setFavorites([...new Set((data ?? []).map((r) => r.ticker))]);
+    setCustomized(!!prof?.quotes_customized);
   };
   useEffect(() => {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
-  // lista EFETIVA: o que o usuário vê (padrões enquanto ele nunca personalizou)
-  const effective = favorites === null ? null : favorites.length > 0 ? favorites : DEFAULT_FAVORITES;
+  // lista EFETIVA: o que o usuário vê — padrões só enquanto ele NUNCA personalizou
+  const effective = favorites === null ? null : favorites.length > 0 ? favorites : customized ? [] : DEFAULT_FAVORITES;
   return {
     favorites: effective,
     isPinned: (t: string) => (effective ?? []).includes(t),
     toggle: async (ticker: string) => {
-      if (!userId || favorites === null) return;
-      const saved = favorites;
-      const eff = effective ?? [];
-      if (eff.includes(ticker)) {
-        if (saved.length === 0) {
-          // primeiro ajuste: materializa os padrões SEM o removido
-          const rest = DEFAULT_FAVORITES.filter((t) => t !== ticker);
-          if (rest.length > 0) {
-            await supabase.from("quote_favorites").insert(rest.map((t, i) => ({ user_id: userId, ticker: t, sort_order: i + 1 })));
-          }
-        } else {
-          await supabase.from("quote_favorites").delete().eq("user_id", userId).eq("ticker", ticker);
-        }
-      } else {
-        if (saved.length === 0 && eff.length > 0) {
-          // fixar algo novo partindo dos padrões: materializa os padrões junto
-          await supabase.from("quote_favorites").insert(eff.map((t, i) => ({ user_id: userId, ticker: t, sort_order: i + 1 })));
-        }
-        await supabase.from("quote_favorites").insert({ user_id: userId, ticker, sort_order: Math.max(saved.length, eff.length) + 1 });
+      if (!userId || effective === null) return;
+      // reescreve a lista inteira: simples, idempotente e imune a duplicatas
+      const next = effective.includes(ticker) ? effective.filter((t) => t !== ticker) : [...effective, ticker];
+      setFavorites(next); // otimista — a tela responde na hora
+      setCustomized(true);
+      await supabase.from("quote_favorites").delete().eq("user_id", userId);
+      if (next.length > 0) {
+        await supabase.from("quote_favorites").insert(next.map((t, i) => ({ user_id: userId, ticker: t, sort_order: i + 1 })));
       }
+      await supabase.from("profiles").update({ quotes_customized: true }).eq("id", userId);
       await load();
     },
   };
