@@ -104,6 +104,10 @@ export function pushRecent(symbol: string) {
   localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, 5)));
 }
 
+export function clearRecents() {
+  localStorage.removeItem(RECENT_KEY);
+}
+
 export function getRecents(): string[] {
   try {
     return JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]") as string[];

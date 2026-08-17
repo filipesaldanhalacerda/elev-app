@@ -14,7 +14,7 @@ import { Avatar } from "../components/Avatar";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 import {
-  useQuotes, useQuoteDetail, pushRecent, getRecents, isFuture, formatQuotePrice, formatQuoteChange, type Quote,
+  useQuotes, useQuoteDetail, pushRecent, getRecents, clearRecents, isFuture, formatQuotePrice, formatQuoteChange, type Quote,
 } from "../lib/quotes";
 import { QuoteSource } from "../components/QuoteSource";
 import { formatBRL, formatTimeSeconds } from "../lib/format";
@@ -125,7 +125,8 @@ export default function Quotes() {
   const [period, setPeriod] = useState<(typeof PERIODS)[number]>("1D");
   const [editingFavs, setEditingFavs] = useState(false);
   const { favorites, isPinned, toggle } = useFavorites(profile?.id);
-  const recents = getRecents();
+  const [, recentsBump] = useState(0);
+  const recents = getRecents(); // relido a cada render — pushRecent reflete na hora
 
   const listSymbols = useMemo(() => ["IBOV", ...(favorites ?? []), ...recents], [favorites, recents]);
   const { data, flashes } = useQuotes(listSymbols);
@@ -175,7 +176,7 @@ export default function Quotes() {
             <input
               className="csearch__input"
               type="search"
-              placeholder="PETR4, WDOU26, IBOV…"
+              placeholder="PETR4, VALE3, DOLAR…"
               value={search}
               aria-label="Buscar ativo"
               onChange={(e) => setSearch(e.target.value)}
@@ -350,29 +351,30 @@ export default function Quotes() {
               </div>
             </div>
 
-            {recents.length > 0 && (
-              <div>
-                <div style={{ font: "600 15px/1.2 var(--font-sans)", letterSpacing: "-0.01em", color: "var(--text-1)", marginBottom: 10 }}>
-                  Buscados recentemente
+            {(() => {
+              const recentQuotes = recents.map((t) => byTicker.get(t)).filter(Boolean) as Quote[];
+              if (recentQuotes.length === 0) return null;
+              return (
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                    <span style={{ font: "600 15px/1.2 var(--font-sans)", letterSpacing: "-0.01em", color: "var(--text-1)" }}>Buscados recentemente</span>
+                    <button
+                      type="button"
+                      onClick={() => { clearRecents(); recentsBump((n) => n + 1); }}
+                      style={{ display: "flex", alignItems: "center", gap: 5, height: 40, padding: "0 10px", marginRight: -10, borderRadius: 10, font: "600 12px/1 var(--font-sans)", color: "var(--ghost-text)" }}
+                    >
+                      <i className="icon-eraser" style={{ fontSize: 14 }} aria-hidden />
+                      Limpar
+                    </button>
+                  </div>
+                  <div className="client-list">
+                    {recentQuotes.map((q) => (
+                      <FavRow key={q.symbol} quote={q} flash={flashClass(q.symbol)} onOpen={() => { setSelected(q.symbol); setSearch(q.symbol); pushRecent(q.symbol); }} />
+                    ))}
+                  </div>
                 </div>
-                <div className="client-list">
-                  {recents.map((t) => {
-                    const q = byTicker.get(t);
-                    return (
-                      <button key={t} type="button" className="recent-row" onClick={() => { setSelected(t); setSearch(t); }}>
-                        <span className="recent-row__ticker">{t}</span>
-                        {q && <span className={`recent-row__price${flashClass(t)}`}>{formatQuotePrice(q)}</span>}
-                        {q && (
-                          <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 60, height: 22, padding: "0 8px", borderRadius: 7, background: `color-mix(in srgb, ${q.changePct >= 0 ? "var(--market-up)" : "var(--market-down)"} 12%, transparent)`, color: q.changePct >= 0 ? "var(--market-up)" : "var(--market-down)", font: "600 11px/1 var(--font-sans)", fontVariantNumeric: "tabular-nums" }}>
-                            {formatQuoteChange(q)}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+              );
+            })()}
             <div style={{ font: "400 11px/1.5 var(--font-sans)", color: "var(--text-3)", padding: "0 2px 2px" }}>
               Toque num ativo para ver o detalhe. Fixados aparecem também na home (os 4 primeiros).
             </div>
