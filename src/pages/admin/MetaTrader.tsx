@@ -17,6 +17,7 @@ interface MtConnection {
   last_quote_at: string | null;
   connected_at: string | null;
   health_events: { at: string; level: "success" | "warning" | "danger"; text: string }[];
+  response_seconds: number | null;
   updated_at: string;
 }
 
@@ -39,10 +40,14 @@ export default function MetaTrader() {
   const [testing, setTesting] = useState(false);
   const [outcome, setOutcome] = useState<TestOutcome | null>(null);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [mode, setMode] = useState<"real" | "simulado" | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
 
   async function load() {
-    const body = (await workerFetch("/api/admin/mt")) as { connection: MtConnection };
+    const body = (await workerFetch("/api/admin/mt")) as { connection: MtConnection; mode: "real" | "simulado" };
     setConn(body.connection);
+    setMode(body.mode);
     if (body.connection.login) setLogin(body.connection.login);
     if (body.connection.server) setServer(body.connection.server);
   }
@@ -67,6 +72,20 @@ export default function MetaTrader() {
       await load();
     } finally {
       setTesting(false);
+    }
+  }
+
+  async function save() {
+    setSaving(true);
+    try {
+      const body = (await workerFetch("/api/admin/mt/save", {
+        method: "POST",
+        body: JSON.stringify({ login, password: password || undefined, server }),
+      })) as { ok?: boolean; saved_at?: string };
+      if (body.ok) setSavedAt(body.saved_at!);
+      await load();
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -122,8 +141,18 @@ export default function MetaTrader() {
               <Button loading={testing} disabled={!login || !password || !server} onClick={test}>
                 {testing ? "Testando" : "Testar conexão"}
               </Button>
-              <Button variant="secondary" disabled={!login || !server}>Salvar</Button>
+              <Button variant="secondary" loading={saving} disabled={!login || !server} onClick={save}>Salvar</Button>
+              {savedAt && (
+                <span style={{ alignSelf: "center", font: "400 11.5px/1 var(--font-sans)", color: "var(--text-2)" }}>
+                  Salvo às {formatTime(savedAt)}
+                </span>
+              )}
             </div>
+            {mode === "simulado" && (
+              <p className="mt-help" style={{ marginTop: 12 }}>
+                modo demonstração — o teste de conexão real chega com a credencial MetaApi; as cotações do app seguem vindo da fonte configurada.
+              </p>
+            )}
           </div>
 
           <div className="mt-card">
@@ -137,12 +166,12 @@ export default function MetaTrader() {
             </div>
             <div className="mt-health__grid">
               <span>
-                <span className="mt-health__cell-label">Última cotação</span>
+                <span className="mt-health__cell-label">Última atualização</span>
                 <span className="mt-health__cell-value">{conn?.last_quote_at ? formatTimeSeconds(conn.last_quote_at) : "—"}</span>
               </span>
               <span>
                 <span className="mt-health__cell-label">Tempo de resposta</span>
-                <span className="mt-health__cell-value">{conn?.status === "ativa" ? "0,2 s" : "—"}</span>
+                <span className="mt-health__cell-value">{conn?.status === "ativa" && conn.response_seconds != null ? `${conn.response_seconds.toLocaleString("pt-BR", { minimumFractionDigits: 1 })} s` : "—"}</span>
               </span>
               <span>
                 <span className="mt-health__cell-label">Conectada desde</span>

@@ -112,7 +112,6 @@ function Holders({ ticker }: { ticker: string }) {
   );
 }
 
-const PERIODS = ["1D", "5D", "1M", "6M", "12M"] as const;
 
 export default function Quotes() {
   const navigate = useNavigate();
@@ -129,7 +128,6 @@ export default function Quotes() {
     setSelected(a);
     setSearch(a ?? "");
   }, [location.key]); // eslint-disable-line react-hooks/exhaustive-deps
-  const [period, setPeriod] = useState<(typeof PERIODS)[number]>("1D");
   const [editingFavs, setEditingFavs] = useState(false);
   const { favorites, isPinned, toggle } = useFavorites(profile?.id);
   const [, recentsBump] = useState(0);
@@ -309,12 +307,8 @@ export default function Quotes() {
                     fechamentos diários do último mês · intraday disponível no plano pago da fonte
                   </div>
                 ) : (
-                  <div className="quote-periods">
-                    {PERIODS.map((p) => (
-                      <button key={p} type="button" className={`quote-period${period === p ? " quote-period--active" : ""}`} onClick={() => setPeriod(p)}>
-                        {p}
-                      </button>
-                    ))}
+                  <div style={{ marginTop: 10, font: "400 10.5px/1.4 var(--font-sans)", color: "var(--text-3)" }}>
+                    série intradiária simulada — modo demonstração
                   </div>
                 )}
                 <div className="quote-facts">

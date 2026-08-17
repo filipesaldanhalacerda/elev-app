@@ -136,10 +136,23 @@ function OverviewTab({ account }: { account: string }) {
       </div>
 
       <div className="quick-actions">
-        <a className="quick-action quick-action--wa" href={extras?.phone ? `https://wa.me/55${extras.phone.replace(/\D/g, "")}` : "https://wa.me/"} target="_blank" rel="noreferrer">
-          <i className="icon-message-circle" aria-hidden />
-          <span>WhatsApp</span>
-        </a>
+        {extras?.phone ? (
+          <a className="quick-action quick-action--wa" href={`https://wa.me/55${extras.phone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer">
+            <i className="icon-message-circle" aria-hidden />
+            <span>WhatsApp</span>
+          </a>
+        ) : (
+          <button
+            type="button"
+            className="quick-action quick-action--wa"
+            style={{ opacity: 0.45 }}
+            title="Cadastre o telefone na aba Cadastro"
+            onClick={() => navigate({ search: "?aba=Cadastro" })}
+          >
+            <i className="icon-message-circle" aria-hidden />
+            <span>WhatsApp</span>
+          </button>
+        )}
         <button type="button" className="quick-action" onClick={() => navigate(`/cards?novo=1&cliente=${account}`)}>
           <i className="icon-square-check" aria-hidden />
           <span>Tarefa</span>
@@ -354,7 +367,7 @@ function MovementsTab({ account }: { account: string }) {
                 </span>
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span className="mov-row__title">{m.amount >= 0 ? "Aporte" : "Resgate"} · {m.kind}</span>
-                  <span className="mov-row__meta">{formatDate(m.mov_date)} · liquidado</span>
+                  <span className="mov-row__meta">{formatDate(m.mov_date)}</span>
                 </span>
                 <span className="mov-row__amount" style={{ color: m.amount >= 0 ? "var(--market-up)" : "var(--market-down)" }}>{formatSignedBRL(m.amount)}</span>
               </div>

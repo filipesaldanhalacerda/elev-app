@@ -112,7 +112,7 @@ export default function AdminHome() {
             <div style={{ marginTop: 12, font: "600 22px/1.1 var(--font-sans)", fontVariantNumeric: "tabular-nums", letterSpacing: "-0.015em", color: "var(--text-1)" }}>
               {data?.mt.last_quote_at ? formatTimeSeconds(data.mt.last_quote_at) : "—"}
             </div>
-            <div style={{ marginTop: 4, font: "400 11.5px/1.4 var(--font-sans)", color: "var(--text-3)" }}>última cotação recebida</div>
+            <div style={{ marginTop: 4, font: "400 11.5px/1.4 var(--font-sans)", color: "var(--text-3)" }}>última atualização de cotações</div>
             <button type="button" onClick={() => navigate("/admin/metatrader")} style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--divider)", display: "flex", alignItems: "center", gap: 5, font: "600 12px/1 var(--font-sans)", color: "var(--ghost-text)", width: "100%" }}>
               Ver conexão<i className="icon-chevron-right" style={{ fontSize: 13 }} aria-hidden />
             </button>

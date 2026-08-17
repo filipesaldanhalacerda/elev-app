@@ -78,6 +78,26 @@ test.describe("tela 18 · fluxo (d)", () => {
     await expect(page.locator(".chip--success")).toContainText("Ativa");
     await expect(page.getByText("Teste de conexão bem-sucedido")).toBeVisible();
 
+    // saúde: tempo de resposta é o MEDIDO no teste (persistido), não um número decorativo
+    const { data: connRow } = await serviceClient().from("mt_connection").select("response_seconds").eq("id", 1).single();
+    expect(connRow!.response_seconds).not.toBeNull();
+    const secondsLabel = `${Number(connRow!.response_seconds).toLocaleString("pt-BR", { minimumFractionDigits: 1 })} s`;
+    await expect(page.getByText(secondsLabel, { exact: true })).toBeVisible();
+
+    // sem METAAPI_TOKEN a tela avisa que o teste é demonstração
+    await expect(page.getByText(/modo demonstração — o teste de conexão real/)).toBeVisible();
+
+    // Salvar grava sem testar (login/servidor novos persistem no banco)
+    await page.getByLabel("Login").fill("60222");
+    await page.getByRole("button", { name: "Salvar", exact: true }).click();
+    await expect(page.getByText(/Salvo às/)).toBeVisible();
+    await expect(async () => {
+      const { data } = await serviceClient().from("mt_connection").select("login").eq("id", 1).single();
+      expect(data!.login).toBe("60222");
+    }).toPass();
+    await page.getByLabel("Login").fill("50191");
+    await page.getByRole("button", { name: "Salvar", exact: true }).click();
+
     // credencial nunca volta em claro
     const mt = await (await import("./helpers/seed")).serviceClient().from("mt_connection").select("password_ciphertext").eq("id", 1).single();
     expect(mt.data!.password_ciphertext).not.toContain("senha-correta-1");

@@ -48,9 +48,7 @@ export default function LostPassword() {
             <span className="contact-card__title">Administrador</span>
             <span className="contact-card__sub">administrador da sua assessoria</span>
           </span>
-          <a className="contact-card__wa" href="https://wa.me/" target="_blank" rel="noreferrer" aria-label="WhatsApp do administrador">
-            <i className="icon-message-circle" aria-hidden />
-          </a>
+
         </div>
 
         <div style={{ marginTop: 24, paddingTop: 20, borderTop: "1px solid var(--border)" }}>

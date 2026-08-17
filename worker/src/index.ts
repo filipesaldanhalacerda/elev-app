@@ -154,6 +154,20 @@ app.get("/api/quotes/detail", async (c) => {
 
 // ---------- Rotas administrativas (JWT de admin obrigatório) ----------
 
+// contato do administrador (home do assessor vazio): nome e e-mail reais do admin ativo
+app.get("/api/contact/admin", async (c) => {
+  const auth = await requireUser(c);
+  if (!auth) return c.json({ error: "Não autenticado." }, 401);
+  const { data } = await auth.svc
+    .from("profiles")
+    .select("name, email")
+    .eq("role", "admin")
+    .eq("is_active", true)
+    .order("created_at", { ascending: true })
+    .limit(1);
+  return c.json({ admin: data?.[0] ?? null });
+});
+
 app.use("/api/admin/*", async (c, next) => {
   const token = c.req.header("Authorization")?.replace(/^Bearer /, "");
   if (!token) return c.json({ error: "Não autenticado." }, 401);
@@ -307,10 +321,24 @@ app.get("/api/admin/mt", async (c) => {
   const svc = c.get("svc");
   const { data } = await svc
     .from("mt_connection")
-    .select("status, login, server, last_quote_at, connected_at, health_events, updated_at")
+    .select("status, login, server, last_quote_at, connected_at, health_events, response_seconds, updated_at")
     .eq("id", 1)
     .single();
-  return c.json({ connection: data }); // a senha (cifrada) NUNCA sai daqui
+  // mode: sem METAAPI_TOKEN o teste é demonstração — a tela avisa em vez de fingir
+  return c.json({ connection: data, mode: c.env.METAAPI_TOKEN ? "real" : "simulado" }); // a senha (cifrada) NUNCA sai daqui
+});
+
+app.post("/api/admin/mt/save", async (c) => {
+  const svc = c.get("svc");
+  const admin = c.get("admin");
+  const { login, password, server } = await c.req.json<{ login?: string; password?: string; server?: string }>();
+  if (!login || !server) return c.json({ error: "Login e servidor são obrigatórios." }, 400);
+  const now = new Date().toISOString();
+  const patch: Record<string, unknown> = { login, server, updated_by: admin.id, updated_at: now };
+  if (password) patch.password_ciphertext = await encryptSecret(c.env, password);
+  await svc.from("mt_connection").update(patch).eq("id", 1);
+  await audit(svc, "metatrader", "Credenciais salvas sem teste", `login ${login} · servidor ${server}`, admin);
+  return c.json({ ok: true, saved_at: now });
 });
 
 app.post("/api/admin/mt/test", async (c) => {
@@ -339,6 +367,7 @@ app.post("/api/admin/mt/test", async (c) => {
       login,
       server,
       password_ciphertext: await encryptSecret(c.env, password),
+      response_seconds: result.responseSeconds,
       last_quote_at: now,
       connected_at: current?.connected_at ?? now,
       health_events: events,

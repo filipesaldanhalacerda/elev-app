@@ -8,7 +8,7 @@ import { MobileShell } from "../components/MobileShell";
 import { AlertCard } from "../components/cards";
 import { Button } from "../components/Button";
 import { supabase } from "../lib/supabase";
-import { useAuth } from "../lib/auth";
+import { useAuth, workerFetch } from "../lib/auth";
 import { useQuotes, formatQuotePrice, formatQuoteChange, type Quote } from "../lib/quotes";
 import { useOnline, lastDataAt } from "../lib/offline";
 import { initials, formatInt, formatTime, formatDate } from "../lib/format";
@@ -174,6 +174,16 @@ export default function Dashboard() {
   // limite da home: IBOV + 4 fixados — o restante vive em Cotações ("Ver todos")
   const symbols = useMemo(() => ["IBOV", ...(favSymbols ?? []).filter((s) => s !== "IBOV")].slice(0, 5), [(favSymbols ?? []).join(",")]);
   const { data: quotesData, flashes } = useQuotes(symbols);
+  // radar: cotação VIVA dos tickers com alerta — mesmos números da tela de Alertas
+  const alertTickers = [...new Set((data?.alerts ?? []).map((a) => a.ticker))];
+  const alertSymbols = useMemo(() => alertTickers, [alertTickers.join(",")]);
+  const { data: alertQuotesData } = useQuotes(alertSymbols);
+  const alertQuoteBy = useMemo(() => new Map((alertQuotesData?.quotes ?? []).map((q) => [q.symbol, q])), [alertQuotesData]);
+
+  async function contactAdmin() {
+    const body = (await workerFetch("/api/contact/admin")) as { admin: { name: string; email: string } | null };
+    if (body.admin) window.location.href = "mailto:" + body.admin.email + "?subject=" + encodeURIComponent("Acesso a minha carteira no Elev");
+  }
 
   const online = useOnline();
   const loading = data === null && online;
@@ -393,7 +403,7 @@ export default function Dashboard() {
                 Seus clientes aparecem aqui depois da próxima importação do Positivador pelo administrador.
               </span>
               <span className="empty-state__action">
-                <Button>Falar com o administrador</Button>
+                <Button onClick={() => void contactAdmin()}>Falar com o administrador</Button>
               </span>
             </div>
           )}
@@ -480,18 +490,22 @@ export default function Dashboard() {
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {data.alerts.map((a) => {
-                  const price = a.created_price ?? a.target_price ?? 0;
+                  const q = alertQuoteBy.get(a.ticker);
+                  const price = q?.price ?? a.created_price ?? a.target_price ?? 0;
                   const target = a.target_price ?? 0;
+                  const created = a.created_price ?? price;
                   const remaining = price > 0 ? Math.abs(((target - price) / price) * 100) : 0;
+                  const totalGap = Math.abs(target - created);
+                  const done = totalGap > 0 ? Math.min(Math.abs(price - created) / totalGap, 1) : 0;
                   return (
                     <AlertCard
                       key={a.id}
                       ticker={a.ticker}
                       direction={a.direction}
                       currentPrice={price}
-                      dayChangePct={0}
+                      dayChangePct={q?.changePct ?? 0}
                       targetPrice={target}
-                      progress={0.5}
+                      progress={Math.max(0.04, done)}
                       remainingPct={Number(remaining.toFixed(1))}
                     />
                   );

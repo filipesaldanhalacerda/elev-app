@@ -40,7 +40,7 @@ test("tela 17: cartões de status reais, atividade recente e salas hoje", async 
   const mt = page.locator('[data-card-status="mt"]');
   await expect(mt.getByText("Conexão MetaTrader")).toBeVisible();
   await expect(mt.locator(".chip--success")).toHaveText("Ativa");
-  await expect(mt.getByText("última cotação recebida")).toBeVisible();
+  await expect(mt.getByText("última atualização de cotações")).toBeVisible();
   await expect(mt.getByRole("button", { name: "Ver conexão" })).toBeVisible();
 
   // cartão de importação com dados reais
