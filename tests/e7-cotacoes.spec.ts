@@ -119,6 +119,36 @@ test.describe("tela 11 · cotações", () => {
     await expect(page.getByRole("button", { name: "Desafixar WDOU26" })).toHaveCount(0);
   });
 
+  test("fixar e desafixar persistem — inclusive partindo da seleção padrão", async ({ page }) => {
+    const svc = serviceClient();
+    const solo = { email: `solo.e7.${RUN}@elev.test`, password: "Senha@2026!x", name: "Solo Fixados", code: `73${RUN.slice(-4)}` };
+    await createUser(svc, { email: solo.email, password: solo.password, name: solo.name, role: "advisor", advisor_code: solo.code });
+    await login(page, solo.email, solo.password);
+    await page.goto("/cotacoes");
+    await page.waitForSelector(".fav-row");
+
+    // desafixar pelo modo Editar, partindo dos PADRÕES (nada salvo ainda)
+    await page.getByRole("button", { name: "Editar" }).click();
+    await page.getByRole("button", { name: "Desafixar WDOU26" }).click();
+    await expect(page.locator(".fav-row__ticker", { hasText: "WDOU26" })).toHaveCount(0);
+    await page.getByRole("button", { name: "Concluir" }).click();
+
+    // pelo detalhe: PETR4 segue fixado → Desafixar funciona; Fixar de novo também
+    await page.getByLabel("Buscar ativo").fill("PETR4");
+    await page.getByLabel("Buscar ativo").press("Enter");
+    await expect(page.getByRole("button", { name: "Desafixar" })).toBeVisible();
+    await page.getByRole("button", { name: "Desafixar" }).click();
+    await expect(page.getByRole("button", { name: "Fixar", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Fixar", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Desafixar" })).toBeVisible();
+
+    // a lista reflete e persiste após recarregar
+    await page.reload();
+    await page.waitForSelector(".fav-row");
+    await expect(page.locator(".fav-row__ticker", { hasText: "PETR4" })).toBeVisible();
+    await expect(page.locator(".fav-row__ticker", { hasText: "WDOU26" })).toHaveCount(0);
+  });
+
   test("resultado da busca: herói, fios, ações e 'quem tem este ativo' sob RLS", async ({ page }) => {
     await login(page, ADV.email, ADV.password);
     await page.goto("/cotacoes");
@@ -140,8 +170,10 @@ test.describe("tela 11 · cotações", () => {
     await expect(page.getByText("Cliente Do B")).toHaveCount(0);
     await expect(page.getByText("Só aparecem clientes da sua carteira.")).toBeVisible();
 
-    // fixar adiciona aos favoritos
-    await page.getByRole("button", { name: "Fixar" }).click();
+    // PETR4 já vem fixado (seleção padrão): desafixar remove, fixar de novo persiste no banco
+    await page.getByRole("button", { name: "Desafixar" }).click();
+    await expect(page.getByRole("button", { name: "Fixar", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Fixar", exact: true }).click();
     await expect(page.getByRole("button", { name: "Desafixar" })).toBeVisible();
     const svc = serviceClient();
     const { data: prof } = await svc.from("profiles").select("id").eq("email", ADV.email).single();
