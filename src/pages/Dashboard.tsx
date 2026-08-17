@@ -11,11 +11,7 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 import { useQuotes, formatQuotePrice, formatQuoteChange, type Quote } from "../lib/quotes";
 import { useOnline, lastDataAt } from "../lib/offline";
-import { initials, formatInt, formatTime, formatDate, nextSlotSP } from "../lib/format";
-import { Toast } from "../components/feedback";
-import { AlertSheet } from "./Alerts";
-import { NewReservation } from "./Rooms";
-import { useRooms } from "../lib/rooms";
+import { initials, formatInt, formatTime, formatDate } from "../lib/format";
 
 const RECENT_CLIENTS_KEY = "elev.clientes.visitados";
 
@@ -154,14 +150,6 @@ export default function Dashboard() {
   // limite da home: IBOV + 4 favoritos — o restante vive em Cotações ("Ver todos")
   const symbols = useMemo(() => ["IBOV", ...favSymbols.filter((s) => s !== "IBOV")].slice(0, 5), [favSymbols.join(",")]);
   const { data: quotesData, flashes } = useQuotes(symbols);
-  // atalhos criam NO LUGAR (sheet + toast) — a home nunca fica para trás
-  const { rooms } = useRooms();
-  const [quick, setQuick] = useState<"alerta" | "sala" | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 2600);
-  };
 
   const online = useOnline();
   const loading = data === null && online;
@@ -212,31 +200,14 @@ export default function Dashboard() {
           {/* atalhos rápidos: Alertas e Sala (o resto vive no menu principal) */}
           {online && (
             <div className="quick-actions" data-home-quick-actions>
-              <button type="button" className="quick-action" onClick={() => setQuick("alerta")}>
+              <button type="button" className="quick-action" onClick={() => navigate("/alertas")}>
                 <i className="icon-radar" aria-hidden />
                 <span>Alertas</span>
               </button>
-              <button type="button" className="quick-action" onClick={() => setQuick("sala")}>
+              <button type="button" className="quick-action" onClick={() => navigate("/salas")}>
                 <i className="icon-presentation" aria-hidden />
                 <span>Sala</span>
               </button>
-            </div>
-          )}
-
-          {quick === "alerta" && (
-            <AlertSheet initialTicker="" onClose={() => setQuick(null)} onSaved={() => showToast("Alerta criado.")} />
-          )}
-          {quick === "sala" && rooms && rooms.length > 0 && (
-            <NewReservation
-              rooms={rooms}
-              defaults={{ roomId: rooms[0].id, day: nextSlotSP().day, start: nextSlotSP().start }}
-              onClose={() => setQuick(null)}
-              onCreated={() => showToast("Sala reservada.")}
-            />
-          )}
-          {toast && (
-            <div style={{ position: "fixed", left: 16, right: 16, bottom: 86, zIndex: 60 }}>
-              <Toast>{toast}</Toast>
             </div>
           )}
 

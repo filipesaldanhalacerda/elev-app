@@ -105,26 +105,22 @@ emAmbosTemas("tela 05 · lista de clientes", () => {
 });
 
 emAmbosTemas("ficha · atalhos rápidos", () => {
-  test("Tarefa e Alerta abrem o sheet NA ficha (sem sair), com cliente preenchido e toast de sucesso", async ({ page }) => {
+  test("Tarefa e Alerta levam à página com o modal aberto e o cliente vinculado preenchido", async ({ page }) => {
     await loginA(page);
     await page.goto(`/clientes/${ANA}`);
     await page.waitForSelector(".quick-action");
 
-    // Tarefa → sheet na própria ficha, cliente já selecionado; criar mostra toast e NÃO navega
+    // Tarefa → página de Tarefas com o sheet aberto e cliente selecionado
     await page.locator(".quick-action", { hasText: "Tarefa" }).click();
+    await page.waitForURL(`**/cards?novo=1&cliente=${ANA}`);
     await expect(page.getByRole("dialog", { name: "Nova tarefa" })).toBeVisible();
     await expect(page.locator("#card-cliente")).toHaveValue(ANA);
-    await page.locator("#card-titulo").fill("Ligar sobre aporte");
-    await page.getByRole("button", { name: "Criar tarefa" }).click();
-    await expect(page.locator(".toast")).toContainText("Tarefa criada.");
-    expect(page.url()).toContain(`/clientes/${ANA}`);
 
-    // Alerta → sheet na própria ficha com o cliente já selecionado
+    // Alerta → página de Alertas com o sheet aberto e cliente selecionado
+    await page.goto(`/clientes/${ANA}`);
     await page.locator(".quick-action", { hasText: "Alerta" }).click();
-    await expect(page.getByRole("dialog", { name: "Novo alerta de preço" })).toBeVisible();
+    await page.waitForURL(`**/alertas?novo=1&cliente=${ANA}`);
     await expect(page.locator("#alerta-cliente")).toHaveValue(ANA);
-    await page.getByRole("button", { name: "Cancelar" }).click();
-    expect(page.url()).toContain(`/clientes/${ANA}`);
   });
 });
 

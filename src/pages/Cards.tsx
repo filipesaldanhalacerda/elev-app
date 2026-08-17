@@ -84,7 +84,7 @@ export function NewCardSheet({ initialClient = "", editing, onClose, onCreated }
           <div className="field">
             <label className="field__label" htmlFor="card-titulo" style={{ display: "block" }}>Título</label>
             <div className="field__box" style={{ height: 46 }}>
-              <input id="card-titulo" className="field__input" maxLength={60} autoFocus={!editing} value={title} onChange={(e) => setTitle(e.target.value)} />
+              <input id="card-titulo" className="field__input" maxLength={60} value={title} onChange={(e) => setTitle(e.target.value)} />
             </div>
             <CharLimit value={title} max={60} />
           </div>

@@ -60,16 +60,16 @@ test.describe("fase 2 · mobile", () => {
     expect(st.underline).toBe("2px");
   });
 
-  test("F2-04: atalho Tarefa abre o sheet na própria ficha com o cliente vinculado; sem menu ⋮", async ({ page }) => {
+  test("F2-04: atalho Tarefa abre a página com o sheet e o cliente vinculado; sem menu ⋮", async ({ page }) => {
     await login(page);
     await page.goto(`/clientes/${ANA}`);
     await page.waitForSelector(".quick-action");
     // o menu ⋮ não existe mais — as ações viraram atalhos rápidos
     await expect(page.getByRole("button", { name: "Mais opções" })).toHaveCount(0);
     await page.locator(".quick-action", { hasText: "Tarefa" }).click();
+    await page.waitForURL("**/cards?novo=1*");
     await expect(page.getByRole("dialog", { name: "Nova tarefa" })).toBeVisible();
     await expect(page.getByLabel("Cliente")).toHaveValue(ANA);
-    expect(page.url()).toContain(`/clientes/${ANA}`);
   });
 
   test("tarefa vinculada ao cliente aparece na Visão geral", async ({ page }) => {
@@ -284,15 +284,13 @@ test.describe("fase 2 · mobile", () => {
     await nav.getByText("Agenda").click();
     await page.waitForURL("**/agenda");
     await page.goto("/");
-    // atalhos criam NO LUGAR: sheet abre na própria home, sem navegar
+    // atalhos da home abrem as PÁGINAS de Alertas e Salas
     await quick.getByText("Alertas").click();
-    await expect(page.getByRole("dialog", { name: "Novo alerta de preço" })).toBeVisible();
-    await page.getByRole("button", { name: "Cancelar" }).click();
-    expect(new URL(page.url()).pathname).toBe("/");
+    await page.waitForURL("**/alertas");
+    await page.goto("/");
     await quick.getByText("Sala", { exact: true }).click();
-    await expect(page.getByRole("dialog", { name: "Nova reserva" })).toBeVisible();
-    await page.getByRole("button", { name: "Cancelar" }).click();
-    expect(new URL(page.url()).pathname).toBe("/");
+    await page.waitForURL("**/salas");
+    await expect(page.locator(".page-header__title")).toHaveText("Sala de reunião");
   });
 
   test("F2-08: funil abre filtros e a ordenação por nome reordena a lista", async ({ page }) => {

@@ -37,10 +37,10 @@ test("tela 15: grupos por dia, não lida destacada, contador e marcar lidas", as
   await login(page);
   await page.goto("/notificacoes");
   await expect(page.locator(".page-header__title")).toHaveText("Notificações");
-  await expect(page.locator(".tab-42__count")).toHaveText("2 novas");
+  await expect(page.getByText("2 novas", { exact: true })).toBeVisible();
 
-  await expect(page.locator(".notif-group__day").first()).toContainText("Hoje ·");
-  await expect(page.locator(".notif-group__day").nth(1)).toContainText("Ontem ·");
+  await expect(page.getByText(/^Hoje — /).first()).toBeVisible();
+  await expect(page.getByText(/^Ontem — /).first()).toBeVisible();
 
   const unread = page.locator(".notif--unread");
   await expect(unread).toHaveCount(2);

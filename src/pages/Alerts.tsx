@@ -143,7 +143,7 @@ export function AlertSheet({ initialTicker, initialClient = "", editing, onClose
               <label className="field__label" htmlFor="alerta-alvo" style={{ display: "block" }}>Preço-alvo</label>
               <div className="field__box">
                 <span className="field__prefix">R$</span>
-                <input id="alerta-alvo" className="field__input field__money" inputMode="decimal" autoFocus={!editing} value={target} onChange={(e) => { setTarget(e.target.value); if (e.target.value) setDayPct(""); }} />
+                <input id="alerta-alvo" className="field__input field__money" inputMode="decimal" value={target} onChange={(e) => { setTarget(e.target.value); if (e.target.value) setDayPct(""); }} />
               </div>
             </div>
             <div className="field">

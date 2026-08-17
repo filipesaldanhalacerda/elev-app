@@ -15,11 +15,12 @@ interface NotifRow {
 }
 
 const KIND_ICON: Record<string, { icon: string; brand?: boolean }> = {
-  alerta_atingido: { icon: "icon-target", brand: true },
-  card_delegado: { icon: "icon-kanban" },
+  alerta_atingido: { icon: "icon-radar", brand: true },
+  card_delegado: { icon: "icon-square-check" },
   lembrete_diario: { icon: "icon-bell-ring" },
   importacao: { icon: "icon-upload" },
-  reserva_confirmada: { icon: "icon-door-open" },
+  reserva_confirmada: { icon: "icon-presentation" },
+  movimentacao: { icon: "icon-arrow-down-up", brand: true },
 };
 
 export default function Notifications() {
@@ -51,7 +52,8 @@ export default function Notifications() {
     }
     return [...map.entries()].map(([day, items]) => ({
       day,
-      label: day === today ? `Hoje · ${formatDate(day).slice(0, 5)}` : day === yesterday ? `Ontem · ${formatDate(day).slice(0, 5)}` : formatDate(day),
+      // padrão de data do sistema (igual à tela de Tarefas)
+      label: day === today ? `Hoje — ${formatDate(day)}` : day === yesterday ? `Ontem — ${formatDate(day)}` : formatDate(day),
       items,
     }));
   }, [rows]);
@@ -61,19 +63,30 @@ export default function Notifications() {
     await load();
   }
 
+  async function markRead(n: NotifRow) {
+    if (n.read_at) return;
+    setRows((r) => (r ?? []).map((x) => (x.id === n.id ? { ...x, read_at: new Date().toISOString() } : x)));
+    await supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("id", n.id);
+  }
+
   return (
     <MobileShell active="inicio">
       <header className="page-header" style={{ background: "var(--surface)", paddingRight: 16 }}>
-        <span style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span className="page-header__title">Notificações</span>
-          {unreadCount > 0 && <span className="tab-42__count">{unreadCount} nova{unreadCount > 1 ? "s" : ""}</span>}
+          {unreadCount > 0 && (
+            <span style={{ display: "inline-flex", alignItems: "center", padding: "4px 10px", borderRadius: 999, background: "var(--brand-tint)", font: "600 11.5px/1 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--ghost-text)" }}>
+              {unreadCount} nova{unreadCount > 1 ? "s" : ""}
+            </span>
+          )}
         </span>
         {unreadCount > 0 && (
           <button
             type="button"
-            style={{ height: 44, display: "flex", alignItems: "center", padding: "0 10px", marginRight: -10, borderRadius: 10, font: "600 12px/1 var(--font-sans)", color: "var(--ghost-text)" }}
+            style={{ height: 44, display: "flex", alignItems: "center", gap: 6, padding: "0 10px", marginRight: -10, borderRadius: 10, font: "600 12px/1 var(--font-sans)", color: "var(--ghost-text)" }}
             onClick={markAllRead}
           >
+            <i className="icon-check-check" style={{ fontSize: 15 }} aria-hidden />
             Marcar lidas
           </button>
         )}
@@ -91,39 +104,50 @@ export default function Notifications() {
         )}
 
         {groups.map((g) => (
-          <div key={g.day} className="notif-list" style={{ borderRadius: 14, boxShadow: "var(--elev-1)" }}>
-            <div className="notif-group__day" style={{ borderTop: "none" }}>{g.label}</div>
-            {g.items.map((n) => {
-              const meta = KIND_ICON[n.kind] ?? { icon: "icon-bell" };
-              const unread = !n.read_at;
-              return (
-                <div key={n.id} className={`notif${unread ? " notif--unread" : ""}`} style={{ minHeight: 66 }}>
-                  <span className="notif__dot" aria-hidden />
-                  <span
-                    style={{
-                      width: 30, height: 30, borderRadius: 9, flex: "none",
-                      background: meta.brand ? "var(--brand-tint)" : "var(--chip-pill-bg)",
-                      color: meta.brand ? "var(--ghost-text)" : "var(--field-label)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}
+          <div key={g.day}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 6, font: "600 11px/1 var(--font-mono)", letterSpacing: "0.04em", textTransform: "uppercase", fontVariantNumeric: "tabular-nums", color: "var(--text-2)", padding: "0 2px 8px" }}>
+              {g.label}
+              <span style={{ color: "var(--text-3)", fontWeight: 400 }}>· {g.items.length}</span>
+            </div>
+            <div className="notif-list" style={{ borderRadius: 14, boxShadow: "var(--elev-1)" }}>
+              {g.items.map((n) => {
+                const meta = KIND_ICON[n.kind] ?? { icon: "icon-bell" };
+                const unread = !n.read_at;
+                return (
+                  <button
+                    key={n.id}
+                    type="button"
+                    className={`notif${unread ? " notif--unread" : ""}`}
+                    style={{ minHeight: 66, width: "100%", textAlign: "left" }}
+                    onClick={() => void markRead(n)}
                   >
-                    <i className={`${meta.icon}`} style={{ fontSize: 15 }} aria-hidden />
-                  </span>
-                  <span className="notif__main">
-                    <span className="notif__title">{n.title}</span>
-                    <span className="notif__time">
-                      {n.body ? `${n.body} · ` : ""}
-                      {formatTime(n.created_at)}
+                    <span className="notif__dot" aria-hidden />
+                    <span
+                      style={{
+                        width: 32, height: 32, borderRadius: 10, flex: "none",
+                        background: meta.brand ? "var(--brand-tint)" : "var(--chip-pill-bg)",
+                        color: meta.brand ? "var(--ghost-text)" : "var(--field-label)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}
+                    >
+                      <i className={`${meta.icon}`} style={{ fontSize: 16 }} aria-hidden />
                     </span>
-                  </span>
-                </div>
-              );
-            })}
+                    <span className="notif__main">
+                      <span className="notif__title">{n.title}</span>
+                      <span className="notif__time">
+                        {n.body ? `${n.body} · ` : ""}
+                        {formatTime(n.created_at)}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         ))}
         {rows !== null && rows.length > 0 && (
           <div style={{ font: "400 11px/1.5 var(--font-sans)", color: "var(--text-3)", padding: "0 2px 14px" }}>
-            Não lida: fundo destacado, ponto brand e título em peso 600. Lida: fundo normal, ponto neutro.
+            Toque numa notificação para marcá-la como lida.
           </div>
         )}
       </div>

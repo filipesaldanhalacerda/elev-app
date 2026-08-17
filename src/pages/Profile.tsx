@@ -47,7 +47,7 @@ function ChangePasswordSheet({ onClose }: { onClose: () => void }) {
           <div style={{ padding: "8px 0 4px" }}><Toast>Senha trocada.</Toast></div>
         ) : (
           <div className="sheet__fields" style={{ gap: 14 }}>
-            <PasswordField label="Nova senha" autoFocus value={pw} onChange={(e) => setPw(e.target.value)} />
+            <PasswordField label="Nova senha" value={pw} onChange={(e) => setPw(e.target.value)} />
             <PasswordField label="Repita a senha" value={pw2} onChange={(e) => setPw2(e.target.value)} />
             <div style={{ font: "400 11px/1.5 var(--font-sans)", color: "var(--text-3)" }}>
               Pelo menos 8 caracteres, uma maiúscula e um número.

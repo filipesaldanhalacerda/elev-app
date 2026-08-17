@@ -7,9 +7,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
 import { Card } from "../components/cards";
 import { LineChart, AllocationBar } from "../components/charts";
-import { StatusChip, Banner, Toast } from "../components/feedback";
-import { NewCardSheet } from "./Cards";
-import { AlertSheet } from "./Alerts";
+import { StatusChip, Banner } from "../components/feedback";
 import { Button } from "../components/Button";
 import { CharLimit } from "../components/Field";
 import {
@@ -41,13 +39,6 @@ function OverviewTab({ account }: { account: string }) {
   const { data: series, loading: seriesLoading } = usePatrimonySeries(account, period);
   const { data: extras } = useClientExtras(account);
   const navigate = useNavigate();
-  // atalhos abrem o sheet AQUI DENTRO — o assessor nunca sai da ficha (feedback por toast)
-  const [quick, setQuick] = useState<"tarefa" | "alerta" | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 2600);
-  };
   // tarefas ABERTAS vinculadas a este cliente — o vínculo aparece na Visão geral
   const [openTasks, setOpenTasks] = useState<{ id: string; title: string; due_at: string | null }[]>([]);
   useMemo(() => {
@@ -149,27 +140,15 @@ function OverviewTab({ account }: { account: string }) {
           <i className="icon-message-circle" aria-hidden />
           <span>WhatsApp</span>
         </a>
-        <button type="button" className="quick-action" onClick={() => setQuick("tarefa")}>
+        <button type="button" className="quick-action" onClick={() => navigate(`/cards?novo=1&cliente=${account}`)}>
           <i className="icon-square-check" aria-hidden />
           <span>Tarefa</span>
         </button>
-        <button type="button" className="quick-action" onClick={() => setQuick("alerta")}>
+        <button type="button" className="quick-action" onClick={() => navigate(`/alertas?novo=1&cliente=${account}`)}>
           <i className="icon-radar" aria-hidden />
           <span>Alerta</span>
         </button>
       </div>
-
-      {quick === "tarefa" && (
-        <NewCardSheet initialClient={account} onClose={() => setQuick(null)} onCreated={() => showToast("Tarefa criada.")} />
-      )}
-      {quick === "alerta" && (
-        <AlertSheet initialTicker="" initialClient={account} onClose={() => setQuick(null)} onSaved={() => showToast("Alerta criado.")} />
-      )}
-      {toast && (
-        <div style={{ position: "fixed", left: 16, right: 16, bottom: 86, zIndex: 60 }}>
-          <Toast>{toast}</Toast>
-        </div>
-      )}
 
       {openTasks.length > 0 && (
         <button
@@ -500,7 +479,6 @@ function ExtrasTab({ account, advisorCode }: { account: string; advisorCode: str
                 <input
                   id="extra-campo"
                   className="field__input"
-                  autoFocus
                   inputMode={editing === "phone" ? "tel" : "email"}
                   placeholder={editing === "phone" ? "(11) 98812-4402" : "nome@dominio.com"}
                   value={value}
@@ -534,7 +512,6 @@ function ExtrasTab({ account, advisorCode }: { account: string; advisorCode: str
                 style={{ minHeight: 130 }}
                 placeholder="Preferências de contato, contexto da família, restrições…"
                 maxLength={500}
-                autoFocus
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
               />
@@ -587,7 +564,6 @@ function NoteSheet({ account, advisorCode, editing, onClose, onSaved }: { accoun
             style={{ minHeight: 130 }}
             placeholder="Pontos importantes da conversa, combinados, contexto do cliente…"
             maxLength={500}
-            autoFocus
             value={body}
             onChange={(e) => setBody(e.target.value)}
           />
