@@ -286,20 +286,20 @@ export default function Quotes() {
                     type="button"
                     onClick={() => setEditingFavs((v) => !v)}
                     style={{
-                      display: "flex", alignItems: "center", gap: 6, height: 40, padding: "0 14px", borderRadius: 999,
+                      display: "flex", alignItems: "center", gap: 7, height: 40, padding: "0 13px", borderRadius: 10,
                       background: editingFavs ? "var(--action)" : "var(--surface)",
-                      border: editingFavs ? "1px solid var(--action)" : "1px solid var(--border-strong)",
+                      border: editingFavs ? "1px solid var(--action)" : "1px solid var(--border)",
                       color: editingFavs ? "var(--on-action)" : "var(--text-1)",
                       font: "600 12.5px/1 var(--font-sans)", boxShadow: "var(--elev-1)",
                     }}
                   >
-                    <i className={editingFavs ? "icon-check" : "icon-pencil"} style={{ fontSize: 14 }} aria-hidden />
+                    <i className={editingFavs ? "icon-check" : "icon-list-checks"} style={{ fontSize: 15 }} aria-hidden />
                     {editingFavs ? "Concluir" : "Editar lista"}
                   </button>
                 )}
               </div>
               {editingFavs && (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", marginBottom: 10, borderRadius: 12, background: "var(--brand-tint)", font: "400 12px/1.45 var(--font-sans)", color: "var(--ghost-text)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", marginBottom: 10, borderRadius: 10, background: "var(--brand-tint)", font: "400 12px/1.45 var(--font-sans)", color: "var(--ghost-text)" }}>
                   <i className="icon-pin-off" style={{ fontSize: 15, flex: "none" }} aria-hidden />
                   Toque em “Desafixar” para tirar o ativo da sua lista e da home.
                 </div>
@@ -373,7 +373,7 @@ function FavRow({ quote, flash, onOpen, editing, onRemove }: { quote: Quote; fla
           aria-label={`Desafixar ${quote.symbol}`}
           onClick={onRemove}
           style={{
-            display: "inline-flex", alignItems: "center", gap: 6, height: 40, padding: "0 14px", borderRadius: 999,
+            display: "inline-flex", alignItems: "center", gap: 6, height: 40, padding: "0 13px", borderRadius: 10,
             background: "var(--danger-action-hover-bg)", color: "var(--danger-action-text)",
             font: "600 12.5px/1 var(--font-sans)", flex: "none",
           }}
