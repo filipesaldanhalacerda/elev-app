@@ -8,7 +8,7 @@ import { AdminShell } from "./AdminShell";
 import { supabase } from "../../lib/supabase";
 import { workerFetch } from "../../lib/auth";
 import { Button } from "../../components/Button";
-import { EmptyState } from "../../components/states";
+import { EmptyState, SkeletonCardRows } from "../../components/states";
 import { Toast, Banner } from "../../components/feedback";
 import { parseReportFile, unknownAdvisorsWarning, type ParsedImport, type ImportWarning } from "../../lib/importers/parse";
 import { formatBRL, formatInt, formatDateAtTime } from "../../lib/format";
@@ -53,7 +53,8 @@ export default function Imports() {
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [done, setDone] = useState<number | null>(null);
-  const [history, setHistory] = useState<HistoryRow[]>([]);
+  // null = ainda carregando (o histórico vazio tem texto próprio)
+  const [history, setHistory] = useState<HistoryRow[] | null>(null);
 
   async function loadHistory() {
     const { data } = await supabase
@@ -304,8 +305,9 @@ export default function Imports() {
 
           <div className="import-panel">
             <div className="import-panel__title">Histórico de importações</div>
-            {history.length === 0 && <div className="import-history__row import-history__meta">Nenhuma importação ainda.</div>}
-            {history.map((h) => (
+            {history === null && <SkeletonCardRows rows={3} height={52} radius={0} className="" label="Carregando histórico de importações" />}
+            {history !== null && history.length === 0 && <div className="import-history__row import-history__meta">Nenhuma importação ainda.</div>}
+            {(history ?? []).map((h) => (
               <div key={h.id} className="import-history__row">
                 <span className={`import-history__dot ${h.status === "concluida" ? "import-history__dot--ok" : h.status === "falhou" ? "import-history__dot--fail" : "import-history__dot--ok"}`} />
                 <span style={{ flex: 1, minWidth: 0 }}>

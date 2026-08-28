@@ -17,6 +17,7 @@ import {
 import { Sheet } from "../components/Sheet";
 import { Filters } from "../components/Filters";
 import { DetailSheet } from "../components/DetailSheet";
+import { SkeletonCardRows, SkeletonChart, SkeletonDayHeader, SkeletonDonut, SkeletonList } from "../components/states";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabase";
 import { recordClientVisit } from "./Dashboard";
@@ -96,7 +97,7 @@ function OverviewTab({ account }: { account: string }) {
         </div>
         <div style={{ marginTop: 12 }}>
           {seriesLoading ? (
-            <div className="skeleton" style={{ height: 104, borderRadius: 8 }} />
+            <SkeletonChart height={104} label="Carregando evolução do patrimônio" />
           ) : series && series.length >= 2 ? (
             <LineChart
               points={series.map((s) => s.net_em_m!)}
@@ -330,7 +331,12 @@ function MovementsTab({ account }: { account: string }) {
         onClear={() => { setFilter("tudo"); setDays(365); }}
       />
 
-      {loading && <div className="skeleton" style={{ height: 140, borderRadius: 14 }} />}
+      {loading && (
+        <div>
+          <SkeletonDayHeader width={124} />
+          <SkeletonCardRows rows={4} height={62} trailing={84} label="Carregando movimentações" />
+        </div>
+      )}
 
       {!loading && data && groups.length === 0 && (
         <div className="empty-state" style={{ borderRadius: 14, padding: "28px 20px" }}>
@@ -608,7 +614,7 @@ function NotesTab({ account, advisorCode }: { account: string; advisorCode: stri
         <i className="icon-plus" style={{ fontSize: 16 }} aria-hidden /> Nova nota
       </button>
 
-      {loading && <div className="skeleton" style={{ height: 160, borderRadius: 14 }} />}
+      {loading && <SkeletonCardRows rows={3} height={72} icon={28} label="Carregando linha do tempo" />}
 
       {!loading && (notes ?? []).length === 0 && (
         <div className="empty-state" style={{ borderRadius: 14 }}>
@@ -693,21 +699,19 @@ function NotesTab({ account, advisorCode }: { account: string; advisorCode: stri
 function FichaSkeleton({ donut }: { donut?: boolean }) {
   return (
     <div className="ficha-body" style={{ gap: 14 }}>
-      <Card style={{ padding: 16, display: "flex", alignItems: "center", gap: 16 }}>
-        {donut && <div className="skeleton" style={{ width: 88, height: 88, borderRadius: 999, flex: "none" }} />}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 9 }}>
-          <div className="skeleton" style={{ width: "82%", height: 11 }} />
-          <div className="skeleton" style={{ width: "66%", height: 11 }} />
-          <div className="skeleton" style={{ width: "74%", height: 11 }} />
-          <div className="skeleton" style={{ width: "58%", height: 11 }} />
-        </div>
+      <Card style={{ padding: 16 }}>
+        {donut ? (
+          // carteira: a alocação vem primeiro, as posições depois (nota do quadro 07)
+          <SkeletonDonut size={88} label="Carregando alocação da carteira" />
+        ) : (
+          <SkeletonChart height={104} label="Carregando visão geral" />
+        )}
       </Card>
-      <Card style={{ padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
-        <div className="skeleton" style={{ width: "62%", height: 11 }} />
-        <div className="skeleton" style={{ width: "44%", height: 9 }} />
-        <div className="skeleton" style={{ width: "70%", height: 11 }} />
-        <div className="skeleton" style={{ width: "38%", height: 9 }} />
-      </Card>
+      {donut ? (
+        <SkeletonList rows={4} avatar={false} height={54} label="Carregando posições" />
+      ) : (
+        <SkeletonCardRows rows={4} height={54} trailing={88} label="Carregando indicadores" />
+      )}
     </div>
   );
 }

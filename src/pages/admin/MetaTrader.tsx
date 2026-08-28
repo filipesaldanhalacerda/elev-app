@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { AdminShell } from "./AdminShell";
 import { workerFetch } from "../../lib/auth";
 import { Button } from "../../components/Button";
+import { SkeletonBar, SkeletonRegion, stagger } from "../../components/states";
 import { StatusChip, Banner, Modal } from "../../components/feedback";
 import { TextField, PasswordField } from "../../components/Field";
 import { formatTime, formatDate, formatTimeSeconds } from "../../lib/format";
@@ -167,20 +168,32 @@ export default function MetaTrader() {
             <div className="mt-health__grid">
               <span>
                 <span className="mt-health__cell-label">Última atualização</span>
-                <span className="mt-health__cell-value">{conn?.last_quote_at ? formatTimeSeconds(conn.last_quote_at) : "—"}</span>
+                <span className="mt-health__cell-value">
+                  {conn === null ? <SkeletonBar width={76} height={13} /> : conn.last_quote_at ? formatTimeSeconds(conn.last_quote_at) : "—"}
+                </span>
               </span>
               <span>
                 <span className="mt-health__cell-label">Tempo de resposta</span>
-                <span className="mt-health__cell-value">{conn?.status === "ativa" && conn.response_seconds != null ? `${conn.response_seconds.toLocaleString("pt-BR", { minimumFractionDigits: 1 })} s` : "—"}</span>
+                <span className="mt-health__cell-value">
+                  {conn === null ? (
+                    <SkeletonBar width={54} height={13} style={stagger(1)} />
+                  ) : conn.status === "ativa" && conn.response_seconds != null ? (
+                    `${conn.response_seconds.toLocaleString("pt-BR", { minimumFractionDigits: 1 })} s`
+                  ) : (
+                    "—"
+                  )}
+                </span>
               </span>
               <span>
                 <span className="mt-health__cell-label">Conectada desde</span>
-                <span className="mt-health__cell-value">{conn?.connected_at ? formatDate(conn.connected_at) : "—"}</span>
+                <span className="mt-health__cell-value">
+                  {conn === null ? <SkeletonBar width={82} height={13} style={stagger(2)} /> : conn.connected_at ? formatDate(conn.connected_at) : "—"}
+                </span>
               </span>
               <span>
                 <span className="mt-health__cell-label">Quedas em 30 dias</span>
                 <span className="mt-health__cell-value">
-                  {conn ? conn.health_events.filter((e) => e.level === "danger").length : "—"}
+                  {conn === null ? <SkeletonBar width={28} height={13} style={stagger(3)} /> : conn.health_events.filter((e) => e.level === "danger").length}
                 </span>
               </span>
             </div>
@@ -196,6 +209,19 @@ export default function MetaTrader() {
 
             <div className="mt-events">
               <div className="mt-events__title">Últimos eventos</div>
+              {conn === null && (
+                <SkeletonRegion label="Carregando eventos da conexão">
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className="mt-event">
+                      <SkeletonBar width={6} height={6} radius={999} style={{ flex: "none", ...stagger(i) }} />
+                      <span style={{ flex: 1 }}>
+                        <SkeletonBar width={(72 - i * 9) + "%"} height={10} style={stagger(i + 1)} />
+                      </span>
+                      <SkeletonBar width={38} height={10} style={{ flex: "none", ...stagger(i + 2) }} />
+                    </div>
+                  ))}
+                </SkeletonRegion>
+              )}
               {(conn?.health_events ?? []).slice(-4).reverse().map((e, i) => (
                 <div key={i} className="mt-event">
                   <span className={`mt-event__dot mt-event__dot--${e.level}`} aria-hidden />
@@ -203,7 +229,7 @@ export default function MetaTrader() {
                   <span className="mt-event__at">{formatTime(e.at)}</span>
                 </div>
               ))}
-              {(conn?.health_events ?? []).length === 0 && (
+              {conn !== null && conn.health_events.length === 0 && (
                 <div className="mt-event"><span className="mt-event__text" style={{ color: "var(--text-3)" }}>Nenhum evento ainda.</span></div>
               )}
             </div>

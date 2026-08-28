@@ -17,6 +17,7 @@ import {
   useQuotes, useQuoteDetail, pushRecent, getRecents, clearRecents, isFuture, formatQuotePrice, formatQuoteChange, type Quote,
 } from "../lib/quotes";
 import { QuoteSource } from "../components/QuoteSource";
+import { SkeletonBar, SkeletonQuoteHero, SkeletonQuoteRows, SkeletonRegion, stagger } from "../components/states";
 import { formatBRL, formatTimeSeconds } from "../lib/format";
 
 const DEFAULT_FAVORITES = ["DOLAR", "PETR4", "VALE3", "ITUB4"];
@@ -91,7 +92,15 @@ function Holders({ ticker }: { ticker: string }) {
     <Card style={{ padding: 14 }}>
       <div style={{ font: "600 12.5px/1 var(--font-sans)", color: "var(--text-1)" }}>Quem tem este ativo</div>
       {rows === null ? (
-        <div className="skeleton" style={{ height: 60, borderRadius: 8, marginTop: 12 }} />
+        <SkeletonRegion label="Carregando clientes com o ativo" style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+          {[0, 1, 2].map((i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 11 }}>
+              <SkeletonBar width={26} height={26} radius={999} style={{ flex: "none", ...stagger(i) }} />
+              <SkeletonBar width={(64 - i * 8) + "%"} height={11} style={stagger(i + 1)} />
+              <SkeletonBar width={78} height={11} style={{ marginLeft: "auto", ...stagger(i + 2) }} />
+            </div>
+          ))}
+        </SkeletonRegion>
       ) : rows.length === 0 ? (
         <div style={{ marginTop: 12, font: "400 12px/1.5 var(--font-sans)", color: "var(--text-2)" }}>
           Nenhum cliente da sua carteira tem este ativo.
@@ -260,7 +269,7 @@ export default function Quotes() {
         // -------- resultado da busca (quadro escuro) --------
         <div style={{ flex: 1, padding: "0 16px", display: "flex", flexDirection: "column", gap: 14 }}>
           {detail === null ? (
-            <div className="skeleton" style={{ height: 200, borderRadius: 14 }} />
+            <SkeletonQuoteHero label={`Carregando ${selected}`} />
           ) : detail.unavailable ? (
             <Banner kind="warning">Não encontramos {selected} na fonte de dados atual. Confira o código do ativo — derivativos (WDO, WIN, DI) entram quando houver provedor contratado.</Banner>
           ) : detail.paused || !detail.quote ? (
@@ -388,11 +397,13 @@ export default function Quotes() {
                 {stocks.map((q) => (
                   <FavRow key={q.symbol} quote={q} flash={flashClass(q.symbol)} editing={editingFavs} onRemove={() => void toggle(q.symbol)} onOpen={() => { setSelected(q.symbol); setSearch(q.symbol); pushRecent(q.symbol); }} />
                 ))}
-                {favQuotes.length === 0 && (
+                {favQuotes.length === 0 && (favorites === null || data === null ? (
+                  <SkeletonQuoteRows rows={4} bare label="Carregando cotações fixadas" />
+                ) : (
                   <div style={{ padding: "20px 14px", font: "400 12px/1.5 var(--font-sans)", color: "var(--text-2)" }}>
-                    {data?.paused ? "Sem cotações agora." : "Busque um ativo e toque em Fixar para acompanhar aqui."}
+                    {data.paused ? "Sem cotações agora." : "Busque um ativo e toque em Fixar para acompanhar aqui."}
                   </div>
-                )}
+                ))}
               </div>
             </div>
 

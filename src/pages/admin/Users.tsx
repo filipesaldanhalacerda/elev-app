@@ -7,6 +7,7 @@ import { AdminShell } from "./AdminShell";
 import { workerFetch } from "../../lib/auth";
 import { StatusChip, Banner, Modal } from "../../components/feedback";
 import { Button } from "../../components/Button";
+import { SkeletonTableRows } from "../../components/states";
 import { TextField } from "../../components/Field";
 import { displayAdvisorCode, formatDateAtTime } from "../../lib/format";
 
@@ -121,10 +122,11 @@ function UserFormModal({
                   className="field__input field__input--mono"
                   value={advisorCode}
                   onChange={(e) => setAdvisorCode(e.target.value)}
-                  disabled={noBase}
+                  disabled={noBase || codes === null}
                   style={{ appearance: "none", width: "100%" }}
                 >
-                  <option value="">Escolher da base…</option>
+                  {/* um campo de seleção não vira skeleton: diz em texto que está buscando */}
+                  <option value="">{codes === null ? "Carregando códigos…" : "Escolher da base…"}</option>
                   {(codes ?? []).map((c) => (
                     <option key={c.code} value={c.code} disabled={c.taken}>
                       {displayAdvisorCode(c.code)} · {c.clients} cliente{c.clients !== 1 ? "s" : ""}{c.taken ? " · já tem acesso" : ""}
@@ -171,7 +173,8 @@ function UserFormModal({
 }
 
 export default function Users() {
-  const [users, setUsers] = useState<AdminUser[]>([]);
+  // null = ainda carregando; [] = a base não tem usuário (estados diferentes na tela)
+  const [users, setUsers] = useState<AdminUser[] | null>(null);
   const [search, setSearch] = useState("");
   const [generated, setGenerated] = useState<GeneratedCode | null>(null);
   const [deactivating, setDeactivating] = useState<AdminUser | null>(null);
@@ -189,8 +192,8 @@ export default function Users() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return users;
-    return users.filter((u) => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+    if (!q) return users ?? [];
+    return (users ?? []).filter((u) => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
   }, [users, search]);
 
   async function generateCode(user: AdminUser) {
@@ -246,6 +249,21 @@ export default function Users() {
           <span>Status</span>
           <span style={{ textAlign: "right" }}>Ações</span>
         </div>
+        {users === null && (
+          <SkeletonTableRows
+            template="minmax(0,1.2fr) minmax(0,1.45fr) minmax(0,0.6fr) minmax(0,0.55fr) minmax(0,0.95fr) minmax(0,1.35fr)"
+            cells={[
+              { width: "68%" },
+              { width: "84%" },
+              { width: 62 },
+              { width: 52 },
+              { width: 78, height: 24, radius: 999 },
+              { width: 36, height: 36, radius: 9, align: "right", repeat: 3 },
+            ]}
+            rows={6}
+            label="Carregando usuários"
+          />
+        )}
         {filtered.map((u) => (
           <div
             key={u.id}

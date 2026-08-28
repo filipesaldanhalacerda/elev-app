@@ -1,6 +1,7 @@
 /** Tela 22 · Auditoria — quadro "20-22 Salas e auditoria escuro" (#4f). Filtrável e exportável em CSV. */
 import { useEffect, useMemo, useState } from "react";
 import { AdminShell } from "./AdminShell";
+import { SkeletonTableRows } from "../../components/states";
 import { supabase } from "../../lib/supabase";
 import { formatDate, formatTime } from "../../lib/format";
 
@@ -104,6 +105,14 @@ export default function Audit() {
           <span>Detalhe</span>
           <span>Usuário</span>
         </div>
+        {rows === null && (
+          <SkeletonTableRows
+            template="0.8fr 0.9fr 1.9fr 0.9fr"
+            cells={[{ width: "74%" }, { width: 72, height: 24, radius: 999 }, { width: "88%" }, { width: "56%" }]}
+            rows={8}
+            label="Carregando auditoria"
+          />
+        )}
         {(rows ?? []).map((r) => {
           const meta = CATEGORY_META[r.category] ?? { label: r.category, chip: "chip--neutral" };
           return (

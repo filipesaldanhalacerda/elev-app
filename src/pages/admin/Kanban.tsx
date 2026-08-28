@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { AdminShell } from "./AdminShell";
 import { useAllCards, useColleagues, setCardStatus, isOverdue, type CardRow, type CardStatus } from "../../lib/cards";
 import { initials, formatDate } from "../../lib/format";
+import { SkeletonBar, SkeletonRegion, stagger } from "../../components/states";
 
 const COLUMNS: { status: CardStatus; label: string }[] = [
   { status: "pendente", label: "Pendente" },
@@ -68,14 +69,27 @@ export default function Kanban() {
               >
                 <div className="kb-col__head">
                   <span className="kb-col__title">{col.label}</span>
-                  <span className="kb-col__count">{cards.length}</span>
+                  <span className="kb-col__count">{rows === null ? "—" : cards.length}</span>
                 </div>
                 <div className="kb-col__stack">
+                  {rows === null && (
+                    <SkeletonRegion label="Carregando quadro" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {[0, 1, 2].map((i) => (
+                        <div key={i} className="kb-card" style={{ cursor: "default" }}>
+                          <SkeletonBar width="82%" height={12} style={stagger(i)} />
+                          <div style={{ marginTop: 10, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                            <SkeletonBar width="54%" height={10} style={stagger(i + 1)} />
+                            <SkeletonBar width={22} height={22} radius={999} style={{ flex: "none", ...stagger(i + 2) }} />
+                          </div>
+                        </div>
+                      ))}
+                    </SkeletonRegion>
+                  )}
                   {cards.map((card) => (
                     <KbCard key={card.id} card={card} dragging={dragging === card.id} onDragStart={() => setDragging(card.id)} onDragEnd={() => setDragging(null)} />
                   ))}
                   {col.status === "concluido" && dragging && <div className="kb-drop">Solte aqui para concluir</div>}
-                  {cards.length === 0 && col.status !== "concluido" && <div className="kb-drop">Solte aqui</div>}
+                  {rows !== null && cards.length === 0 && col.status !== "concluido" && <div className="kb-drop">Solte aqui</div>}
                 </div>
               </div>
             );

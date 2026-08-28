@@ -13,6 +13,7 @@ import { subscribeDevice } from "../lib/push";
 import { initials, displayAdvisorCode } from "../lib/format";
 import { useGoogleStatus, connectGoogle, disconnectGoogle } from "../lib/google";
 import { GoogleLogo } from "../components/GoogleLogo";
+import { SkeletonBar } from "../components/states";
 import { isStandalone, isIOS, canPromptInstall, promptInstall, onInstallAvailability } from "../lib/pwa";
 
 const PUSH_ITEMS: { key: string; label: string; description?: string }[] = [
@@ -235,15 +236,18 @@ export default function Profile() {
             </span>
             <span style={{ flex: 1, minWidth: 0 }}>
               <span style={{ display: "block", font: "400 13px/1.35 var(--font-sans)", color: "var(--text-1)" }}>Conta Google</span>
-              <span style={{ display: "block", marginTop: 2, font: "400 10.5px/1.4 var(--font-sans)", color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {google?.connected
+              <span style={{ display: "block", marginTop: 4, font: "400 10.5px/1.4 var(--font-sans)", color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {google === null ? (
+                  // enquanto o estado da conta não volta, não afirmamos "conecte" nem "conectada"
+                  <SkeletonBar width={168} height={9} />
+                ) : google.connected
                   ? `${google.email} · agenda sincronizada${google.mode === "simulado" ? " (demonstração)" : ""}`
-                  : google?.mode === "simulado"
+                  : google.mode === "simulado"
                     ? "modo demonstração — a conexão real chega com as credenciais Google"
                     : "conecte para sincronizar a agenda"}
               </span>
             </span>
-            <Button variant="secondary" style={{ height: 44, fontSize: 12 }} loading={googleBusy} onClick={toggleGoogle}>
+            <Button variant="secondary" style={{ height: 44, fontSize: 12 }} loading={googleBusy || google === null} onClick={toggleGoogle}>
               {google?.connected ? "Desconectar" : "Conectar"}
             </Button>
           </div>

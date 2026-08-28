@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MobileShell } from "../components/MobileShell";
+import { SkeletonList } from "../components/states";
 import { Filters } from "../components/Filters";
 import { ClientSearch, type ClientSearchResult } from "../components/ClientSearch";
 import { Avatar } from "../components/Avatar";
@@ -174,19 +175,8 @@ export default function Clients() {
           </>
         )}
 
-        {!error && loading && !data && (
-          <div className="client-list" style={{ padding: 14, display: "flex", flexDirection: "column", gap: 14 }}>
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                <div className="skeleton" style={{ width: 36, height: 36, borderRadius: 999 }} />
-                <div style={{ flex: 1 }}>
-                  <div className="skeleton" style={{ width: "60%", height: 11 }} />
-                  <div className="skeleton" style={{ width: "35%", height: 9, marginTop: 6 }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* linhas de 68px com valor à direita: a mesma geometria da lista real */}
+        {!error && loading && !data && <SkeletonList rows={5} label="Carregando clientes" />}
 
         {!error && data && data.rows.length === 0 && (
           <div className="empty-state" style={{ borderRadius: 14 }}>

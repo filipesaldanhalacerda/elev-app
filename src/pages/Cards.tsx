@@ -8,6 +8,7 @@ import { MobileShell } from "../components/MobileShell";
 import { Sheet } from "../components/Sheet";
 import { DetailSheet } from "../components/DetailSheet";
 import { Button } from "../components/Button";
+import { SkeletonDayHeader, SkeletonLooseCards } from "../components/states";
 import { Toggle, CharLimit } from "../components/Field";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabase";
@@ -300,12 +301,17 @@ export default function Cards() {
           {(["pendente", "andamento", "concluido"] as const).map((s) => (
             <button key={s} type="button" role="tab" aria-selected={status === s} className={`status-segment__item${status === s ? " status-segment__item--active" : ""}`} onClick={() => setStatus(s)}>
               {s === "pendente" ? "Pendente" : s === "andamento" ? "Andamento" : "Concluído"}
-              <span className="status-segment__count">{byStatus[s].length}</span>
+              <span className="status-segment__count">{rows === null ? "—" : byStatus[s].length}</span>
             </button>
           ))}
         </div>
 
-        {rows === null && <div className="skeleton" style={{ height: 140, borderRadius: 12 }} />}
+        {rows === null && (
+          <div>
+            <SkeletonDayHeader width={116} />
+            <SkeletonLooseCards count={3} label="Carregando tarefas" />
+          </div>
+        )}
 
         {rows !== null && byStatus[status].length === 0 && (
           <div className="empty-state" style={{ borderRadius: 14 }}>

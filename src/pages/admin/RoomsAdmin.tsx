@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { AdminShell } from "./AdminShell";
 import { Button } from "../../components/Button";
+import { SkeletonRoomCards } from "../../components/states";
 import { StatusChip, Modal, Banner } from "../../components/feedback";
 import { TextField } from "../../components/Field";
 import { supabase } from "../../lib/supabase";
@@ -95,6 +96,7 @@ export default function RoomsAdmin() {
     >
       <div className="rooms-page" style={{ display: "flex", flexDirection: "column", gap: 22 }}>
         <div className="rooms-grid">
+          {rooms === null && <SkeletonRoomCards count={2} />}
           {(rooms ?? []).map((room) => (
             <div key={room.id} className="room-card" data-room={room.name}>
               <div className="room-card__head">

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { MobileShell } from "../components/MobileShell";
 import { Sheet } from "../components/Sheet";
 import { Button } from "../components/Button";
+import { SkeletonCardRows, SkeletonDayHeader } from "../components/states";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 import { formatDate, formatTime } from "../lib/format";
@@ -132,7 +133,12 @@ export default function Notifications() {
           </div>
         )}
 
-        {rows === null && <div className="skeleton" style={{ height: 160, borderRadius: 14 }} />}
+        {rows === null && (
+          <div>
+            <SkeletonDayHeader width={148} />
+            <SkeletonCardRows rows={4} height={66} icon={32} radius={14} className="notif-list" label="Carregando notificações" />
+          </div>
+        )}
 
         {rows !== null && rows.length === 0 && (
           <div className="empty-state" style={{ borderRadius: 14 }}>

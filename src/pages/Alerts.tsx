@@ -12,6 +12,7 @@ import { Button } from "../components/Button";
 import { Filters } from "../components/Filters";
 import { AlertCard } from "../components/cards";
 import { usePagedList, InfiniteSentinel } from "../components/infinite";
+import { SkeletonAlertCards, SkeletonCardRows } from "../components/states";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 import { useQuoteDetail, formatQuotePrice, formatQuoteChange, type Quote } from "../lib/quotes";
@@ -380,7 +381,7 @@ export default function Alerts() {
 
         {tab === "ativos" && (
           <>
-            {active === null && <div className="skeleton" style={{ height: 140, borderRadius: 14 }} />}
+            {active === null && <SkeletonAlertCards count={3} label="Carregando alertas ativos" />}
             {(active ?? []).map((a) => {
               const q = quotes.get(a.ticker);
               const info = progressInfo(a, q);
@@ -453,7 +454,7 @@ export default function Alerts() {
 
         {tab === "historico" && (
           <>
-            {triggered === null && <div className="skeleton" style={{ height: 140, borderRadius: 14 }} />}
+            {triggered === null && <SkeletonCardRows rows={4} height={64} label="Carregando histórico de alertas" trailing={64} />}
             {triggered !== null && triggered.length === 0 && (
               <div className="empty-state" style={{ borderRadius: 14 }}>
                 <span className="empty-state__icon"><i className="icon-history" aria-hidden /></span>

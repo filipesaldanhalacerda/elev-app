@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { AdminShell } from "./AdminShell";
 import { Button } from "../../components/Button";
 import { StatusChip } from "../../components/feedback";
+import { SkeletonCardRows, SkeletonKpiCard } from "../../components/states";
 import { supabase } from "../../lib/supabase";
 import { workerFetch } from "../../lib/auth";
 import { formatInt, formatTime, formatTimeSeconds, formatDate } from "../../lib/format";
@@ -104,7 +105,14 @@ export default function AdminHome() {
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
-          <div className="card" style={{ padding: 18 }} data-card-status="mt">
+          {data === null && (
+            <>
+              <SkeletonKpiCard label="Carregando conexão MetaTrader" />
+              <SkeletonKpiCard label="Carregando última importação" />
+              <SkeletonKpiCard label="Carregando usuários" />
+            </>
+          )}
+          {data !== null && (<><div className="card" style={{ padding: 18 }} data-card-status="mt">
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <span style={{ font: "500 12px/1 var(--font-sans)", color: "var(--text-2)" }}>Conexão MetaTrader</span>
               {data && mtChip(data.mt.status)}
@@ -154,6 +162,7 @@ export default function AdminHome() {
               Gerenciar usuários<i className="icon-chevron-right" style={{ fontSize: 13 }} aria-hidden />
             </button>
           </div>
+          </>)}
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: 16, alignItems: "flex-start" }}>
@@ -164,6 +173,7 @@ export default function AdminHome() {
                 Auditoria completa<i className="icon-chevron-right" style={{ fontSize: 13 }} aria-hidden />
               </button>
             </div>
+            {data === null && <SkeletonCardRows rows={4} height={56} icon={30} radius={0} className="" trailing={44} label="Carregando atividade recente" />}
             {(data?.activity ?? []).map((a, i) => {
               const meta = CATEGORY_ICON[a.category] ?? { icon: "icon-info" };
               return (
@@ -190,6 +200,7 @@ export default function AdminHome() {
               <span style={{ font: "400 11px/1 var(--font-mono)", fontVariantNumeric: "tabular-nums", color: "var(--text-3)" }}>{formatDate(now).slice(0, 5)}</span>
             </div>
             <div style={{ padding: "14px 18px", display: "flex", flexDirection: "column", gap: 10 }}>
+              {data === null && <SkeletonCardRows rows={3} height={44} radius={8} className="" lead={44} label="Carregando salas de hoje" />}
               {(data?.roomsToday ?? []).map((r, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{ width: 44, flex: "none", font: "500 10.5px/1 var(--font-mono)", color: "var(--text-3)" }}>{r.hour}</span>

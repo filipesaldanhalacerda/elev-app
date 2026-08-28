@@ -10,6 +10,7 @@ import { DetailSheet } from "../components/DetailSheet";
 import { Button } from "../components/Button";
 import { CharLimit } from "../components/Field";
 import { Banner } from "../components/feedback";
+import { SkeletonCardRows, SkeletonDayGrid } from "../components/states";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabase";
 import {
@@ -398,7 +399,11 @@ export default function Rooms() {
                 </button>
               )}
               <span style={{ font: "400 11px/1 var(--font-sans)", fontVariantNumeric: "tabular-nums", color: "var(--text-2)" }}>
-                {dayReservations.length === 0 ? "sala livre" : `${dayReservations.length} reserva${dayReservations.length > 1 ? "s" : ""}`}
+                {allReservations === null
+                  ? ""
+                  : dayReservations.length === 0
+                    ? "sala livre"
+                    : `${dayReservations.length} reserva${dayReservations.length > 1 ? "s" : ""}`}
               </span>
             </span>
           </div>
@@ -449,7 +454,12 @@ export default function Rooms() {
         )}
 
         {/* grade proporcional da sala — toque no vazio reserva naquela hora */}
-        {activeRoom && (
+        {/* a grade só aparece com as reservas do dia em mãos — sem trilho vazio piscando antes */}
+        {(rooms === null || (activeRoom !== null && allReservations === null)) && (
+          <SkeletonDayGrid hours={8} hourHeight={48} label="Carregando agenda da sala" />
+        )}
+
+        {activeRoom && allReservations !== null && (
           <div className="card" style={{ padding: "16px 14px" }}>
             {selectableRooms.length <= 1 && activeRoomData && (
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }} data-salas-sala>
@@ -515,8 +525,10 @@ export default function Rooms() {
 
         <div>
           <div style={{ font: "600 15px/1.2 var(--font-sans)", letterSpacing: "-0.01em", color: "var(--text-1)", marginBottom: 10 }}>Minhas reservas</div>
+          {mine === null && <SkeletonCardRows rows={2} height={64} trailing={72} label="Carregando suas reservas" />}
+          {mine !== null && (
           <div className="client-list">
-            {(mine ?? []).length === 0 && (
+            {mine.length === 0 && (
               <div style={{ padding: "18px 14px", font: "400 12px/1.5 var(--font-sans)", color: "var(--text-2)" }}>
                 Nenhuma reserva sua. Toque em um horário livre para reservar.
               </div>
@@ -539,6 +551,7 @@ export default function Rooms() {
               );
             })}
           </div>
+          )}
         </div>
         <div style={{ height: 8 }} />
       </div>

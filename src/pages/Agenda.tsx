@@ -11,6 +11,7 @@ import { DetailSheet } from "../components/DetailSheet";
 import { Button } from "../components/Button";
 import { CharLimit } from "../components/Field";
 import { GoogleCalendarLogo } from "../components/GoogleLogo";
+import { SkeletonBar, SkeletonCardRows, stagger } from "../components/states";
 import { addMinutes, durationLabel, nextSlotSP } from "../lib/format";
 import { supabase } from "../lib/supabase";
 import { formatDate } from "../lib/format";
@@ -294,7 +295,33 @@ export default function Agenda() {
       </header>
 
       <div style={{ flex: 1, padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 14 }}>
-        {events === null && <div className="skeleton" style={{ height: 140, borderRadius: 14 }} />}
+        {events === null && (
+          <>
+            {/* mesma moldura do conteúdo real: mês, faixa de dias e a lista do dia */}
+            <div aria-hidden>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "0 2px 10px" }}>
+                <SkeletonBar width={128} height={15} />
+                <SkeletonBar width={72} height={11} style={stagger(2)} />
+              </div>
+              <div style={{ display: "flex", gap: 6, padding: 2, margin: -2 }}>
+                {Array.from({ length: 7 }).map((_, i) => (
+                  <span
+                    key={i}
+                    style={{
+                      flex: "none", width: 48, minHeight: 62, borderRadius: 12,
+                      background: "var(--surface)", border: "1px solid var(--border)",
+                      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6,
+                    }}
+                  >
+                    <SkeletonBar width={20} height={9} style={stagger(i)} />
+                    <SkeletonBar width={18} height={14} style={stagger(i + 1)} />
+                  </span>
+                ))}
+              </div>
+            </div>
+            <SkeletonCardRows rows={3} height={64} label="Carregando agenda" trailing={44} />
+          </>
+        )}
 
         {events !== null && (
           <>

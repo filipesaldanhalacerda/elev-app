@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./lib/auth";
+import { AppSplash } from "./components/AppSplash";
 import Showcase from "./pages/Showcase";
 import Login from "./pages/auth/Login";
 import FirstAccess from "./pages/auth/FirstAccess";
@@ -22,11 +23,13 @@ import AdminHome from "./pages/admin/AdminHome";
 import Audit from "./pages/admin/Audit";
 import MetaTrader from "./pages/admin/MetaTrader";
 
-function Guard({ children, admin = false }: { children: React.ReactNode; admin?: boolean }) {
+function Guard({ children, admin = false, advisorOnly = false }: { children: React.ReactNode; admin?: boolean; advisorOnly?: boolean }) {
   const { loading, session, profile } = useAuth();
-  if (loading) return <div data-app-shell style={{ minHeight: "100dvh", background: "var(--bg)" }} />;
+  if (loading) return <AppSplash />;
   if (!session) return <Navigate to="/login" replace />;
   if (admin && profile?.role !== "admin") return <Navigate to="/" replace />;
+  // admin não atende clientes: a visão dele é o desktop /admin, nunca as telas de carteira
+  if (advisorOnly && profile?.role === "admin") return <Navigate to="/admin" replace />;
   return <>{children}</>;
 }
 
@@ -50,7 +53,7 @@ export default function App() {
           <Route
             path="/clientes"
             element={
-              <Guard>
+              <Guard advisorOnly>
                 <Clients />
               </Guard>
             }
@@ -58,7 +61,7 @@ export default function App() {
           <Route
             path="/clientes/:account"
             element={
-              <Guard>
+              <Guard advisorOnly>
                 <ClientFile />
               </Guard>
             }
@@ -66,7 +69,7 @@ export default function App() {
           <Route
             path="/cotacoes"
             element={
-              <Guard>
+              <Guard advisorOnly>
                 <Quotes />
               </Guard>
             }
@@ -74,7 +77,7 @@ export default function App() {
           <Route
             path="/alertas"
             element={
-              <Guard>
+              <Guard advisorOnly>
                 <Alerts />
               </Guard>
             }
@@ -82,7 +85,7 @@ export default function App() {
           <Route
             path="/cards"
             element={
-              <Guard>
+              <Guard advisorOnly>
                 <Cards />
               </Guard>
             }
@@ -98,7 +101,7 @@ export default function App() {
           <Route
             path="/salas"
             element={
-              <Guard>
+              <Guard advisorOnly>
                 <Rooms />
               </Guard>
             }
@@ -114,7 +117,7 @@ export default function App() {
           <Route
             path="/agenda"
             element={
-              <Guard>
+              <Guard advisorOnly>
                 <Agenda />
               </Guard>
             }
@@ -170,7 +173,7 @@ export default function App() {
           <Route
             path="*"
             element={
-              <Guard>
+              <Guard advisorOnly>
                 <Dashboard />
               </Guard>
             }

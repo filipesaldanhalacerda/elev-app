@@ -4,6 +4,7 @@
  * carrega por páginas e busca a próxima quando a sentinela entra na viewport.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { SkeletonCardRows } from "./states";
 
 export interface Page<T> {
   rows: T[];
@@ -75,7 +76,7 @@ export function InfiniteSentinel({ hasMore, loading, onMore }: { hasMore: boolea
   if (!hasMore && !loading) return null;
   return (
     <div ref={ref} data-infinite-sentinel style={{ paddingBottom: 4 }}>
-      {loading && <div className="skeleton" style={{ height: 64, borderRadius: 14 }} />}
+      {loading && <SkeletonCardRows rows={2} height={64} label="Carregando mais itens" />}
     </div>
   );
 }

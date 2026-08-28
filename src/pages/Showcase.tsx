@@ -12,7 +12,16 @@ import { DenseTable, CollapseList } from "../components/table";
 import { KanbanColumn, KanbanCard } from "../components/kanban";
 import { MobileHeader, Tabs, BottomNav, AdminSidebar } from "../components/navigation";
 import { Toast, Banner, Modal, StatusChip, MarketChip } from "../components/feedback";
-import { SkeletonBar, SkeletonListItem, EmptyState, NotificationList, AgendaGrid, SegmentedSmall } from "../components/states";
+import {
+  SkeletonListItem,
+  SkeletonList,
+  SkeletonTableRows,
+  SkeletonChart,
+  EmptyState,
+  NotificationList,
+  AgendaGrid,
+  SegmentedSmall,
+} from "../components/states";
 import { setThemePreference, getThemePreference } from "../lib/theme";
 
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
@@ -245,20 +254,22 @@ export default function Showcase() {
       </Section>
 
       <Section id="2i" title="Estados de sistema, notificações e agenda">
+{/* os três padrões de skeleton do #2i: lista, tabela e gráfico */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <SkeletonList rows={3} label="Padrão de lista" />
           <Card style={{ borderRadius: 12, padding: 12 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <SkeletonListItem />
               <SkeletonListItem />
             </div>
           </Card>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div className="users-table" style={{ borderRadius: 12 }}>
+            <SkeletonTableRows template="1.2fr 1fr 0.8fr" columns={3} rows={3} label="Padrão de tabela" />
+          </div>
           <Card style={{ borderRadius: 12, padding: 12 }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-              <SkeletonBar />
-              <SkeletonBar width="88%" />
-              <SkeletonBar width="94%" />
-              <SkeletonBar height={52} radius={8} style={{ marginTop: 6 }} />
-            </div>
+            <SkeletonChart height={96} bars={12} label="Padrão de gráfico" />
           </Card>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
