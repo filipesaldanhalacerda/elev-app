@@ -198,7 +198,18 @@ export function SkeletonTableRows({
   return (
     <SkeletonRegion label={label}>
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="users-table__row" style={{ gridTemplateColumns: template }}>
+        <div
+          key={i}
+          // sem a classe da linha real: quem conta ".users-table__row" está contando
+          // usuários, não barras cinzas. A geometria vem inteira daqui.
+          style={{
+            display: "grid",
+            gridTemplateColumns: template,
+            alignItems: "center",
+            padding: "11px 18px",
+            borderTop: i > 0 ? "1px solid var(--divider)" : undefined,
+          }}
+        >
           {spec.map((cell, c) => (
             <span
               key={c}
