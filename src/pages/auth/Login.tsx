@@ -11,7 +11,10 @@ export default function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState(false);
+  // dois erros diferentes: a senha errada e o servidor fora de alcance. Dizer
+  // "senha incorreta" quando a requisição nem saiu manda a pessoa procurar o
+  // problema no lugar errado.
+  const [error, setError] = useState<null | "credenciais" | "conexao">(null);
   const [loading, setLoading] = useState(false);
 
   async function submit(e: FormEvent) {
@@ -20,7 +23,9 @@ export default function Login() {
     const { error: err } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (err) {
-      setError(true);
+      // sem status (ou 0) = não chegou ao servidor: internet caída, DNS, versão velha em cache
+      const semResposta = !err.status || err.status === 0 || /fetch|network|failed to/i.test(err.message);
+      setError(semResposta ? "conexao" : "credenciais");
       return;
     }
     navigate("/");
@@ -37,10 +42,17 @@ export default function Login() {
         <h1 className="auth-title">Entrar na plataforma</h1>
         <p className="auth-sub">Use o e-mail cadastrado pela sua assessoria.</p>
 
-        {error && (
+        {error === "credenciais" && (
           <div style={{ marginTop: 20 }}>
             <Banner kind="danger" title="E-mail ou senha incorretos">
               Restam 3 tentativas antes do bloqueio temporário.
+            </Banner>
+          </div>
+        )}
+        {error === "conexao" && (
+          <div style={{ marginTop: 20 }}>
+            <Banner kind="danger" title="Não foi possível falar com o servidor">
+              Verifique sua conexão e tente de novo. Se persistir, atualize a página para carregar a versão mais recente.
             </Banner>
           </div>
         )}
@@ -57,7 +69,7 @@ export default function Login() {
           <PasswordField
             label="Senha"
             autoComplete="current-password"
-            className={`auth-field${error ? " field--error" : ""}`}
+            className={`auth-field${error === "credenciais" ? " field--error" : ""}`}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
