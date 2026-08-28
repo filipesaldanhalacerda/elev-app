@@ -26,7 +26,7 @@ async function login(page: import("@playwright/test").Page) {
   await page.getByLabel("E-mail").fill(ADMIN.email);
   await page.locator('input[type="password"]').fill(ADMIN.password);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
-  await page.waitForSelector("[data-home]");
+  await page.waitForSelector("[data-home], .admin-shell");
 }
 
 test("tela 17: cartões de status reais, atividade recente e salas hoje", async ({ page }) => {

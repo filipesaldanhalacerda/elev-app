@@ -1,0 +1,21 @@
+# Deploy de PRODUÇÃO: um Worker só serve o app (dist/) e a API (/api/*).
+# Em desenvolvimento nada muda — o Vite serve o app na 5173 e o Worker roda pelo
+# worker/wrangler.toml na 8787. Mantenha os dois arquivos em sincronia.
+#
+# Publicar:  npm run deploy   (build do app + wrangler deploy)
+# Segredos:  npm run deploy:segredos  (uma vez, e a cada troca de chave)
+name = "elev-app"
+main = "worker/src/index.ts"
+compatibility_date = "2026-05-01"
+
+# Estáticos do app: o Worker vê a requisição primeiro (para /api/* e /health) e
+# devolve index.html em qualquer rota do app — é uma SPA com rotas no cliente.
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = true
+
+# Alertas a cada 5 min; lembrete diário verificado a cada hora cheia.
+[triggers]
+crons = ["*/5 * * * *", "0 * * * *"]

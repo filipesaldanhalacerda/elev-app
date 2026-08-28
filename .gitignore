@@ -29,3 +29,6 @@ Thumbs.db
 .dev.vars
 .wrangler/
 worker/.tsbuild/
+
+# segredos de produção do Worker (publicados com npm run deploy:segredos)
+.prod.vars

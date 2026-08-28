@@ -140,7 +140,7 @@ async function login(page: import("@playwright/test").Page, email: string, passw
   await page.getByLabel("E-mail").fill(email);
   await page.locator('input[type="password"]').fill(password);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
-  await page.waitForSelector("[data-home]");
+  await page.waitForSelector("[data-home], .admin-shell");
 }
 
 const MOBILE_ROUTES: { path: string; label: string; ready: string }[] = [

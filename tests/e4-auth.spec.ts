@@ -84,7 +84,7 @@ test.describe("fluxo (a) · admin cria código → primeiro acesso → home", ()
     await page.getByLabel("E-mail").fill(ADMIN.email);
     await page.locator('input[type="password"]').fill(ADMIN.password);
     await page.getByRole("button", { name: "Entrar", exact: true }).click();
-    await page.waitForSelector("[data-home]");
+    await page.waitForSelector("[data-home], .admin-shell");
     await page.goto("/admin/usuarios");
     await expect(page.locator(".admin-header__title")).toHaveText("Usuários");
     await expect(page.locator(".admin-sidebar__name")).toHaveText("elev Admin");
@@ -127,7 +127,7 @@ test.describe("fluxo (a) · admin cria código → primeiro acesso → home", ()
     await inputs.nth(1).fill("NovaSenha1");
     await expect(definir).toBeEnabled();
     await definir.click();
-    await page.waitForSelector("[data-home]");
+    await page.waitForSelector("[data-home], .admin-shell");
 
     // senha antiga não vale mais; a nova vale
     const { makeClient, supabaseEnv } = await import("./helpers/seed");
@@ -150,7 +150,7 @@ test.describe("fluxo (a) · admin cria código → primeiro acesso → home", ()
     await page.getByLabel("E-mail").fill(ADMIN.email);
     await page.locator('input[type="password"]').fill(ADMIN.password);
     await page.getByRole("button", { name: "Entrar", exact: true }).click();
-    await page.waitForSelector("[data-home]");
+    await page.waitForSelector("[data-home], .admin-shell");
     await page.goto("/admin/usuarios");
 
     await page.getByRole("button", { name: "Novo usuário" }).click();
@@ -194,7 +194,7 @@ test.describe("fluxo (a) · admin cria código → primeiro acesso → home", ()
     await page.getByLabel("E-mail").fill(ADMIN.email);
     await page.locator('input[type="password"]').fill(ADMIN.password);
     await page.getByRole("button", { name: "Entrar", exact: true }).click();
-    await page.waitForSelector("[data-home]");
+    await page.waitForSelector("[data-home], .admin-shell");
     await page.goto("/admin/usuarios");
 
     const row = page.locator(".users-table__row", { hasText: alvo.email });

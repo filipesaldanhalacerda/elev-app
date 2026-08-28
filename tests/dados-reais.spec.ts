@@ -3,14 +3,17 @@
  * Roda com: npm run dados:reais  (depois de `npx supabase db reset`, se quiser base limpa)
  *
  * Importa os 4 relatórios essenciais da XP pelo MESMO fluxo do app (tela 21, como o
- * administrador faz), na ordem que o modelo de dados espera, e deixa o PO com a maior
- * carteira real ligada ao próprio login para ver as telas do assessor com dado de verdade.
+ * administrador faz), na ordem que o modelo de dados espera. O admin NUNCA fica com
+ * carteira (ele só gere o sistema); as duas maiores carteiras reais vão para os
+ * assessores de desenvolvimento, para ver as telas do assessor com dado de verdade.
  */
 import { test, expect, type Page } from "@playwright/test";
 import path from "node:path";
 import { serviceClient } from "./helpers/seed";
 
-const PO = { email: "lacerdafilipe@gmail.com", password: "Elev@2026" };
+const PO = { email: process.env.PO_EMAIL ?? "lacerdafilipe@gmail.com", password: process.env.PO_SENHA ?? "Elev@2026" };
+// numa base publicada os assessores têm outro domínio: ELEV_ASSESSORES="a@x,b@x"
+const ASSESSORES = (process.env.ELEV_ASSESSORES ?? "rafael.moura@elev.test,bruno.salles@elev.test").split(",");
 const DIR = path.resolve("Relatorios Zerva/Essenciais");
 const ORDEM = [
   { arquivo: "Positivador - 50191 - Ref.17.03.26.xlsx", tipo: "Positivador mensal (cria a base de clientes)" },
@@ -28,12 +31,12 @@ async function loginAdmin(page: Page) {
   await page.getByLabel("E-mail").fill(PO.email);
   await page.locator('input[type="password"]').fill(PO.password);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
-  await page.waitForSelector("[data-home]");
+  await page.waitForSelector(".admin-shell");
   await page.goto("/admin/importacoes");
   await expect(page.locator(".admin-header__title")).toHaveText("Importar relatório");
 }
 
-test("importa os relatórios reais da XP pelo fluxo do app", async ({ page }) => {
+test("importa os relatórios reais da XP pelo fluxo do app", async ({ page, browser }) => {
   const svc = serviceClient();
   await loginAdmin(page);
 
@@ -76,24 +79,39 @@ test("importa os relatórios reais da XP pelo fluxo do app", async ({ page }) =>
   expect(totais.clientes).toBeGreaterThan(700);
   expect(totais.posicoes).toBeGreaterThan(7000);
 
-  // o PO passa a atender a MAIOR carteira real: as telas do assessor ganham dado de verdade
+  // o admin NÃO atende clientes: carteira zerada nele, e as duas maiores carteiras
+  // reais vão para os assessores de desenvolvimento (telas do assessor com dado de verdade)
   const { data: clientes } = await svc.from("clients").select("advisor_code");
   const porAssessor = new Map<string, number>();
   for (const c of clientes ?? []) {
     const code = (c as { advisor_code: string | null }).advisor_code;
     if (code) porAssessor.set(code, (porAssessor.get(code) ?? 0) + 1);
   }
-  const [maiorCodigo, quantos] = [...porAssessor.entries()].sort((a, b) => b[1] - a[1])[0];
-  await svc.from("profiles").update({ advisor_code: maiorCodigo }).eq("email", PO.email);
-  console.log(`[dados-reais] ${PO.email} agora atende o código ${maiorCodigo} (${quantos} clientes)`);
-  console.log(`[dados-reais] carteiras: ${[...porAssessor.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([c, n]) => `${c}:${n}`).join(" · ")}`);
+  const ranking = [...porAssessor.entries()].sort((a, b) => b[1] - a[1]);
+  await svc.from("profiles").update({ advisor_code: null }).eq("email", PO.email);
+  for (let i = 0; i < ASSESSORES.length && i < ranking.length; i++) {
+    await svc.from("profiles").update({ advisor_code: ranking[i][0] }).eq("email", ASSESSORES[i]);
+    console.log(`[dados-reais] ${ASSESSORES[i]} agora atende o código ${ranking[i][0]} (${ranking[i][1]} clientes)`);
+  }
+  console.log(`[dados-reais] carteiras: ${ranking.slice(0, 8).map(([c, n]) => `${c}:${n}`).join(" · ")}`);
 
-  // prova de que o app mostra a carteira real: lista de clientes do PO com nomes do Saldo
-  await page.setViewportSize({ width: 390, height: 844 });
+  // prova em duas frentes: o admin cai no /admin (sem carteira) e o assessor vê a carteira real
   await page.goto("/clientes");
+  await expect(page.locator(".admin-shell")).toBeVisible({ timeout: 15_000 });
+  console.log("[dados-reais] admin em /clientes foi devolvido ao /admin — sem carteira, como deve ser");
+
+  const ctx = await browser.newContext({ baseURL: "http://localhost:5173", viewport: { width: 390, height: 844 } });
+  const assessor = await ctx.newPage();
+  await assessor.goto("/login");
+  await assessor.getByLabel("E-mail").fill(ASSESSORES[0]);
+  await assessor.locator('input[type="password"]').fill(PO.password);
+  await assessor.getByRole("button", { name: "Entrar", exact: true }).click();
+  await assessor.waitForSelector("[data-home]");
+  await assessor.goto("/clientes");
   // espera a LINHA do cliente (o contêiner .client-list existe vazio durante o carregamento)
-  await expect(page.locator(".client-row").first()).toBeVisible({ timeout: 30_000 });
-  const nomes = await page.locator(".client-row__name").allInnerTexts();
-  console.log("[dados-reais] primeiros clientes na tela:", JSON.stringify(nomes.slice(0, 5)));
+  await expect(assessor.locator(".client-row").first()).toBeVisible({ timeout: 30_000 });
+  const nomes = await assessor.locator(".client-row__name").allInnerTexts();
+  console.log("[dados-reais] primeiros clientes na tela do assessor:", JSON.stringify(nomes.slice(0, 5)));
   expect(nomes.length).toBeGreaterThan(0);
+  await ctx.close();
 });

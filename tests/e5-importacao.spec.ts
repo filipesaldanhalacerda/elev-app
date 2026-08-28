@@ -42,7 +42,7 @@ async function loginAdmin(page: import("@playwright/test").Page) {
   await page.getByLabel("E-mail").fill(ADMIN.email);
   await page.locator('input[type="password"]').fill(ADMIN.password);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
-  await page.waitForSelector("[data-home]");
+  await page.waitForSelector("[data-home], .admin-shell");
   await page.goto("/admin/importacoes");
   await expect(page.locator(".admin-header__title")).toHaveText("Importar relatório");
 }

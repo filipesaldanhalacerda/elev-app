@@ -36,7 +36,7 @@ async function login(page: import("@playwright/test").Page) {
   await page.getByLabel("E-mail").fill(ADV.email);
   await page.locator('input[type="password"]').fill(ADV.password);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
-  await page.waitForSelector("[data-home]");
+  await page.waitForSelector("[data-home], .admin-shell");
 }
 
 test("fluxo (c): criar no sheet → progresso → disparo → histórico + notificação", async ({ page, request }) => {

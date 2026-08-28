@@ -9,7 +9,10 @@
     "preview": "vite preview",
     "test": "playwright test",
     "icons": "node scripts/generate-icons.mjs",
-    "dados:reais": "playwright test --project=dados-reais"
+    "dados:reais": "playwright test --project=dados-reais",
+    "deploy": "npm run build && wrangler deploy",
+    "deploy:segredos": "node scripts/deploy-secrets.mjs",
+    "smoke:prod": "playwright test --project=producao"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.1.0",

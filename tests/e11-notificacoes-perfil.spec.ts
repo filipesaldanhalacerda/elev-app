@@ -30,7 +30,7 @@ async function login(page: import("@playwright/test").Page) {
   await page.getByLabel("E-mail").fill(ADV.email);
   await page.locator('input[type="password"]').fill(ADV.password);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
-  await page.waitForSelector("[data-home]");
+  await page.waitForSelector("[data-home], .admin-shell");
 }
 
 test("tela 15: grupos por dia, não lida destacada, contador e marcar lidas", async ({ page }) => {
@@ -164,5 +164,5 @@ test("tela 16: perfil completo — tema muda na hora, toggles persistem, trocar 
   await page.getByLabel("E-mail").fill(ADV.email);
   await page.locator('input[type="password"]').fill("NovaSenha9");
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
-  await page.waitForSelector("[data-home]");
+  await page.waitForSelector("[data-home], .admin-shell");
 });

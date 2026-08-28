@@ -39,7 +39,7 @@ test("fluxo (e): importação real → ficha do cliente atualizada com fonte Pos
     await page.getByLabel("E-mail").fill(ADMIN.email);
     await page.locator('input[type="password"]').fill(ADMIN.password);
     await page.getByRole("button", { name: "Entrar", exact: true }).click();
-    await page.waitForSelector("[data-home]");
+    await page.waitForSelector("[data-home], .admin-shell");
     await page.goto("/admin/importacoes");
     await page.locator('[data-testid="import-file"]').setInputFiles(path.resolve("Relatorios Zerva/Essenciais/Positivador - 50191 - Ref.17.03.26.xlsx"));
     await expect(page.locator(".import-file__chip")).toContainText("Positivador mensal detectado");
@@ -67,7 +67,7 @@ test("fluxo (e): importação real → ficha do cliente atualizada com fonte Pos
   await mpage.getByLabel("E-mail").fill(ADV.email);
   await mpage.locator('input[type="password"]').fill(ADV.password);
   await mpage.getByRole("button", { name: "Entrar", exact: true }).click();
-  await mpage.waitForSelector("[data-home]");
+  await mpage.waitForSelector("[data-home], .admin-shell");
 
   await mpage.goto(`http://localhost:5173/clientes/${conta}`);
   // ficha com dados REAIS da importação e a fonte declarada

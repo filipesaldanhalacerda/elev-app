@@ -17,7 +17,7 @@
  * avisa e sai. Perder cliente real é muito pior do que sobrar cliente de teste.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { serviceClient } from "./seed";
+import { serviceClient, supabaseEnv } from "./seed";
 
 const SEED_EMAILS = ["rafael.moura@elev.test", "bruno.salles@elev.test"];
 const RELATORIOS_REAIS = [
@@ -82,6 +82,13 @@ async function soltarVinculosDoUsuario(svc: SupabaseClient, ids: string[]) {
 }
 
 export default async function globalTeardown() {
+  // TRAVA MAIOR: limpeza só na base LOCAL de desenvolvimento. Apontado para uma base
+  // publicada (carga de dados reais, demonstração), o teardown não encosta em nada.
+  const alvo = supabaseEnv().url;
+  if (!/^https?:\/\/(127\.0\.0\.1|localhost|\d+\.\d+\.\d+\.\d+)(:|\/|$)/.test(alvo)) {
+    console.log(`[teardown] base remota (${alvo}) — nada foi apagado, por segurança.`);
+    return;
+  }
   const svc = serviceClient();
   const limpo: string[] = [];
 

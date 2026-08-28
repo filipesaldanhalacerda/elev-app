@@ -40,7 +40,7 @@ async function login(page: import("@playwright/test").Page, email: string, passw
   await page.getByLabel("E-mail").fill(email);
   await page.locator('input[type="password"]').fill(password);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
-  await page.waitForSelector("[data-home]");
+  await page.waitForSelector("[data-home], .admin-shell");
 }
 
 emAmbosTemas("tela 04 · com dados", () => {
@@ -123,7 +123,7 @@ test("home espelha os fixados das Cotações (vazio é vazio) e conta TODOS os a
   await page.getByLabel("E-mail").fill(SOLO.email);
   await page.locator('input[type="password"]').fill(SOLO.password);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
-  await page.waitForSelector("[data-home]");
+  await page.waitForSelector("[data-home], .admin-shell");
   await page.waitForSelector("[data-ticker]");
   // fixados vazios: só o IBOV na home
   await expect(page.locator("[data-ticker] .ticker-strip__code")).toHaveCount(1);

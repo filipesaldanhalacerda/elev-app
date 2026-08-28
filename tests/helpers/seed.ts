@@ -7,6 +7,17 @@ let cached: { url: string; anon: string; service: string } | null = null;
 
 export function supabaseEnv() {
   if (cached) return cached;
+  // alvo explícito pelo ambiente: é assim que a carga de dados aponta para uma base
+  // publicada (npm run dados:reais com SUPABASE_URL/SERVICE_ROLE_KEY definidos).
+  // Sem isso, o alvo é sempre o Supabase local — o padrão da bateria.
+  if (process.env.SUPABASE_URL && process.env.SERVICE_ROLE_KEY) {
+    cached = {
+      url: process.env.SUPABASE_URL,
+      anon: process.env.SUPABASE_ANON_KEY ?? "",
+      service: process.env.SERVICE_ROLE_KEY,
+    };
+    return cached;
+  }
   const out = execSync("supabase status -o env", { encoding: "utf8" });
   const get = (key: string) => out.match(new RegExp(`${key}="([^"]+)"`))?.[1];
   cached = { url: get("API_URL")!, anon: get("ANON_KEY")!, service: get("SERVICE_ROLE_KEY")! };

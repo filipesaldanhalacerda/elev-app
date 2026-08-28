@@ -27,7 +27,7 @@ export default defineConfig({
       // o projeto mt derruba a conexão MetaTrader (singleton): rodar depois dele evita
       // que /api/quotes volte "pausado" no meio destes testes
       dependencies: ["mt"],
-      testIgnore: [/e3-rls/, /e5-importacao/, /e7-cotacoes/, /e16-fluxos/, /e17-qa/, /e20-garantia/, /dados-reais/],
+      testIgnore: [/e3-rls/, /e5-importacao/, /e7-cotacoes/, /e16-fluxos/, /e17-qa/, /e20-garantia/, /dados-reais/, /e22-producao/],
       use: {
         ...devices["iPhone 12"],
         viewport: { width: 390, height: 844 },
@@ -37,7 +37,7 @@ export default defineConfig({
     {
       name: "admin",
       dependencies: ["mt"],
-      testIgnore: [/e3-rls/, /e5-importacao/, /e7-cotacoes/, /e16-fluxos/, /e17-qa/, /e20-garantia/, /dados-reais/],
+      testIgnore: [/e3-rls/, /e5-importacao/, /e7-cotacoes/, /e16-fluxos/, /e17-qa/, /e20-garantia/, /dados-reais/, /e22-producao/],
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width: 1440, height: 900 },
@@ -69,11 +69,28 @@ export default defineConfig({
       workers: 1,
     },
     {
+      // fumaça do app PUBLICADO (npm run smoke:prod) — nunca roda na bateria:
+      // não sobe servidor local, fala com a internet e só lê
+      name: "producao",
+      testMatch: /e22-producao/,
+      workers: 1,
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1440, height: 900 },
+        baseURL: process.env.ELEV_URL ?? "https://elev-app.alltask-apps.workers.dev",
+      },
+    },
+    {
       // carga de dados reais para o PO (npm run dados:reais) — nunca roda na bateria
       name: "dados-reais",
       testMatch: /dados-reais/,
       workers: 1,
-      use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1440, height: 900 },
+        // por padrão carrega na base local; ELEV_URL aponta a carga para o app publicado
+        baseURL: process.env.ELEV_URL ?? "http://localhost:5173",
+      },
     },
     {
       // E20: garantia transversal (console/rede/dado real) — serial, viewports próprios
