@@ -9,7 +9,14 @@ import { fakeQuote, fakeSeries, fakeMtTest, realQuotes, realDetail, searchTicker
 import { sendWebPush, type PushSubscriptionRecord, type PushEnv } from "./webpush";
 import { googleMode, signedState, verifyState, authUrl, exchangeCode, userEmail, pushToGoogle, listFromGoogle, type GoogleEnv } from "./google";
 
-type Env = { SUPABASE_URL: string; SERVICE_ROLE_KEY: string; METAAPI_TOKEN?: string; BRAPI_TOKEN?: string } & PushEnv & GoogleEnv;
+type Env = {
+  SUPABASE_URL: string;
+  SERVICE_ROLE_KEY: string;
+  METAAPI_TOKEN?: string;
+  BRAPI_TOKEN?: string;
+  /** estáticos do app em produção (wrangler.toml da raiz); ausente no dev, onde o Vite serve */
+  ASSETS?: { fetch: (req: Request) => Promise<Response> };
+} & PushEnv & GoogleEnv;
 type Ctx = { Bindings: Env; Variables: { svc: SupabaseClient; admin: { id: string; name: string } } };
 
 const app = new Hono<Ctx>();
@@ -566,10 +573,16 @@ app.post("/api/admin/imports/commit", async (c) => {
         );
         if (error) throw new Error(`saldos: ${error.message}`);
       }
-      for (const r of p.rows) {
-        if (r.name) {
-          await svc.from("clients").update({ name: r.name }).eq("account_code", String(r.account_code));
-        }
+      // nomes EM LOTE: um update por cliente eram ~800 idas ao banco por importação —
+      // lento em qualquer rede e acima do teto de subrequisições de um Worker.
+      // O upsert só toca nas colunas enviadas, então o resto do cadastro fica intacto
+      // (e as contas já foram criadas no começo deste commit — aqui nada é inserido).
+      const nomes = p.rows
+        .filter((r) => r.name)
+        .map((r) => ({ account_code: String(r.account_code), advisor_code: (r.advisor_code as string) ?? "0", name: r.name }));
+      for (const part of chunk(nomes, 300)) {
+        const { error } = await svc.from("clients").upsert(part, { onConflict: "account_code" });
+        if (error) throw new Error(`nomes: ${error.message}`);
       }
     }
 
@@ -1041,6 +1054,13 @@ app.delete("/api/google/events/:id", async (c) => {
   return c.json({ ok: true });
 });
 
+
+// Em produção o mesmo Worker serve o app: o que não é /api/* nem /health sai dos
+// estáticos (index.html em qualquer rota — a SPA resolve o caminho no cliente).
+app.all("*", async (c) => {
+  if (!c.env.ASSETS) return c.json({ error: "Rota não encontrada." }, 404);
+  return c.env.ASSETS.fetch(c.req.raw);
+});
 
 // Produção (Cloudflare Cron Triggers — wrangler.toml [triggers]):
 // */5 min: alertas de preço e automáticos · hora cheia: lembrete diário.
